@@ -1,1 +1,160 @@
-
+{
+  "name": "SpeakFlow - AI English Coach",
+  "short_name": "SpeakFlow",
+  "description": "Practice English speaking with real-time AI feedback, personalized learning, and gamification",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "language"],
+  "screenshots": [
+    {
+      "src": "/images/screenshots/mobile-home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home screen with AI speaking practice"
+    },
+    {
+      "src": "/images/screenshots/mobile-practice.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Real-time speaking practice with scoring"
+    },
+    {
+      "src": "/images/screenshots/desktop-dashboard.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Progress dashboard and analytics"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/images/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start Practice",
+      "short_name": "Practice",
+      "description": "Start a new speaking practice session",
+      "url": "/?action=practice",
+      "icons": [
+        {
+          "src": "/images/icons/shortcut-practice.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Progress",
+      "short_name": "Progress",
+      "description": "View your learning statistics",
+      "url": "/?action=progress",
+      "icons": [
+        {
+          "src": "/images/icons/shortcut-progress.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Daily Challenge",
+      "short_name": "Challenge",
+      "description": "Complete today's speaking challenge",
+      "url": "/?action=challenge",
+      "icons": [
+        {
+          "src": "/images/icons/shortcut-challenge.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Upgrade Premium",
+      "short_name": "Upgrade",
+      "description": "Unlock unlimited practice",
+      "url": "/?action=upgrade",
+      "icons": [
+        {
+          "src": "/images/icons/shortcut-premium.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.speakflow.app",
+      "id": "com.speakflow.app"
+    },
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/app/speakflow/id1234567890"
+    }
+  ],
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay", "standalone"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "note_taking": {
+    "new_note_url": "/?action=note"
+  },
+  "launch_handler": {
+    "route_to": "existing-client",
+    "navigate_existing_client": "always"
+  }
+}
