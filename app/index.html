@@ -960,4 +960,504 @@
         { word: "confident", meaning: "feeling sure about yourself", mastered: false, reviewCount: 0 },
         { word: "essential", meaning: "absolutely necessary", mastered: false, reviewCount: 0 },
         { word: "improve", meaning: "make something better", mastered: false, reviewCount: 0 },
-        { word: "opportunity",
+        { word: "opportunity", meaning: "a chance to do something", mastered: false, reviewCount: 0 }
+    ];
+    let currentWordIndex = 0;
+
+    // Challenges
+    const challenges = [
+        { id: 1, title: "Morning Routine", desc: "Describe your morning", difficulty: "easy", xp: 30, completed: false, icon: "🌅" },
+        { id: 2, title: "Interview Practice", desc: "Answer 'Tell me about yourself'", difficulty: "medium", xp: 50, completed: false, icon: "💼" },
+        { id: 3, title: "Opinion Topic", desc: "Share your view on technology", difficulty: "hard", xp: 80, completed: false, icon: "💡" }
+    ];
+
+    // ========== UI HELPERS ==========
+    function showToast(message, isError = false) {
+        let toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.background = isError ? 'var(--danger)' : 'var(--dark)';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function showAchievement(message, xpGain = 0) {
+        showToast(`🏅 ${message} ${xpGain > 0 ? `+${xpGain} XP` : ''}`);
+        if (xpGain > 0) addXP(xpGain);
+    }
+
+    function addXP(amount) {
+        userProgress.xp += amount;
+        let requiredXP = userProgress.level * 100;
+        if (userProgress.xp >= requiredXP) {
+            userProgress.level++;
+            userProgress.xp -= requiredXP;
+            showAchievement(`🎉 Level ${userProgress.level} unlocked!`, 50);
+        }
+        updateUI();
+        saveProgress();
+    }
+
+    function updateStreak() {
+        let today = new Date().toDateString();
+        if (userProgress.lastPracticeDate !== today) {
+            if (userProgress.lastPracticeDate && new Date(userProgress.lastPracticeDate).getDate() === new Date().getDate() - 1) {
+                userProgress.streak++;
+                if (userProgress.streak === 3) showAchievement("🔥 3 day streak! +30 XP", 30);
+                if (userProgress.streak === 7) showAchievement("⭐ 7 day streak! +100 XP", 100);
+            } else if (!userProgress.lastPracticeDate) {
+                userProgress.streak = 1;
+            } else {
+                userProgress.streak = 1;
+            }
+            userProgress.lastPracticeDate = today;
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('streakValue').innerText = userProgress.streak;
+        document.getElementById('xpValue').innerText = userProgress.xp;
+        document.getElementById('levelValue').innerText = userProgress.level;
+        let nextXP = (userProgress.level * 100) - userProgress.xp;
+        document.getElementById('nextLevelProgress').innerText = nextXP;
+        
+        let dailyLimit = userProgress.isPremium ? 100 : 10;
+        document.getElementById('dailyProgressValue').innerText = `${userProgress.dailySentences}/${dailyLimit}`;
+        let progressPercent = (userProgress.dailySentences / dailyLimit) * 100;
+        document.getElementById('dailyProgressFill').style.width = `${Math.min(100, progressPercent)}%`;
+        
+        let tierBadge = document.getElementById('userTierBadge');
+        tierBadge.innerHTML = userProgress.isPremium ? 'PREMIUM ⭐' : 'FREE';
+        tierBadge.className = userProgress.isPremium ? 'badge badge-premium' : 'badge badge-free';
+        
+        document.getElementById('srsStats').innerHTML = `Mastered: ${userProgress.masteredWords}/${srsWords.length} words`;
+    }
+
+    function saveProgress() {
+        localStorage.setItem('speakflow_user', JSON.stringify(userProgress));
+    }
+
+    function loadProgress() {
+        let saved = localStorage.getItem('speakflow_user');
+        if (saved) {
+            userProgress = JSON.parse(saved);
+        }
+        updateUI();
+    }
+
+    // ========== VOICE RECOGNITION ==========
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.continuous = false;
+    }
+
+    function startVoiceInput(callback) {
+        if (!recognition) {
+            showToast("Chrome/Edge required for voice input", true);
+            return;
+        }
+        recognition.start();
+        isRecording = true;
+        document.getElementById('micBtn').classList.add('recording');
+        
+        recognition.onresult = (event) => {
+            let transcript = event.results[0][0].transcript;
+            isRecording = false;
+            document.getElementById('micBtn').classList.remove('recording');
+            if (callback) callback(transcript);
+        };
+        
+        recognition.onerror = () => {
+            isRecording = false;
+            document.getElementById('micBtn').classList.remove('recording');
+            showToast("Microphone error. Please check permissions.", true);
+        };
+        
+        recognition.onend = () => {
+            isRecording = false;
+            document.getElementById('micBtn').classList.remove('recording');
+        };
+    }
+
+    // Chat
+    const chatContainer = document.getElementById('chatContainer');
+    function addChat(message, isUser = false) {
+        let bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${isUser ? 'user' : ''}`;
+        bubble.innerHTML = `${isUser ? '🎤 You: ' : '🤖 AI: '}${message}`;
+        chatContainer.appendChild(bubble);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function analyzeAndScore(text) {
+        let score = Math.min(100, Math.max(50, 70 + (text.length / 5) - (text.includes('gonna') ? 10 : 0)));
+        let feedback = score > 85 ? "Excellent pronunciation!" : score > 70 ? "Good job! Keep practicing." : "Try to speak more clearly.";
+        return { score: Math.floor(score), feedback };
+    }
+
+    // Practice session
+    function addPracticeSession(score) {
+        let dailyLimit = userProgress.isPremium ? 100 : 10;
+        if (userProgress.dailySentences >= dailyLimit) {
+            showToast("Daily limit reached! Upgrade to Premium for unlimited practice.", true);
+            return false;
+        }
+        
+        updateStreak();
+        userProgress.dailySentences++;
+        let xpGain = Math.floor(score / 10);
+        addXP(xpGain);
+        saveProgress();
+        updateUI();
+        return true;
+    }
+
+    // ========== DEMO MIC ==========
+    document.getElementById('micBtn').addEventListener('click', () => {
+        if (!currentUser && !localStorage.getItem('onboarding_done')) {
+            document.getElementById('onboardingModal').style.display = 'flex';
+            return;
+        }
+        
+        startVoiceInput((text) => {
+            addChat(text, true);
+            let analysis = analyzeAndScore(text);
+            addChat(`${analysis.feedback} Score: ${analysis.score}/100`);
+            document.getElementById('scoreArea').innerHTML = `<span class="badge" style="background:var(--success); color:white;">🎯 Score: ${analysis.score}/100</span>`;
+            addPracticeSession(analysis.score);
+        });
+    });
+
+    // ========== ONBOARDING ==========
+    let steps = [document.getElementById('step1'), document.getElementById('step2'), document.getElementById('step3')];
+    let currentStep = 0;
+    let onboardingData = { goal: null, level: null, persona: null };
+
+    function showStep(index) {
+        steps.forEach((s, i) => s.classList.toggle('active-step', i === index));
+        let prog = ['⚫⚪⚪', '⚫⚫⚪', '⚫⚫⚫'];
+        document.querySelector('.progress-indicator').innerHTML = prog[index];
+    }
+
+    document.querySelectorAll('#step1 .option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#step1 .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            onboardingData.goal = btn.dataset.goal;
+        });
+    });
+
+    document.querySelectorAll('#step2 .option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#step2 .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            onboardingData.level = btn.dataset.level;
+        });
+    });
+
+    document.querySelectorAll('#step3 .option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#step3 .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            onboardingData.persona = btn.dataset.persona;
+        });
+    });
+
+    document.getElementById('nextStep1').addEventListener('click', () => {
+        if (!onboardingData.goal) { showToast("Select your goal", true); return; }
+        currentStep = 1;
+        showStep(1);
+    });
+
+    document.getElementById('nextStep2').addEventListener('click', () => {
+        if (!onboardingData.level) { showToast("Select your level", true); return; }
+        currentStep = 2;
+        showStep(2);
+    });
+
+    document.getElementById('finishOnboarding').addEventListener('click', () => {
+        if (!onboardingData.persona) { showToast("Select tutor personality", true); return; }
+        localStorage.setItem('onboarding_done', 'true');
+        localStorage.setItem('onboarding_data', JSON.stringify(onboardingData));
+        document.getElementById('onboardingModal').style.display = 'none';
+        showToast(`Welcome! Your ${onboardingData.persona} tutor is ready! 🎉`, false);
+        
+        // AHA moment
+        setTimeout(() => {
+            addChat(`Hi! I'm your ${onboardingData.persona} tutor. Say something to start!`);
+        }, 500);
+    });
+
+    // ========== AUTH ==========
+    function showAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
+    function hideAuthModal() { document.getElementById('authModal').style.display = 'none'; }
+
+    document.getElementById('startSpeakingBtn').addEventListener('click', () => {
+        if (localStorage.getItem('onboarding_done')) {
+            document.getElementById('micBtn').click();
+        } else {
+            document.getElementById('onboardingModal').style.display = 'flex';
+        }
+    });
+
+    document.getElementById('finalCtaBtn').addEventListener('click', () => {
+        if (localStorage.getItem('onboarding_done')) {
+            document.getElementById('micBtn').click();
+        } else {
+            document.getElementById('onboardingModal').style.display = 'flex';
+        }
+    });
+
+    document.getElementById('showRegister').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('authTitle').innerText = 'Sign Up';
+    });
+
+    document.getElementById('showLogin').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('authTitle').innerText = 'Login to SpeakFlow';
+    });
+
+    document.getElementById('doLoginBtn').addEventListener('click', () => {
+        let email = document.getElementById('loginEmail').value;
+        if (email) {
+            currentUser = { email, name: email.split('@')[0] };
+            hideAuthModal();
+            showToast(`Welcome back, ${currentUser.name}!`);
+        } else {
+            showToast("Enter email", true);
+        }
+    });
+
+    document.getElementById('doRegisterBtn').addEventListener('click', () => {
+        let name = document.getElementById('regName').value;
+        let email = document.getElementById('regEmail').value;
+        if (name && email) {
+            currentUser = { email, name };
+            hideAuthModal();
+            showToast(`Welcome to SpeakFlow, ${name}! 🎉`);
+            document.getElementById('onboardingModal').style.display = 'flex';
+        } else {
+            showToast("Fill all fields", true);
+        }
+    });
+
+    // Social login mock
+    document.getElementById('googleLogin').addEventListener('click', () => {
+        currentUser = { email: "user@gmail.com", name: "Google User" };
+        hideAuthModal();
+        showToast("Logged in with Google!");
+    });
+    document.getElementById('githubLogin').addEventListener('click', () => {
+        currentUser = { email: "user@github.com", name: "GitHub User" };
+        hideAuthModal();
+        showToast("Logged in with GitHub!");
+    });
+
+    // ========== PREMIUM ==========
+    document.getElementById('upgradeBtn').addEventListener('click', () => {
+        document.getElementById('paymentModal').style.display = 'flex';
+    });
+    document.getElementById('upgradeAnnualBtn').addEventListener('click', () => {
+        document.getElementById('paymentModal').style.display = 'flex';
+    });
+
+    let selectedMethod = 'card';
+    document.querySelectorAll('.payment-method').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectedMethod = btn.dataset.method;
+            document.getElementById('cardDetails').style.display = selectedMethod === 'card' ? 'block' : 'none';
+        });
+    });
+
+    document.getElementById('processPaymentBtn').addEventListener('click', () => {
+        userProgress.isPremium = true;
+        saveProgress();
+        updateUI();
+        document.getElementById('paymentModal').style.display = 'none';
+        showToast("🎉 Premium Activated! Unlimited practice unlocked!", false);
+    });
+    document.getElementById('closePaymentBtn').addEventListener('click', () => {
+        document.getElementById('paymentModal').style.display = 'none';
+    });
+
+    // ========== SRS ==========
+    function loadSRSWord() {
+        let word = srsWords[currentWordIndex];
+        document.getElementById('srsWord').innerText = word.word;
+        document.getElementById('srsMeaning').innerText = word.meaning;
+    }
+
+    document.getElementById('srsEasyBtn').addEventListener('click', () => {
+        let word = srsWords[currentWordIndex];
+        if (!word.mastered) {
+            word.reviewCount++;
+            if (word.reviewCount >= 3) {
+                word.mastered = true;
+                userProgress.masteredWords++;
+                showAchievement(`📚 Mastered "${word.word}"!`, 25);
+            } else {
+                showAchievement(`👍 "${word.word}" getting easier!`, 10);
+            }
+        }
+        currentWordIndex = (currentWordIndex + 1) % srsWords.length;
+        loadSRSWord();
+        saveProgress();
+        updateUI();
+    });
+
+    document.getElementById('srsAgainBtn').addEventListener('click', () => {
+        showAchievement(`🔄 Reviewing "${srsWords[currentWordIndex].word}" again`, 5);
+        currentWordIndex = (currentWordIndex + 1) % srsWords.length;
+        loadSRSWord();
+        updateUI();
+    });
+
+    // ========== CHALLENGES ==========
+    function loadChallenges() {
+        let container = document.getElementById('challengesContainer');
+        container.innerHTML = challenges.map(c => `
+            <div class="stat-card challenge-card" data-id="${c.id}" style="cursor:pointer;">
+                <div style="font-size:2rem;">${c.icon}</div>
+                <h3>${c.title}</h3>
+                <p style="font-size:0.8rem; margin:8px 0;">${c.desc}</p>
+                <span class="badge" style="background:${c.difficulty === 'easy' ? 'var(--success)' : c.difficulty === 'medium' ? 'var(--warning)' : 'var(--danger)'}; color:white;">${c.difficulty.toUpperCase()}</span>
+                <div style="margin-top:8px;">🎁 ${c.xp} XP</div>
+                <button class="btn-outline" style="margin-top:12px;" ${c.completed ? 'disabled' : ''}>${c.completed ? '✅ Completed' : '🎤 Start'}</button>
+            </div>
+        `).join('');
+        
+        document.querySelectorAll('.challenge-card').forEach(card => {
+            card.addEventListener('click', () => {
+                let id = parseInt(card.dataset.id);
+                let challenge = challenges.find(c => c.id === id);
+                if (!challenge.completed) {
+                    startChallenge(challenge);
+                }
+            });
+        });
+    }
+
+    function startChallenge(challenge) {
+        addChat(`Challenge: ${challenge.title}. ${challenge.desc}`);
+        startVoiceInput((text) => {
+            addChat(text, true);
+            addChat(`Great effort! Challenge completed! +${challenge.xp} XP`);
+            challenge.completed = true;
+            addXP(challenge.xp);
+            loadChallenges();
+            updateUI();
+        });
+    }
+
+    // ========== SHARE & REFERRAL ==========
+    document.getElementById('shareScoreBtn').addEventListener('click', () => {
+        let message = `I'm level ${userProgress.level} on SpeakFlow with a ${userProgress.streak} day streak! 🎙️`;
+        if (navigator.share) {
+            navigator.share({ title: 'My SpeakFlow Progress', text: message });
+        } else {
+            navigator.clipboard.writeText(message);
+            showToast("Score copied to clipboard!");
+        }
+        addXP(10);
+    });
+
+    document.getElementById('referralBtn').addEventListener('click', () => {
+        let referralLink = "https://speakflow.com/ref/" + (currentUser?.name || 'friend');
+        navigator.clipboard.writeText(referralLink);
+        showToast("Referral link copied! +50 XP when friend joins");
+        addXP(50);
+    });
+
+    // ========== SUPPORT CHAT ==========
+    const supportChat = document.getElementById('supportChat');
+    document.getElementById('supportFab').addEventListener('click', () => {
+        supportChat.style.display = supportChat.style.display === 'flex' ? 'none' : 'flex';
+    });
+    document.getElementById('closeSupportBtn').addEventListener('click', () => {
+        supportChat.style.display = 'none';
+    });
+
+    function addSupportMessage(message, isUser = false) {
+        let container = document.getElementById('supportMessages');
+        let div = document.createElement('div');
+        div.style.marginBottom = '12px';
+        div.style.textAlign = isUser ? 'right' : 'left';
+        div.innerHTML = `<div style="display:inline-block; background:${isUser ? 'var(--primary)' : '#f1f5f9'}; color:${isUser ? 'white' : 'var(--dark)'}; padding:8px 16px; border-radius:20px; max-width:80%;">${message}</div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function aiSupportResponse(question) {
+        let lower = question.toLowerCase();
+        if (lower.includes('premium')) return "💎 Premium gives unlimited practice, advanced feedback, and priority support! Upgrade in your profile.";
+        if (lower.includes('streak')) return "🔥 Streak tracks consecutive practice days. Practice daily to keep it growing!";
+        if (lower.includes('score')) return "🎯 Your score is based on pronunciation, fluency, and grammar accuracy.";
+        return "Thanks for reaching out! Check our FAQ or email support@speakflow.com for help. 😊";
+    }
+
+    document.getElementById('sendSupportBtn').addEventListener('click', () => {
+        let input = document.getElementById('supportInput');
+        let message = input.value.trim();
+        if (!message) return;
+        addSupportMessage(message, true);
+        input.value = '';
+        setTimeout(() => {
+            let response = aiSupportResponse(message);
+            addSupportMessage(response, false);
+        }, 500);
+    });
+
+    document.getElementById('supportInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('sendSupportBtn').click();
+    });
+
+    // ========== STATS TOGGLE ==========
+    let statsVisible = false;
+    document.getElementById('statsToggleBtn').addEventListener('click', () => {
+        let statsSection = document.querySelector('#streakValue').closest('section');
+        statsSection.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // ========== OFFLINE DETECTION ==========
+    window.addEventListener('online', () => {
+        document.getElementById('offlineIndicator').classList.remove('show');
+        showToast("Back online! Syncing your progress...");
+    });
+    window.addEventListener('offline', () => {
+        document.getElementById('offlineIndicator').classList.add('show');
+        showToast("You're offline. Progress will sync when back online.", true);
+    });
+
+    // ========== GLOBAL STATS ==========
+    setInterval(() => {
+        let stats = Math.floor(2000 + Math.random() * 1000);
+        document.getElementById('globalStats').innerHTML = `${stats.toLocaleString()} active learners`;
+    }, 30000);
+
+    // ========== INITIALIZE ==========
+    loadProgress();
+    loadSRSWord();
+    loadChallenges();
+    updateUI();
+
+    // Check onboarding
+    if (localStorage.getItem('onboarding_done')) {
+        let saved = localStorage.getItem('onboarding_data');
+        if (saved) {
+            let data = JSON.parse(saved);
+            addChat(`Welcome back! Your ${data.persona} tutor is ready.`);
+        }
+    }
+</script>
+</body>
+</html>
