@@ -1012,4 +1012,430 @@ exports.adminStartTest = async (req, res) => {
     const test = abTests.get(testId);
     
     if (!test) {
-      return res.status(404).json
+      return res.status(404).json({
+        success: false,
+        error: 'Test not found',
+        code: 'TEST_NOT_FOUND'
+      });
+    }
+    
+    if (test.status === TEST_STATUSES.ACTIVE) {
+      return res.status(400).json({
+        success: false,
+        error: 'Test is already active',
+        code: 'TEST_ALREADY_ACTIVE'
+      });
+    }
+    
+    if (test.status === TEST_STATUSES.COMPLETED) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot restart a completed test',
+        code: 'TEST_COMPLETED'
+      });
+    }
+    
+    // Validate test has all required fields
+    if (!test.variants || test.variants.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Test must have at least 2 variants',
+        code: 'INVALID_VARIANTS'
+      });
+    }
+    
+    test.status = TEST_STATUSES.ACTIVE;
+    test.activatedAt = new Date().toISOString();
+    test.activatedBy = req.user.id;
+    
+    // Set start date if not set
+    if (!test.startDate) {
+      test.startDate = new Date().toISOString();
+    }
+    
+    abTests.set(testId, test);
+    
+    res.json({
+      success: true,
+      message: 'Test started successfully',
+      data: test
+    });
+    
+  } catch (error) {
+    console.error('Start test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start test',
+      code: 'START_TEST_FAILED'
+    });
+  }
+};
+
+/**
+ * Stop an A/B test (admin only)
+ * POST /api/ab-test/admin/tests/:testId/stop
+ */
+exports.adminStopTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const { reason } = req.body;
+    
+    const test = abTests.get(testId);
+    
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: 'Test not found',
+        code: 'TEST_NOT_FOUND'
+      });
+    }
+    
+    if (test.status !== TEST_STATUSES.ACTIVE) {
+      return res.status(400).json({
+        success: false,
+        error: 'Test is not active',
+        code: 'TEST_NOT_ACTIVE'
+      });
+    }
+    
+    test.status = TEST_STATUSES.COMPLETED;
+    test.completedAt = new Date().toISOString();
+    test.completedBy = req.user.id;
+    test.stopReason = reason || 'Test completed';
+    
+    abTests.set(testId, test);
+    
+    // Generate final results
+    const results = generateMockResults(test);
+    testResults.set(testId, results);
+    
+    res.json({
+      success: true,
+      message: 'Test stopped successfully',
+      data: {
+        test,
+        results
+      }
+    });
+    
+  } catch (error) {
+    console.error('Stop test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop test',
+      code: 'STOP_TEST_FAILED'
+    });
+  }
+};
+
+/**
+ * Pause an A/B test (admin only)
+ * POST /api/ab-test/admin/tests/:testId/pause
+ */
+exports.adminPauseTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    
+    const test = abTests.get(testId);
+    
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: 'Test not found',
+        code: 'TEST_NOT_FOUND'
+      });
+    }
+    
+    if (test.status !== TEST_STATUSES.ACTIVE) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only active tests can be paused',
+        code: 'TEST_NOT_ACTIVE'
+      });
+    }
+    
+    test.status = TEST_STATUSES.PAUSED;
+    test.pausedAt = new Date().toISOString();
+    test.pausedBy = req.user.id;
+    
+    abTests.set(testId, test);
+    
+    res.json({
+      success: true,
+      message: 'Test paused successfully',
+      data: test
+    });
+    
+  } catch (error) {
+    console.error('Pause test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to pause test',
+      code: 'PAUSE_TEST_FAILED'
+    });
+  }
+};
+
+/**
+ * Delete an A/B test (admin only)
+ * DELETE /api/ab-test/admin/tests/:testId
+ */
+exports.adminDeleteTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    
+    const test = abTests.get(testId);
+    
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: 'Test not found',
+        code: 'TEST_NOT_FOUND'
+      });
+    }
+    
+    // Cannot delete active tests
+    if (test.status === TEST_STATUSES.ACTIVE) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete active test. Stop the test first.',
+        code: 'TEST_ACTIVE'
+      });
+    }
+    
+    abTests.delete(testId);
+    testResults.delete(testId);
+    
+    // Clean up user assignments
+    for (const [key, value] of userAssignments.entries()) {
+      if (key.startsWith(testId)) {
+        userAssignments.delete(key);
+      }
+    }
+    
+    // Clean up events
+    for (const [key, value] of testEvents.entries()) {
+      if (key.startsWith(testId)) {
+        testEvents.delete(key);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Test deleted successfully'
+    });
+    
+  } catch (error) {
+    console.error('Delete test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete test',
+      code: 'DELETE_TEST_FAILED'
+    });
+  }
+};
+
+/**
+ * Get A/B testing analytics overview (admin only)
+ * GET /api/ab-test/admin/analytics/overview
+ */
+exports.adminGetAnalyticsOverview = async (req, res) => {
+  try {
+    const tests = Array.from(abTests.values());
+    const activeTests = tests.filter(t => t.status === TEST_STATUSES.ACTIVE);
+    const completedTests = tests.filter(t => t.status === TEST_STATUSES.COMPLETED);
+    const draftTests = tests.filter(t => t.status === TEST_STATUSES.DRAFT);
+    
+    // Calculate impact of winning tests
+    let totalImprovement = 0;
+    let winningTestsCount = 0;
+    let totalRevenueImpact = 0;
+    
+    for (const test of completedTests) {
+      const results = testResults.get(test.id);
+      if (results && results.summary.winner !== 'control') {
+        totalImprovement += Math.abs(results.summary.winnerImprovement);
+        winningTestsCount++;
+        
+        // Mock revenue impact calculation
+        if (test.primaryMetric === EVENT_TYPES.PURCHASE) {
+          const estimatedMonthlyRevenue = 50000; // Mock
+          totalRevenueImpact += estimatedMonthlyRevenue * (results.summary.winnerImprovement / 100);
+        }
+      }
+    }
+    
+    const averageImprovement = winningTestsCount > 0 ? totalImprovement / winningTestsCount : 0;
+    
+    // Get recent activity (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentEvents = [];
+    for (const [key, data] of testEvents.entries()) {
+      const recentEventsInTest = data.events.filter(e => new Date(e.timestamp) > thirtyDaysAgo);
+      recentEvents.push(...recentEventsInTest);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalTests: tests.length,
+          activeTests: activeTests.length,
+          completedTests: completedTests.length,
+          draftTests: draftTests.length,
+          pausedTests: tests.filter(t => t.status === TEST_STATUSES.PAUSED).length,
+          totalUsersInTests: userAssignments.size,
+          averageImprovement: Math.round(averageImprovement * 100) / 100,
+          totalRevenueImpact: Math.round(totalRevenueImpact)
+        },
+        recentActivity: {
+          totalEvents: recentEvents.length,
+          uniqueUsers: new Set(recentEvents.map(e => e.userId)).size,
+          conversions: recentEvents.filter(e => e.eventType === EVENT_TYPES.CONVERSION || e.eventType === EVENT_TYPES.PURCHASE).length
+        },
+        topPerformingTests: tests
+          .filter(t => t.status === TEST_STATUSES.COMPLETED)
+          .map(t => {
+            const results = testResults.get(t.id);
+            return {
+              id: t.id,
+              name: t.name,
+              improvement: results?.summary.winnerImprovement || 0,
+              winner: results?.summary.winnerName || 'Unknown',
+              winnerVariant: results?.summary.winner,
+              confidenceLevel: results?.variants[results?.summary.winner]?.significance?.confidenceLevel || 0
+            };
+          })
+          .sort((a, b) => b.improvement - a.improvement)
+          .slice(0, 5),
+        testsByStatus: {
+          [TEST_STATUSES.ACTIVE]: activeTests.length,
+          [TEST_STATUSES.COMPLETED]: completedTests.length,
+          [TEST_STATUSES.DRAFT]: draftTests.length,
+          [TEST_STATUSES.PAUSED]: tests.filter(t => t.status === TEST_STATUSES.PAUSED).length
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Analytics overview error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve analytics overview',
+      code: 'ANALYTICS_OVERVIEW_FAILED'
+    });
+  }
+};
+
+/**
+ * Export test data (admin only)
+ * GET /api/ab-test/admin/tests/:testId/export
+ */
+exports.adminExportTestData = async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const { format = 'json' } = req.query;
+    
+    const test = abTests.get(testId);
+    
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: 'Test not found',
+        code: 'TEST_NOT_FOUND'
+      });
+    }
+    
+    // Collect all events for this test
+    const allEvents = [];
+    for (const [key, data] of testEvents.entries()) {
+      if (key.startsWith(testId)) {
+        allEvents.push(...data.events.map(e => ({
+          variantId: data.variantId,
+          ...e
+        })));
+      }
+    }
+    
+    // Collect user assignments
+    const assignments = [];
+    for (const [key, value] of userAssignments.entries()) {
+      if (key.startsWith(testId)) {
+        const userId = key.split(':')[1];
+        assignments.push({
+          userId,
+          variantId: value
+        });
+      }
+    }
+    
+    const exportData = {
+      test: {
+        id: test.id,
+        name: test.name,
+        description: test.description,
+        status: test.status,
+        variants: test.variants,
+        targeting: test.targeting,
+        startDate: test.startDate,
+        endDate: test.endDate,
+        createdAt: test.createdAt
+      },
+      results: testResults.get(testId),
+      events: allEvents,
+      assignments,
+      exportedAt: new Date().toISOString(),
+      exportedBy: req.user.id
+    };
+    
+    if (format === 'json') {
+      res.json({
+        success: true,
+        data: exportData
+      });
+    } else if (format === 'csv') {
+      // Convert to CSV format
+      const csvRows = [
+        ['Event Type', 'Variant ID', 'User ID', 'Timestamp', 'Metadata']
+      ];
+      
+      for (const event of allEvents) {
+        csvRows.push([
+          event.eventType,
+          event.variantId,
+          event.userId,
+          event.timestamp,
+          JSON.stringify(event.metadata || {})
+        ]);
+      }
+      
+      const csvContent = csvRows.map(row => row.join(',')).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=ab_test_${testId}_export.csv`);
+      res.send(csvContent);
+    } else {
+      res.status(400).json({
+        success: false,
+        error: 'Unsupported export format',
+        code: 'INVALID_FORMAT'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Export test data error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export test data',
+      code: 'EXPORT_FAILED'
+    });
+  }
+};
+
+// ============================================
+// Export all methods
+// ============================================
+
+module.exports = exports;
