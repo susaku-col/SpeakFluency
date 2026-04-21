@@ -1,45 +1,6 @@
 {
   "version": 2,
   "name": "speakflow",
-  "builds": [
-    {
-      "src": "backend/server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "backend/**",
-          "public/**",
-          "css/**",
-          "js/**",
-          "index.html",
-          "manifest.json",
-          "sw.js",
-          "offline.html"
-        ],
-        "excludeFiles": [
-          "**/*.pth",
-          "**/*.h5",
-          "**/*.pb",
-          "**/backups/**",
-          "**/tests/**",
-          "**/*.test.js",
-          "**/ai-models/**"
-        ]
-      }
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "css/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/**",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
     {
       "src": "/api/(.*)",
