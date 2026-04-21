@@ -1,1463 +1,883 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <meta name="description" content="SpeakFlow - AI English Speaking Coach. Practice English speaking with real-time AI feedback, personalized learning, and gamification.">
-    <meta name="theme-color" content="#3b82f6">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SpeakFlow">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%233b82f6'/%3E%3Ctext x='50' y='67' text-anchor='middle' fill='white' font-size='50' font-family='Arial'%3E🎙%3C/text%3E%3C/svg%3E">
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22SpeakFlow%22,%22short_name%22:%22SpeakFlow%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22theme_color%22:%22%233b82f6%22,%22background_color%22:%22%23ffffff%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%233b82f6'/%3E%3Ctext x='50' y='67' text-anchor='middle' fill='white' font-size='50'%3E🎙%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]}">
-    <title>SpeakFlow | AI English Speaking Coach</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --secondary: #8b5cf6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --gray: #64748b;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            color: var(--dark);
-            line-height: 1.5;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        /* Header */
-        .header {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 16px 0;
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        /* Buttons */
-        .btn-primary {
-            background: var(--primary);
-            border: none;
-            padding: 10px 24px;
-            border-radius: 40px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59,130,246,0.4);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary);
-            padding: 9px 23px;
-            border-radius: 40px;
-            color: var(--primary);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-outline:hover {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-premium {
-            background: linear-gradient(135deg, var(--warning), var(--danger));
-            box-shadow: 0 2px 8px rgba(245,158,11,0.3);
-        }
-
-        .btn-premium:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245,158,11,0.4);
-        }
-
-        /* Sections */
-        section {
-            padding: 60px 0;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .section-title {
-            font-size: 2.2rem;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 48px;
-            background: linear-gradient(135deg, var(--dark), var(--primary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        /* Demo Card */
-        .demo-card {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 32px;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.15);
-            padding: 24px;
-        }
-
-        .chat-bubble {
-            background: #f1f5f9;
-            border-radius: 24px;
-            padding: 14px 18px;
-            margin: 12px 0;
-            max-width: 85%;
-        }
-
-        .chat-bubble.user {
-            background: var(--primary);
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-
-        .chat-container {
-            height: 250px;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .mic-btn {
-            background: var(--danger);
-            width: 64px;
-            height: 64px;
-            border-radius: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            border: none;
-            cursor: pointer;
-            margin: 20px auto 0;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(239,68,68,0.4);
-        }
-
-        .mic-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(239,68,68,0.5);
-        }
-
-        .mic-btn.recording {
-            animation: pulse 1.5s infinite;
-            background: #dc2626;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
-            50% { transform: scale(1.08); box-shadow: 0 8px 25px rgba(239,68,68,0.6); }
-            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
-        }
-
-        /* Dashboard Grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 24px;
-            margin-top: 32px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 28px;
-            padding: 24px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-            text-align: center;
-            transition: transform 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--primary);
-            margin: 12px 0;
-        }
-
-        /* Progress Bar */
-        .progress-bar {
-            background: #e2e8f0;
-            border-radius: 20px;
-            height: 10px;
-            overflow: hidden;
-            margin: 12px 0;
-        }
-
-        .progress-fill {
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            width: 0%;
-            height: 100%;
-            border-radius: 20px;
-            transition: width 0.5s ease;
-        }
-
-        /* Badges */
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-premium {
-            background: linear-gradient(135deg, var(--warning), var(--danger));
-            color: white;
-        }
-
-        .badge-free {
-            background: var(--gray);
-            color: white;
-        }
-
-        .badge-level {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* Comparison Grid */
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 32px;
-            margin-top: 32px;
-        }
-
-        .compare-card {
-            background: white;
-            border-radius: 28px;
-            padding: 28px;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-        }
-
-        /* Use Cases */
-        .use-cases-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 28px;
-            margin-top: 32px;
-        }
-
-        .use-card {
-            background: white;
-            border-radius: 28px;
-            padding: 28px;
-            text-align: center;
-            transition: all 0.2s;
-        }
-
-        .use-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
-        }
-
-        /* Pricing */
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 32px;
-            margin-top: 32px;
-        }
-
-        .pricing-card {
-            background: white;
-            border-radius: 32px;
-            padding: 32px;
-            text-align: center;
-            position: relative;
-            transition: all 0.2s;
-        }
-
-        .pricing-card.popular {
-            border: 2px solid var(--warning);
-            transform: scale(1.02);
-        }
-
-        .popular-badge {
-            position: absolute;
-            top: -12px;
-            right: 20px;
-            background: var(--warning);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.75rem;
-        }
-
-        .price {
-            font-size: 3rem;
-            font-weight: 800;
-            margin: 20px 0;
-        }
-
-        .feature-list {
-            list-style: none;
-            margin: 24px 0;
-        }
-
-        .feature-list li {
-            padding: 10px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        /* Modals */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            max-width: 500px;
-            width: 90%;
-            border-radius: 40px;
-            padding: 32px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        /* Auth Forms */
-        .auth-input {
-            width: 100%;
-            padding: 14px 16px;
-            margin: 12px 0;
-            border: 1px solid #e2e8f0;
-            border-radius: 40px;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        .auth-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-
-        /* Onboarding Steps */
-        .step {
-            display: none;
-        }
-
-        .step.active-step {
-            display: block;
-        }
-
-        .option-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin: 20px 0;
-        }
-
-        .option-btn {
-            background: #f1f5f9;
-            padding: 10px 20px;
-            border-radius: 40px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .option-btn.selected {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .progress-indicator {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 1.2rem;
-            letter-spacing: 4px;
-        }
-
-        /* Support Chat */
-        .support-fab {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(59,130,246,0.4);
-            z-index: 200;
-            transition: all 0.2s;
-        }
-
-        .support-fab:hover {
-            transform: scale(1.05);
-        }
-
-        .support-chat {
-            position: fixed;
-            bottom: 90px;
-            right: 24px;
-            width: 350px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            display: none;
-            flex-direction: column;
-            z-index: 201;
-            overflow: hidden;
-        }
-
-        .support-header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .support-messages {
-            height: 300px;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        .support-input {
-            display: flex;
-            padding: 12px;
-            border-top: 1px solid #e2e8f0;
-            gap: 8px;
-        }
-
-        .support-input input {
-            flex: 1;
-            padding: 10px 16px;
-            border: 1px solid #e2e8f0;
-            border-radius: 40px;
-        }
-
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--dark);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 40px;
-            z-index: 300;
-            transition: transform 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-
-        /* Offline Indicator */
-        .offline-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: var(--danger);
-            color: white;
-            text-align: center;
-            padding: 8px;
-            font-size: 0.8rem;
-            z-index: 1001;
-            transform: translateY(-100%);
-            transition: transform 0.3s;
-        }
-
-        .offline-indicator.show {
-            transform: translateY(0);
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease forwards;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 16px;
-            }
-            .section-title {
-                font-size: 1.8rem;
-            }
-            .support-chat {
-                width: calc(100% - 48px);
-                right: 24px;
-                left: 24px;
-            }
-            .stat-value {
-                font-size: 2rem;
-            }
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 32px;
-            font-size: 0.8rem;
-            color: var(--gray);
-        }
-    </style>
-</head>
-<body>
-
-<!-- Offline Indicator -->
-<div id="offlineIndicator" class="offline-indicator">📡 You're offline. Progress will sync when back online.</div>
-
-<!-- Header -->
-<header class="header">
-    <div class="container header-content">
-        <div class="logo">
-            <span>🎙️</span> SpeakFlow
-            <span id="userTierBadge" class="badge badge-free" style="font-size:0.7rem;">FREE</span>
-        </div>
-        <div class="nav-buttons">
-            <button class="btn-outline" id="statsToggleBtn">📊 Stats</button>
-            <button class="btn-primary" id="startSpeakingBtn">🎤 Start Speaking</button>
-        </div>
-    </div>
-</header>
-
-<main>
-    <!-- Hero + Demo Section (Phase 11) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">✨ Interactive AI Demo ✨</h2>
-            <div class="demo-card">
-                <div class="chat-container" id="chatContainer">
-                    <div class="chat-bubble">🤖 AI: Ready to improve your English? Click the microphone and start speaking!</div>
-                </div>
-                <button id="micBtn" class="mic-btn">🎤</button>
-                <div id="scoreArea" style="text-align:center; margin-top:16px;"></div>
-                <p style="font-size:12px; text-align:center; margin-top:12px; color:var(--gray);">
-                    🎙️ Real AI voice recognition • Instant feedback • Pronunciation scoring
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Differentiation Section (Phase 12) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">Why SpeakFlow is Different</h2>
-            <div class="comparison-grid">
-                <div class="compare-card">
-                    <div style="font-size:3rem;">📱</div>
-                    <h3 style="margin:12px 0;">Traditional Apps</h3>
-                    <p style="color:var(--gray);">Passive learning, multiple choice, no real speaking</p>
-                    <div style="margin-top:12px; color:var(--danger);">❌ Limited progress</div>
-                </div>
-                <div class="compare-card">
-                    <div style="font-size:3rem;">🎙️</div>
-                    <h3 style="margin:12px 0;">SpeakFlow</h3>
-                    <p style="color:var(--gray);">Active conversation, AI feedback, real pronunciation scoring</p>
-                    <div style="margin-top:12px; color:var(--success);">✅ Speak confidently</div>
-                </div>
-                <div class="compare-card">
-                    <div style="font-size:3rem;">🤖</div>
-                    <h3 style="margin:12px 0;">Static Content</h3>
-                    <p style="color:var(--gray);">Fixed lessons vs adaptive AI that learns with you</p>
-                    <div style="margin-top:12px; color:var(--success);">✅ Personalized path</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Use Cases Section (Phase 13) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">🎯 Built for Real People</h2>
-            <div class="use-cases-grid">
-                <div class="use-card">
-                    <div style="font-size:3rem;">📚</div>
-                    <h3>IELTS/TOEFL Candidates</h3>
-                    <p style="color:var(--gray); margin:12px 0;">Mock speaking tests, fluency scoring, band score prediction</p>
-                    <span class="badge" style="background:var(--primary); color:white;">+2 band average</span>
-                </div>
-                <div class="use-card">
-                    <div style="font-size:3rem;">💼</div>
-                    <h3>Business Professionals</h3>
-                    <p style="color:var(--gray); margin:12px 0;">Meeting simulations, presentation practice, interview prep</p>
-                    <span class="badge" style="background:var(--primary); color:white;">90% confidence boost</span>
-                </div>
-                <div class="use-card">
-                    <div style="font-size:3rem;">🌍</div>
-                    <h3>Daily Learners</h3>
-                    <p style="color:var(--gray); margin:12px 0;">Real-life conversations, slang, travel phrases, cultural tips</p>
-                    <span class="badge" style="background:var(--primary); color:white;">Speak naturally</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Trust & Credibility (Phase 14) -->
-    <section>
-        <div class="container">
-            <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px,1fr));">
-                <div class="stat-card">
-                    <div style="font-size:2rem;">📊</div>
-                    <div class="stat-value">10,000+</div>
-                    <div>Practice Sessions</div>
-                </div>
-                <div class="stat-card">
-                    <div style="font-size:2rem;">⭐</div>
-                    <div class="stat-value">90%</div>
-                    <div>Improved Confidence</div>
-                </div>
-                <div class="stat-card">
-                    <div style="font-size:2rem;">🤖</div>
-                    <div class="stat-value">99.9%</div>
-                    <div>AI Accuracy</div>
-                </div>
-                <div class="stat-card">
-                    <div style="font-size:2rem;">🌍</div>
-                    <div class="stat-value">50+</div>
-                    <div>Countries</div>
-                </div>
-            </div>
-            <div style="text-align:center; margin-top:32px;">
-                <p style="font-style:italic; color:var(--gray);">"SpeakFlow changed my life! I finally feel confident speaking English at work."</p>
-                <p style="font-weight:600; margin-top:8px;">— Sarah, IELTS 7.5</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Progress Dashboard (Phase 18-19) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">📊 Your Progress</h2>
-            <div class="dashboard-grid">
-                <div class="stat-card">
-                    <div>🔥 Daily Streak</div>
-                    <div class="stat-value" id="streakValue">0</div>
-                    <div>days</div>
-                </div>
-                <div class="stat-card">
-                    <div>⭐ Total XP</div>
-                    <div class="stat-value" id="xpValue">0</div>
-                    <div>experience points</div>
-                </div>
-                <div class="stat-card">
-                    <div>🏆 Level</div>
-                    <div class="stat-value" id="levelValue">1</div>
-                    <div><span id="nextLevelProgress">0</span> XP to next level</div>
-                </div>
-                <div class="stat-card">
-                    <div>🎯 Daily Goal</div>
-                    <div class="stat-value" id="dailyProgressValue">0</div>
-                    <div>/10 sentences</div>
-                    <div class="progress-bar"><div class="progress-fill" id="dailyProgressFill"></div></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SRS Vocabulary (Phase 26) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">🧠 Smart Vocabulary</h2>
-            <div class="stat-card" style="background:linear-gradient(135deg, var(--primary), var(--secondary)); color:white;">
-                <div style="font-size:1.2rem;">📖 Word of the Day</div>
-                <div style="font-size:2.5rem; font-weight:800; margin:16px 0;" id="srsWord">confident</div>
-                <div id="srsMeaning">feeling sure about yourself and your abilities</div>
-                <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
-                    <button class="btn-outline" id="srsEasyBtn" style="background:white;">👍 Easy</button>
-                    <button class="btn-outline" id="srsAgainBtn" style="background:white;">🔄 Again</button>
-                </div>
-                <div style="margin-top:16px; font-size:0.8rem;" id="srsStats">Mastered: 0/20 words</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Daily Challenges (Phase 27) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">🎯 Daily Challenges</h2>
-            <div class="dashboard-grid" id="challengesContainer">
-                <!-- Dynamically loaded -->
-            </div>
-        </div>
-    </section>
-
-    <!-- Premium / Monetization (Phase 25 & 38) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">💎 Upgrade to Premium</h2>
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3>Free</h3>
-                    <div class="price">$0</div>
-                    <ul class="feature-list">
-                        <li>✅ 10 practice sentences/day</li>
-                        <li>✅ Basic AI feedback</li>
-                        <li>✅ Daily streak & XP</li>
-                        <li>❌ Advanced pronunciation</li>
-                        <li>❌ Unlimited practice</li>
-                    </ul>
-                    <button class="btn-outline" disabled>Current Plan</button>
-                </div>
-                <div class="pricing-card popular">
-                    <div class="popular-badge">🔥 MOST POPULAR</div>
-                    <h3>Premium</h3>
-                    <div class="price">$9.99<small style="font-size:0.9rem;">/month</small></div>
-                    <ul class="feature-list">
-                        <li>✅ Unlimited practice sessions</li>
-                        <li>✅ Advanced pronunciation feedback</li>
-                        <li>✅ All tutor personalities</li>
-                        <li>✅ Priority AI response</li>
-                        <li>✅ Custom daily challenges</li>
-                    </ul>
-                    <button id="upgradeBtn" class="btn-primary btn-premium">Upgrade Now</button>
-                </div>
-                <div class="pricing-card">
-                    <h3>Annual</h3>
-                    <div class="price">$79<small style="font-size:0.9rem;">/year</small></div>
-                    <ul class="feature-list">
-                        <li>✅ All Premium features</li>
-                        <li>✅ Save 34%</li>
-                        <li>✅ Early access features</li>
-                        <li>✅ 1 month free</li>
-                    </ul>
-                    <button class="btn-primary btn-premium" id="upgradeAnnualBtn">Save 34%</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Growth / Share Section (Phase 20) -->
-    <section>
-        <div class="container">
-            <h2 class="section-title">🚀 Share & Grow Together</h2>
-            <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit, minmax(250px,1fr));">
-                <div class="stat-card">
-                    <div style="font-size:2rem;">📢</div>
-                    <button id="shareScoreBtn" class="btn-outline" style="margin-top:12px;">Share My Score</button>
-                </div>
-                <div class="stat-card">
-                    <div style="font-size:2rem;">👥</div>
-                    <button id="referralBtn" class="btn-outline" style="margin-top:12px;">Invite Friend → +50 XP</button>
-                </div>
-                <div class="stat-card">
-                    <div style="font-size:2rem;">🌍</div>
-                    <div id="globalStats" style="font-size:1.2rem; font-weight:600;">2,847 active learners</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section (Phase 15) -->
-    <section style="background:linear-gradient(135deg, var(--dark), #0f172a); color:white; border-radius:40px; margin:20px; text-align:center">
-        <div class="container" style="padding:48px 24px;">
-            <h2 style="font-size:2rem;">Start Speaking Now</h2>
-            <p style="margin:16px 0; opacity:0.9;">No credit card required • Try free in 10 seconds</p>
-            <p style="font-size:0.8rem; margin-bottom:24px;">⚠️ Limited free usage per day — start now!</p>
-            <button id="finalCtaBtn" class="btn-primary" style="background:var(--warning); font-size:1.2rem; padding:14px 32px;">🎤 Start Speaking Now</button>
-        </div>
-    </section>
-</main>
-
-<footer>
-    <p>© 2024 SpeakFlow — AI English Speaking Coach. Master English with confidence.</p>
-</footer>
-
-<!-- Support Chat (Phase 45) -->
-<div class="support-fab" id="supportFab">💬</div>
-<div class="support-chat" id="supportChat">
-    <div class="support-header">
-        <span>🎙️ SpeakFlow Support</span>
-        <button id="closeSupportBtn" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
-    </div>
-    <div class="support-messages" id="supportMessages">
-        <div style="margin-bottom:12px;">🤖 AI: Hi! How can I help you today?</div>
-    </div>
-    <div class="support-input">
-        <input type="text" id="supportInput" placeholder="Type your question...">
-        <button id="sendSupportBtn" class="btn-primary" style="padding:8px 16px;">Send</button>
-    </div>
-</div>
-
-<!-- Toast Notification -->
-<div id="toast" class="toast"></div>
-
-<!-- Auth Modal (Phase 36) -->
-<div id="authModal" class="modal">
-    <div class="modal-content">
-        <h2 id="authTitle">Login to SpeakFlow</h2>
-        <div id="loginForm">
-            <input type="email" id="loginEmail" class="auth-input" placeholder="Email">
-            <input type="password" id="loginPassword" class="auth-input" placeholder="Password">
-            <button id="doLoginBtn" class="btn-primary" style="width:100%;">Login</button>
-            <div style="display:flex; gap:12px; margin:16px 0;">
-                <button id="googleLogin" class="btn-outline" style="flex:1;">G Google</button>
-                <button id="githubLogin" class="btn-outline" style="flex:1;">GH GitHub</button>
-            </div>
-            <p style="text-align:center;">Don't have an account? <a href="#" id="showRegister">Sign up</a></p>
-        </div>
-        <div id="registerForm" style="display:none;">
-            <input type="text" id="regName" class="auth-input" placeholder="Full Name">
-            <input type="email" id="regEmail" class="auth-input" placeholder="Email">
-            <input type="password" id="regPassword" class="auth-input" placeholder="Password">
-            <button id="doRegisterBtn" class="btn-primary" style="width:100%;">Sign Up</button>
-            <p style="text-align:center; margin-top:16px;">Already have an account? <a href="#" id="showLogin">Login</a></p>
-        </div>
-    </div>
-</div>
-
-<!-- Payment Modal (Phase 38) -->
-<div id="paymentModal" class="modal">
-    <div class="modal-content">
-        <h2>💎 Upgrade to Premium</h2>
-        <p style="margin:16px 0;">$9.99/month • Unlimited practice • Advanced feedback</p>
-        <div style="display:flex; gap:12px; margin:20px 0;">
-            <button class="btn-outline payment-method" data-method="card" style="flex:1;">💳 Card</button>
-            <button class="btn-outline payment-method" data-method="paypal" style="flex:1;">💰 PayPal</button>
-        </div>
-        <div id="cardDetails" style="display:none;">
-            <input type="text" class="auth-input" placeholder="Card Number">
-            <div style="display:flex; gap:8px;">
-                <input type="text" class="auth-input" placeholder="MM/YY">
-                <input type="text" class="auth-input" placeholder="CVC">
-            </div>
-        </div>
-        <button id="processPaymentBtn" class="btn-primary btn-premium" style="width:100%;">Pay $9.99</button>
-        <button id="closePaymentBtn" class="btn-outline" style="width:100%; margin-top:12px;">Cancel</button>
-    </div>
-</div>
-
-<!-- Onboarding Modal (Phase 16) -->
-<div id="onboardingModal" class="modal">
-    <div class="modal-content">
-        <div id="step1" class="step active-step">
-            <h3>🎯 Choose your goal</h3>
-            <div class="option-buttons">
-                <button data-goal="IELTS" class="option-btn">IELTS / TOEFL</button>
-                <button data-goal="Daily speaking" class="option-btn">Daily Conversation</button>
-                <button data-goal="Job interview" class="option-btn">Job Interview</button>
-            </div>
-            <button id="nextStep1" class="btn-primary" style="width:100%;">Next</button>
-        </div>
-        <div id="step2" class="step">
-            <h3>📚 Your level</h3>
-            <div class="option-buttons">
-                <button data-level="beginner" class="option-btn">Beginner</button>
-                <button data-level="intermediate" class="option-btn">Intermediate</button>
-                <button data-level="advanced" class="option-btn">Advanced</button>
-            </div>
-            <button id="nextStep2" class="btn-primary" style="width:100%;">Next</button>
-        </div>
-        <div id="step3" class="step">
-            <h3>👩‍🏫 Tutor personality</h3>
-            <div class="option-buttons">
-                <button data-persona="friendly" class="option-btn">Friendly</button>
-                <button data-persona="strict" class="option-btn">Strict</button>
-                <button data-persona="coach" class="option-btn">Coach</button>
-            </div>
-            <button id="finishOnboarding" class="btn-primary" style="width:100%;">Start Speaking 🎤</button>
-        </div>
-        <div class="progress-indicator">⚫⚪⚪</div>
-    </div>
-</div>
-
-<script>
-    // ========== USER STATE ==========
-    let currentUser = null;
-    let userProgress = {
+// ============================================
+// Authentication Routes
+// SpeakFlow - AI Language Learning Platform
+// ============================================
+
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+
+// ============================================
+// Rate Limiting untuk Keamanan
+// ============================================
+
+// Limit login attempts
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 5, // 5 percobaan gagal
+  message: {
+    success: false,
+    error: 'Too many login attempts. Please try again after 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Limit registration attempts
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 jam
+  max: 10, // 10 percobaan
+  message: {
+    success: false,
+    error: 'Too many registration attempts. Please try again after 1 hour.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ============================================
+// Validation Rules
+// ============================================
+
+const registerValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be between 2 and 50 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Name can only contain letters and spaces'),
+  body('confirmPassword')
+    .custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match'),
+];
+
+const loginValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+];
+
+const forgotPasswordValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+];
+
+const resetPasswordValidation = [
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  body('confirmPassword')
+    .custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match'),
+];
+
+// ============================================
+// Helper Functions
+// ============================================
+
+// Generate JWT Token
+const generateToken = (userId, email) => {
+  return jwt.sign(
+    { 
+      id: userId, 
+      email: email,
+      type: 'access'
+    },
+    process.env.JWT_SECRET,
+    { 
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      issuer: 'speakflow',
+      audience: 'speakflow-api'
+    }
+  );
+};
+
+// Generate Refresh Token
+const generateRefreshToken = (userId) => {
+  return jwt.sign(
+    { 
+      id: userId, 
+      type: 'refresh'
+    },
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+    { 
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+      issuer: 'speakflow',
+      audience: 'speakflow-api'
+    }
+  );
+};
+
+// Hash password
+const hashPassword = async (password) => {
+  const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 10;
+  return await bcrypt.hash(password, saltRounds);
+};
+
+// Compare password
+const comparePassword = async (password, hashedPassword) => {
+  return await bcrypt.compare(password, hashedPassword);
+};
+
+// Mock user database (replace with actual database)
+const users = new Map();
+
+// Initialize with demo user (for testing)
+const initDemoUser = async () => {
+  const hashedPassword = await hashPassword('demo123');
+  users.set('demo@speakflow.com', {
+    id: 'demo-user-1',
+    email: 'demo@speakflow.com',
+    password: hashedPassword,
+    name: 'Demo User',
+    role: 'user',
+    isEmailVerified: true,
+    createdAt: new Date().toISOString(),
+    lastLogin: null,
+    preferences: {
+      language: 'en',
+      theme: 'light',
+      notifications: true
+    }
+  });
+};
+
+// Call init function
+initDemoUser();
+
+// ============================================
+// Routes
+// ============================================
+
+/**
+ * POST /api/auth/register
+ * Register new user account
+ */
+router.post('/register', registerLimiter, registerValidation, async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { email, password, name } = req.body;
+
+    // Check if user already exists
+    if (users.has(email)) {
+      return res.status(409).json({
+        success: false,
+        error: 'User already exists with this email',
+        code: 'USER_EXISTS'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create new user
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newUser = {
+      id: userId,
+      email,
+      password: hashedPassword,
+      name,
+      role: 'user',
+      isEmailVerified: false,
+      createdAt: new Date().toISOString(),
+      lastLogin: null,
+      preferences: {
+        language: 'en',
+        theme: 'light',
+        notifications: true
+      },
+      stats: {
+        totalSessions: 0,
+        totalMinutes: 0,
+        averageScore: 0,
         streak: 0,
-        xp: 0,
         level: 1,
-        dailySentences: 0,
-        isPremium: false,
-        lastPracticeDate: null,
-        masteredWords: 0
+        xp: 0
+      }
     };
 
-    // SRS Words
-    const srsWords = [
-        { word: "confident", meaning: "feeling sure about yourself", mastered: false, reviewCount: 0 },
-        { word: "essential", meaning: "absolutely necessary", mastered: false, reviewCount: 0 },
-        { word: "improve", meaning: "make something better", mastered: false, reviewCount: 0 },
-        { word: "opportunity", meaning: "a chance to do something", mastered: false, reviewCount: 0 }
-    ];
-    let currentWordIndex = 0;
+    // Save user (in production, save to database)
+    users.set(email, newUser);
 
-    // Challenges
-    const challenges = [
-        { id: 1, title: "Morning Routine", desc: "Describe your morning", difficulty: "easy", xp: 30, completed: false, icon: "🌅" },
-        { id: 2, title: "Interview Practice", desc: "Answer 'Tell me about yourself'", difficulty: "medium", xp: 50, completed: false, icon: "💼" },
-        { id: 3, title: "Opinion Topic", desc: "Share your view on technology", difficulty: "hard", xp: 80, completed: false, icon: "💡" }
-    ];
+    // Generate tokens
+    const token = generateToken(userId, email);
+    const refreshToken = generateRefreshToken(userId);
 
-    // ========== UI HELPERS ==========
-    function showToast(message, isError = false) {
-        let toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.style.background = isError ? 'var(--danger)' : 'var(--dark)';
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = newUser;
+
+    // Send verification email (TODO: implement email service)
+    // await sendVerificationEmail(email, name);
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully. Please verify your email.',
+      data: {
+        user: userWithoutPassword,
+        token,
+        refreshToken
+      }
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during registration',
+      code: 'REGISTRATION_FAILED'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/login
+ * Login user
+ */
+router.post('/login', loginLimiter, loginValidation, async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
     }
 
-    function showAchievement(message, xpGain = 0) {
-        showToast(`🏅 ${message} ${xpGain > 0 ? `+${xpGain} XP` : ''}`);
-        if (xpGain > 0) addXP(xpGain);
+    const { email, password } = req.body;
+
+    // Find user
+    const user = users.get(email);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
     }
 
-    function addXP(amount) {
-        userProgress.xp += amount;
-        let requiredXP = userProgress.level * 100;
-        if (userProgress.xp >= requiredXP) {
-            userProgress.level++;
-            userProgress.xp -= requiredXP;
-            showAchievement(`🎉 Level ${userProgress.level} unlocked!`, 50);
-        }
-        updateUI();
-        saveProgress();
+    // Check password
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
     }
 
-    function updateStreak() {
-        let today = new Date().toDateString();
-        if (userProgress.lastPracticeDate !== today) {
-            if (userProgress.lastPracticeDate && new Date(userProgress.lastPracticeDate).getDate() === new Date().getDate() - 1) {
-                userProgress.streak++;
-                if (userProgress.streak === 3) showAchievement("🔥 3 day streak! +30 XP", 30);
-                if (userProgress.streak === 7) showAchievement("⭐ 7 day streak! +100 XP", 100);
-            } else if (!userProgress.lastPracticeDate) {
-                userProgress.streak = 1;
-            } else {
-                userProgress.streak = 1;
-            }
-            userProgress.lastPracticeDate = today;
-        }
+    // Check if email is verified (optional)
+    // if (!user.isEmailVerified) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     error: 'Please verify your email before logging in',
+    //     code: 'EMAIL_NOT_VERIFIED'
+    //   });
+    // }
+
+    // Update last login
+    user.lastLogin = new Date().toISOString();
+    users.set(email, user);
+
+    // Generate tokens
+    const token = generateToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id);
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: userWithoutPassword,
+        token,
+        refreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during login',
+      code: 'LOGIN_FAILED'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/logout
+ * Logout user (invalidate token)
+ */
+router.post('/logout', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (token) {
+      // In production: add token to blacklist in Redis
+      // await redisClient.set(`blacklist:${token}`, 'true', 'EX', 86400);
     }
 
-    function updateUI() {
-        document.getElementById('streakValue').innerText = userProgress.streak;
-        document.getElementById('xpValue').innerText = userProgress.xp;
-        document.getElementById('levelValue').innerText = userProgress.level;
-        let nextXP = (userProgress.level * 100) - userProgress.xp;
-        document.getElementById('nextLevelProgress').innerText = nextXP;
-        
-        let dailyLimit = userProgress.isPremium ? 100 : 10;
-        document.getElementById('dailyProgressValue').innerText = `${userProgress.dailySentences}/${dailyLimit}`;
-        let progressPercent = (userProgress.dailySentences / dailyLimit) * 100;
-        document.getElementById('dailyProgressFill').style.width = `${Math.min(100, progressPercent)}%`;
-        
-        let tierBadge = document.getElementById('userTierBadge');
-        tierBadge.innerHTML = userProgress.isPremium ? 'PREMIUM ⭐' : 'FREE';
-        tierBadge.className = userProgress.isPremium ? 'badge badge-premium' : 'badge badge-free';
-        
-        document.getElementById('srsStats').innerHTML = `Mastered: ${userProgress.masteredWords}/${srsWords.length} words`;
+    res.json({
+      success: true,
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during logout'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/refresh
+ * Refresh access token using refresh token
+ */
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Refresh token required',
+        code: 'NO_REFRESH_TOKEN'
+      });
     }
 
-    function saveProgress() {
-        localStorage.setItem('speakflow_user', JSON.stringify(userProgress));
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired refresh token',
+        code: 'INVALID_REFRESH_TOKEN'
+      });
     }
 
-    function loadProgress() {
-        let saved = localStorage.getItem('speakflow_user');
-        if (saved) {
-            userProgress = JSON.parse(saved);
-        }
-        updateUI();
+    // Check token type
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token type',
+        code: 'INVALID_TOKEN_TYPE'
+      });
     }
 
-    // ========== VOICE RECOGNITION ==========
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
-    let isRecording = false;
-
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.continuous = false;
+    // Find user
+    const user = Array.from(users.values()).find(u => u.id === decoded.id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
     }
 
-    function startVoiceInput(callback) {
-        if (!recognition) {
-            showToast("Chrome/Edge required for voice input", true);
-            return;
-        }
-        recognition.start();
-        isRecording = true;
-        document.getElementById('micBtn').classList.add('recording');
-        
-        recognition.onresult = (event) => {
-            let transcript = event.results[0][0].transcript;
-            isRecording = false;
-            document.getElementById('micBtn').classList.remove('recording');
-            if (callback) callback(transcript);
-        };
-        
-        recognition.onerror = () => {
-            isRecording = false;
-            document.getElementById('micBtn').classList.remove('recording');
-            showToast("Microphone error. Please check permissions.", true);
-        };
-        
-        recognition.onend = () => {
-            isRecording = false;
-            document.getElementById('micBtn').classList.remove('recording');
-        };
+    // Generate new tokens
+    const newToken = generateToken(user.id, user.email);
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    res.json({
+      success: true,
+      data: {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      }
+    });
+
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during token refresh'
+    });
+  }
+});
+
+/**
+ * GET /api/auth/verify
+ * Verify JWT token and get user info
+ */
+router.get('/verify', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'No token provided',
+        code: 'NO_TOKEN'
+      });
     }
 
-    // Chat
-    const chatContainer = document.getElementById('chatContainer');
-    function addChat(message, isUser = false) {
-        let bubble = document.createElement('div');
-        bubble.className = `chat-bubble ${isUser ? 'user' : ''}`;
-        bubble.innerHTML = `${isUser ? '🎤 You: ' : '🤖 AI: '}${message}`;
-        chatContainer.appendChild(bubble);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function analyzeAndScore(text) {
-        let score = Math.min(100, Math.max(50, 70 + (text.length / 5) - (text.includes('gonna') ? 10 : 0)));
-        let feedback = score > 85 ? "Excellent pronunciation!" : score > 70 ? "Good job! Keep practicing." : "Try to speak more clearly.";
-        return { score: Math.floor(score), feedback };
-    }
-
-    // Practice session
-    function addPracticeSession(score) {
-        let dailyLimit = userProgress.isPremium ? 100 : 10;
-        if (userProgress.dailySentences >= dailyLimit) {
-            showToast("Daily limit reached! Upgrade to Premium for unlimited practice.", true);
-            return false;
-        }
-        
-        updateStreak();
-        userProgress.dailySentences++;
-        let xpGain = Math.floor(score / 10);
-        addXP(xpGain);
-        saveProgress();
-        updateUI();
-        return true;
-    }
-
-    // ========== DEMO MIC ==========
-    document.getElementById('micBtn').addEventListener('click', () => {
-        if (!currentUser && !localStorage.getItem('onboarding_done')) {
-            document.getElementById('onboardingModal').style.display = 'flex';
-            return;
-        }
-        
-        startVoiceInput((text) => {
-            addChat(text, true);
-            let analysis = analyzeAndScore(text);
-            addChat(`${analysis.feedback} Score: ${analysis.score}/100`);
-            document.getElementById('scoreArea').innerHTML = `<span class="badge" style="background:var(--success); color:white;">🎯 Score: ${analysis.score}/100</span>`;
-            addPracticeSession(analysis.score);
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          error: 'Token has expired',
+          code: 'TOKEN_EXPIRED'
         });
-    });
-
-    // ========== ONBOARDING ==========
-    let steps = [document.getElementById('step1'), document.getElementById('step2'), document.getElementById('step3')];
-    let currentStep = 0;
-    let onboardingData = { goal: null, level: null, persona: null };
-
-    function showStep(index) {
-        steps.forEach((s, i) => s.classList.toggle('active-step', i === index));
-        let prog = ['⚫⚪⚪', '⚫⚫⚪', '⚫⚫⚫'];
-        document.querySelector('.progress-indicator').innerHTML = prog[index];
+      }
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token',
+        code: 'INVALID_TOKEN'
+      });
     }
 
-    document.querySelectorAll('#step1 .option-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#step1 .option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            onboardingData.goal = btn.dataset.goal;
-        });
-    });
-
-    document.querySelectorAll('#step2 .option-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#step2 .option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            onboardingData.level = btn.dataset.level;
-        });
-    });
-
-    document.querySelectorAll('#step3 .option-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#step3 .option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            onboardingData.persona = btn.dataset.persona;
-        });
-    });
-
-    document.getElementById('nextStep1').addEventListener('click', () => {
-        if (!onboardingData.goal) { showToast("Select your goal", true); return; }
-        currentStep = 1;
-        showStep(1);
-    });
-
-    document.getElementById('nextStep2').addEventListener('click', () => {
-        if (!onboardingData.level) { showToast("Select your level", true); return; }
-        currentStep = 2;
-        showStep(2);
-    });
-
-    document.getElementById('finishOnboarding').addEventListener('click', () => {
-        if (!onboardingData.persona) { showToast("Select tutor personality", true); return; }
-        localStorage.setItem('onboarding_done', 'true');
-        localStorage.setItem('onboarding_data', JSON.stringify(onboardingData));
-        document.getElementById('onboardingModal').style.display = 'none';
-        showToast(`Welcome! Your ${onboardingData.persona} tutor is ready! 🎉`, false);
-        
-        // AHA moment
-        setTimeout(() => {
-            addChat(`Hi! I'm your ${onboardingData.persona} tutor. Say something to start!`);
-        }, 500);
-    });
-
-    // ========== AUTH ==========
-    function showAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
-    function hideAuthModal() { document.getElementById('authModal').style.display = 'none'; }
-
-    document.getElementById('startSpeakingBtn').addEventListener('click', () => {
-        if (localStorage.getItem('onboarding_done')) {
-            document.getElementById('micBtn').click();
-        } else {
-            document.getElementById('onboardingModal').style.display = 'flex';
-        }
-    });
-
-    document.getElementById('finalCtaBtn').addEventListener('click', () => {
-        if (localStorage.getItem('onboarding_done')) {
-            document.getElementById('micBtn').click();
-        } else {
-            document.getElementById('onboardingModal').style.display = 'flex';
-        }
-    });
-
-    document.getElementById('showRegister').addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('registerForm').style.display = 'block';
-        document.getElementById('authTitle').innerText = 'Sign Up';
-    });
-
-    document.getElementById('showLogin').addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('loginForm').style.display = 'block';
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('authTitle').innerText = 'Login to SpeakFlow';
-    });
-
-    document.getElementById('doLoginBtn').addEventListener('click', () => {
-        let email = document.getElementById('loginEmail').value;
-        if (email) {
-            currentUser = { email, name: email.split('@')[0] };
-            hideAuthModal();
-            showToast(`Welcome back, ${currentUser.name}!`);
-        } else {
-            showToast("Enter email", true);
-        }
-    });
-
-    document.getElementById('doRegisterBtn').addEventListener('click', () => {
-        let name = document.getElementById('regName').value;
-        let email = document.getElementById('regEmail').value;
-        if (name && email) {
-            currentUser = { email, name };
-            hideAuthModal();
-            showToast(`Welcome to SpeakFlow, ${name}! 🎉`);
-            document.getElementById('onboardingModal').style.display = 'flex';
-        } else {
-            showToast("Fill all fields", true);
-        }
-    });
-
-    // Social login mock
-    document.getElementById('googleLogin').addEventListener('click', () => {
-        currentUser = { email: "user@gmail.com", name: "Google User" };
-        hideAuthModal();
-        showToast("Logged in with Google!");
-    });
-    document.getElementById('githubLogin').addEventListener('click', () => {
-        currentUser = { email: "user@github.com", name: "GitHub User" };
-        hideAuthModal();
-        showToast("Logged in with GitHub!");
-    });
-
-    // ========== PREMIUM ==========
-    document.getElementById('upgradeBtn').addEventListener('click', () => {
-        document.getElementById('paymentModal').style.display = 'flex';
-    });
-    document.getElementById('upgradeAnnualBtn').addEventListener('click', () => {
-        document.getElementById('paymentModal').style.display = 'flex';
-    });
-
-    let selectedMethod = 'card';
-    document.querySelectorAll('.payment-method').forEach(btn => {
-        btn.addEventListener('click', () => {
-            selectedMethod = btn.dataset.method;
-            document.getElementById('cardDetails').style.display = selectedMethod === 'card' ? 'block' : 'none';
-        });
-    });
-
-    document.getElementById('processPaymentBtn').addEventListener('click', () => {
-        userProgress.isPremium = true;
-        saveProgress();
-        updateUI();
-        document.getElementById('paymentModal').style.display = 'none';
-        showToast("🎉 Premium Activated! Unlimited practice unlocked!", false);
-    });
-    document.getElementById('closePaymentBtn').addEventListener('click', () => {
-        document.getElementById('paymentModal').style.display = 'none';
-    });
-
-    // ========== SRS ==========
-    function loadSRSWord() {
-        let word = srsWords[currentWordIndex];
-        document.getElementById('srsWord').innerText = word.word;
-        document.getElementById('srsMeaning').innerText = word.meaning;
+    // Find user
+    const user = Array.from(users.values()).find(u => u.id === decoded.id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
     }
 
-    document.getElementById('srsEasyBtn').addEventListener('click', () => {
-        let word = srsWords[currentWordIndex];
-        if (!word.mastered) {
-            word.reviewCount++;
-            if (word.reviewCount >= 3) {
-                word.mastered = true;
-                userProgress.masteredWords++;
-                showAchievement(`📚 Mastered "${word.word}"!`, 25);
-            } else {
-                showAchievement(`👍 "${word.word}" getting easier!`, 10);
-            }
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      data: {
+        user: userWithoutPassword,
+        tokenValid: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during token verification'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * Send password reset email
+ */
+router.post('/forgot-password', forgotPasswordValidation, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+    const user = users.get(email);
+
+    // Always return success even if user not found (security best practice)
+    if (user) {
+      // Generate reset token
+      const resetToken = jwt.sign(
+        { id: user.id, email: user.email, type: 'password_reset' },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
+      // In production: send email with reset link
+      // await sendPasswordResetEmail(email, resetToken);
+      
+      console.log(`Password reset token for ${email}: ${resetToken}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'If your email is registered, you will receive a password reset link'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password using token
+ */
+router.post('/reset-password', resetPasswordValidation, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { token, password } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Reset token required'
+      });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired reset token'
+      });
+    }
+
+    // Check token type
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid token type'
+      });
+    }
+
+    // Find user
+    const user = users.get(decoded.email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(password);
+    user.password = hashedPassword;
+    users.set(decoded.email, user);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/change-password
+ * Change password (authenticated users)
+ */
+router.post('/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user?.id; // From auth middleware
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'New password must be at least 6 characters'
+      });
+    }
+
+    // Find user
+    const user = Array.from(users.values()).find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isValid = await comparePassword(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Current password is incorrect'
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(newPassword);
+    user.password = hashedPassword;
+    users.set(user.email, user);
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * GET /api/auth/me
+ * Get current authenticated user
+ */
+router.get('/me', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'No token provided'
+      });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token'
+      });
+    }
+
+    // Find user
+    const user = Array.from(users.values()).find(u => u.id === decoded.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      data: userWithoutPassword
+    });
+
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/social/google
+ * Authenticate with Google
+ */
+router.post('/social/google', async (req, res) => {
+  try {
+    const { googleToken, email, name, picture } = req.body;
+
+    if (!googleToken || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Google token and email required'
+      });
+    }
+
+    // In production: verify Google token with Google API
+    // const payload = await verifyGoogleToken(googleToken);
+
+    // Find or create user
+    let user = users.get(email);
+    
+    if (!user) {
+      // Create new user with Google data
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      user = {
+        id: userId,
+        email,
+        name: name || email.split('@')[0],
+        password: null, // No password for social login
+        avatar: picture || null,
+        role: 'user',
+        isEmailVerified: true, // Google accounts are verified
+        provider: 'google',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        preferences: {
+          language: 'en',
+          theme: 'light',
+          notifications: true
         }
-        currentWordIndex = (currentWordIndex + 1) % srsWords.length;
-        loadSRSWord();
-        saveProgress();
-        updateUI();
-    });
-
-    document.getElementById('srsAgainBtn').addEventListener('click', () => {
-        showAchievement(`🔄 Reviewing "${srsWords[currentWordIndex].word}" again`, 5);
-        currentWordIndex = (currentWordIndex + 1) % srsWords.length;
-        loadSRSWord();
-        updateUI();
-    });
-
-    // ========== CHALLENGES ==========
-    function loadChallenges() {
-        let container = document.getElementById('challengesContainer');
-        container.innerHTML = challenges.map(c => `
-            <div class="stat-card challenge-card" data-id="${c.id}" style="cursor:pointer;">
-                <div style="font-size:2rem;">${c.icon}</div>
-                <h3>${c.title}</h3>
-                <p style="font-size:0.8rem; margin:8px 0;">${c.desc}</p>
-                <span class="badge" style="background:${c.difficulty === 'easy' ? 'var(--success)' : c.difficulty === 'medium' ? 'var(--warning)' : 'var(--danger)'}; color:white;">${c.difficulty.toUpperCase()}</span>
-                <div style="margin-top:8px;">🎁 ${c.xp} XP</div>
-                <button class="btn-outline" style="margin-top:12px;" ${c.completed ? 'disabled' : ''}>${c.completed ? '✅ Completed' : '🎤 Start'}</button>
-            </div>
-        `).join('');
-        
-        document.querySelectorAll('.challenge-card').forEach(card => {
-            card.addEventListener('click', () => {
-                let id = parseInt(card.dataset.id);
-                let challenge = challenges.find(c => c.id === id);
-                if (!challenge.completed) {
-                    startChallenge(challenge);
-                }
-            });
-        });
+      };
+      users.set(email, user);
+    } else {
+      user.lastLogin = new Date().toISOString();
+      users.set(email, user);
     }
 
-    function startChallenge(challenge) {
-        addChat(`Challenge: ${challenge.title}. ${challenge.desc}`);
-        startVoiceInput((text) => {
-            addChat(text, true);
-            addChat(`Great effort! Challenge completed! +${challenge.xp} XP`);
-            challenge.completed = true;
-            addXP(challenge.xp);
-            loadChallenges();
-            updateUI();
-        });
+    // Generate tokens
+    const token = generateToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id);
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      message: 'Google authentication successful',
+      data: {
+        user: userWithoutPassword,
+        token,
+        refreshToken
+      }
+    });
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Google authentication failed'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/social/facebook
+ * Authenticate with Facebook
+ */
+router.post('/social/facebook', async (req, res) => {
+  try {
+    const { facebookToken, email, name, picture } = req.body;
+
+    if (!facebookToken || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Facebook token and email required'
+      });
     }
 
-    // ========== SHARE & REFERRAL ==========
-    document.getElementById('shareScoreBtn').addEventListener('click', () => {
-        let message = `I'm level ${userProgress.level} on SpeakFlow with a ${userProgress.streak} day streak! 🎙️`;
-        if (navigator.share) {
-            navigator.share({ title: 'My SpeakFlow Progress', text: message });
-        } else {
-            navigator.clipboard.writeText(message);
-            showToast("Score copied to clipboard!");
+    // In production: verify Facebook token with Facebook API
+    // const payload = await verifyFacebookToken(facebookToken);
+
+    // Find or create user
+    let user = users.get(email);
+    
+    if (!user) {
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      user = {
+        id: userId,
+        email,
+        name: name || email.split('@')[0],
+        password: null,
+        avatar: picture || null,
+        role: 'user',
+        isEmailVerified: true,
+        provider: 'facebook',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        preferences: {
+          language: 'en',
+          theme: 'light',
+          notifications: true
         }
-        addXP(10);
-    });
-
-    document.getElementById('referralBtn').addEventListener('click', () => {
-        let referralLink = "https://speakflow.com/ref/" + (currentUser?.name || 'friend');
-        navigator.clipboard.writeText(referralLink);
-        showToast("Referral link copied! +50 XP when friend joins");
-        addXP(50);
-    });
-
-    // ========== SUPPORT CHAT ==========
-    const supportChat = document.getElementById('supportChat');
-    document.getElementById('supportFab').addEventListener('click', () => {
-        supportChat.style.display = supportChat.style.display === 'flex' ? 'none' : 'flex';
-    });
-    document.getElementById('closeSupportBtn').addEventListener('click', () => {
-        supportChat.style.display = 'none';
-    });
-
-    function addSupportMessage(message, isUser = false) {
-        let container = document.getElementById('supportMessages');
-        let div = document.createElement('div');
-        div.style.marginBottom = '12px';
-        div.style.textAlign = isUser ? 'right' : 'left';
-        div.innerHTML = `<div style="display:inline-block; background:${isUser ? 'var(--primary)' : '#f1f5f9'}; color:${isUser ? 'white' : 'var(--dark)'}; padding:8px 16px; border-radius:20px; max-width:80%;">${message}</div>`;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
+      };
+      users.set(email, user);
+    } else {
+      user.lastLogin = new Date().toISOString();
+      users.set(email, user);
     }
 
-    function aiSupportResponse(question) {
-        let lower = question.toLowerCase();
-        if (lower.includes('premium')) return "💎 Premium gives unlimited practice, advanced feedback, and priority support! Upgrade in your profile.";
-        if (lower.includes('streak')) return "🔥 Streak tracks consecutive practice days. Practice daily to keep it growing!";
-        if (lower.includes('score')) return "🎯 Your score is based on pronunciation, fluency, and grammar accuracy.";
-        return "Thanks for reaching out! Check our FAQ or email support@speakflow.com for help. 😊";
-    }
+    // Generate tokens
+    const token = generateToken(user.id, user.email);
+    const refreshToken = generateRefreshToken(user.id);
 
-    document.getElementById('sendSupportBtn').addEventListener('click', () => {
-        let input = document.getElementById('supportInput');
-        let message = input.value.trim();
-        if (!message) return;
-        addSupportMessage(message, true);
-        input.value = '';
-        setTimeout(() => {
-            let response = aiSupportResponse(message);
-            addSupportMessage(response, false);
-        }, 500);
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      message: 'Facebook authentication successful',
+      data: {
+        user: userWithoutPassword,
+        token,
+        refreshToken
+      }
     });
 
-    document.getElementById('supportInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('sendSupportBtn').click();
+  } catch (error) {
+    console.error('Facebook auth error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Facebook authentication failed'
     });
+  }
+});
 
-    // ========== STATS TOGGLE ==========
-    let statsVisible = false;
-    document.getElementById('statsToggleBtn').addEventListener('click', () => {
-        let statsSection = document.querySelector('#streakValue').closest('section');
-        statsSection.scrollIntoView({ behavior: 'smooth' });
-    });
+// ============================================
+// Export Router
+// ============================================
 
-    // ========== OFFLINE DETECTION ==========
-    window.addEventListener('online', () => {
-        document.getElementById('offlineIndicator').classList.remove('show');
-        showToast("Back online! Syncing your progress...");
-    });
-    window.addEventListener('offline', () => {
-        document.getElementById('offlineIndicator').classList.add('show');
-        showToast("You're offline. Progress will sync when back online.", true);
-    });
-
-    // ========== GLOBAL STATS ==========
-    setInterval(() => {
-        let stats = Math.floor(2000 + Math.random() * 1000);
-        document.getElementById('globalStats').innerHTML = `${stats.toLocaleString()} active learners`;
-    }, 30000);
-
-    // ========== INITIALIZE ==========
-    loadProgress();
-    loadSRSWord();
-    loadChallenges();
-    updateUI();
-
-    // Check onboarding
-    if (localStorage.getItem('onboarding_done')) {
-        let saved = localStorage.getItem('onboarding_data');
-        if (saved) {
-            let data = JSON.parse(saved);
-            addChat(`Welcome back! Your ${data.persona} tutor is ready.`);
-        }
-    }
-</script>
-</body>
-</html>
+module.exports = router;
