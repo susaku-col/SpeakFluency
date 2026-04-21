@@ -1,989 +1,1030 @@
-/* ============================================
-   SPEAKFLOW - GAMIFICATION MODULE
-   Version: 1.0.0
-   Handles XP, levels, streaks, achievements, and rewards
-   ============================================ */
-
 // ============================================
-// GAMIFICATION CONFIGURATION
+// SpeakFlow Gamification Module
+// XP, Levels, Streaks & Achievements
 // ============================================
 
-const GamificationConfig = {
-    // XP Settings
-    xp: {
-        practiceComplete: 10,
-        perfectScore: 25,
-        streakBonus: {
-            3: 30,
-            7: 100,
-            14: 250,
-            30: 500,
-            100: 1000
-        },
-        achievementComplete: 50,
-        dailyChallengeComplete: 30,
-        shareProgress: 10,
-        referFriend: 50,
-        levelUpBonus: 100
+// ============================================
+// Gamification State Management
+// ============================================
+
+const GamificationState = {
+    isInitialized: false,
+    userId: null,
+    level: 1,
+    xp: 0,
+    totalXp: 0,
+    xpToNextLevel: 100,
+    streak: 0,
+    longestStreak: 0,
+    badges: [],
+    achievements: [],
+    dailyGoal: {
+        type: 'minutes',
+        target: 15,
+        current: 0,
+        completed: false
     },
-    
-    // Level Settings
-    level: {
-        baseXP: 100,
-        exponent: 1.5,
-        maxLevel: 100
+    stats: {
+        totalLessons: 0,
+        totalMinutes: 0,
+        perfectLessons: 0,
+        totalWordsLearned: 0,
+        totalExercisesCorrect: 0,
+        totalExercisesIncorrect: 0
     },
-    
-    // Streak Settings
-    streak: {
-        maxStreakBonus: 7,
-        freezeEnabled: true,
-        freezeCost: 50,
-        maxFreezes: 3
-    },
-    
-    // Achievement Categories
-    categories: {
-        practice: 'practice',
-        streak: 'streak',
-        mastery: 'mastery',
-        social: 'social',
-        premium: 'premium',
-        special: 'special'
-    },
-    
-    // Reward Types
-    rewardTypes: {
-        xp: 'xp',
-        streakFreeze: 'streak_freeze',
-        premiumDays: 'premium_days',
-        avatar: 'avatar',
-        title: 'title',
-        badge: 'badge'
-    },
-    
-    // Storage Keys
-    storage: {
-        profile: 'gamification_profile',
-        achievements: 'gamification_achievements',
-        rewards: 'gamification_rewards'
+    leaderboard: [],
+    userRank: 0
+};
+
+// ============================================
+// Constants
+// ============================================
+
+const LEVEL_THRESHOLDS = {
+    1: 0, 2: 100, 3: 250, 4: 450, 5: 700,
+    6: 1000, 7: 1350, 8: 1750, 9: 2200, 10: 2700,
+    11: 3250, 12: 3850, 13: 4500, 14: 5200, 15: 5950,
+    16: 6750, 17: 7600, 18: 8500, 19: 9450, 20: 10450,
+    21: 11500, 22: 12600, 23: 13750, 24: 14950, 25: 16200
+};
+
+const XP_REWARDS = {
+    LESSON_COMPLETE: 50,
+    PERFECT_LESSON: 100,
+    EXERCISE_CORRECT: 10,
+    STREAK_BONUS: 25,
+    DAILY_LOGIN: 20,
+    ACHIEVEMENT_UNLOCK: 100,
+    BADGE_EARNED: 50,
+    LEVEL_UP: 200,
+    SHARE_ACHIEVEMENT: 15,
+    REFERRAL: 100
+};
+
+const STREAK_BONUSES = {
+    7: { xp: 100, badge: 'week_warrior' },
+    14: { xp: 250, badge: 'fortnight_champion' },
+    30: { xp: 500, badge: 'monthly_master' },
+    60: { xp: 1000, badge: 'two_month_legend' },
+    90: { xp: 2000, badge: 'quarter_king' },
+    180: { xp: 5000, badge: 'half_year_hero' },
+    365: { xp: 10000, badge: 'yearly_yoda' }
+};
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Get user ID from auth
+ */
+const getUserId = () => {
+    return auth?.user?.id || localStorage.getItem('user_id') || null;
+};
+
+/**
+ * Show toast notification
+ */
+const showToast = (message, type = 'info', title = null) => {
+    if (window.showToast) {
+        window.showToast(message, type, title);
+    } else {
+        console.log(`[Gamification] ${type}: ${message}`);
+    }
+};
+
+/**
+ * Play sound effect
+ */
+const playSound = (soundName) => {
+    const audio = new Audio(`/audio/${soundName}.mp3`);
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log('Audio play failed:', e));
+};
+
+/**
+ * Format number with abbreviation
+ */
+const formatNumber = (num) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+};
+
+// ============================================
+// API Calls
+// ============================================
+
+/**
+ * Fetch user gamification data
+ */
+const fetchGamificationData = async () => {
+    try {
+        const response = await fetch('/api/gamification/profile', {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            updateState(data.data);
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Fetch gamification error:', error);
+        loadFromLocalStorage();
+        return GamificationState;
+    }
+};
+
+/**
+ * Update streak
+ */
+const updateStreak = async () => {
+    try {
+        const response = await fetch('/api/gamification/streak', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.data.streakBonus > 0) {
+                showStreakBonus(data.data);
+            }
+            GamificationState.streak = data.data.streak;
+            GamificationState.longestStreak = data.data.longestStreak;
+            saveToLocalStorage();
+            updateUI();
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Update streak error:', error);
+        return null;
+    }
+};
+
+/**
+ * Claim daily reward
+ */
+const claimDailyReward = async () => {
+    try {
+        const response = await fetch('/api/gamification/claim-daily', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showDailyReward(data.data);
+            await addXP(data.data.xp, 'daily_login');
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Claim daily reward error:', error);
+        return null;
+    }
+};
+
+/**
+ * Add XP
+ */
+const addXP = async (amount, source) => {
+    try {
+        const response = await fetch('/api/gamification/add-xp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({ amount, source })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const oldLevel = GamificationState.level;
+            GamificationState.xp = data.data.newXp;
+            GamificationState.totalXp = data.data.totalXp;
+            GamificationState.level = data.data.newLevel;
+            GamificationState.xpToNextLevel = data.data.xpToNextLevel;
+            
+            if (data.data.leveledUp) {
+                showLevelUp(oldLevel, data.data.newLevel);
+                playSound('level-up');
+            }
+            
+            updateUI();
+            saveToLocalStorage();
+            
+            // Show XP notification
+            showXPNotification(amount, source);
+            
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Add XP error:', error);
+        return null;
+    }
+};
+
+/**
+ * Update user stats
+ */
+const updateStats = async (statType, value = 1) => {
+    try {
+        const response = await fetch('/api/gamification/stats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({ statType, value })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            GamificationState.stats = data.data;
+            updateUI();
+            saveToLocalStorage();
+            
+            // Check for achievements
+            checkAchievements();
+            
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Update stats error:', error);
+        return null;
+    }
+};
+
+/**
+ * Fetch leaderboard
+ */
+const fetchLeaderboard = async (type = 'xp', limit = 50) => {
+    try {
+        const response = await fetch(`/api/gamification/leaderboard?type=${type}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            GamificationState.leaderboard = data.data.leaderboard;
+            GamificationState.userRank = data.data.userRank;
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Fetch leaderboard error:', error);
+        return null;
     }
 };
 
 // ============================================
-// XP & LEVEL SYSTEM
+// State Management
 // ============================================
 
-class XPLevelSystem {
-    constructor() {
-        this.profile = this.loadProfile();
-        this.levelUpCallbacks = [];
+/**
+ * Update state from API data
+ */
+const updateState = (data) => {
+    GamificationState.level = data.level;
+    GamificationState.xp = data.xp;
+    GamificationState.totalXp = data.totalXp;
+    GamificationState.xpToNextLevel = data.xpToNextLevel;
+    GamificationState.streak = data.streak;
+    GamificationState.longestStreak = data.longestStreak;
+    GamificationState.badges = data.badges || [];
+    GamificationState.achievements = data.achievements || [];
+    GamificationState.stats = data.stats || GamificationState.stats;
+    if (data.dailyGoal) {
+        GamificationState.dailyGoal = data.dailyGoal;
     }
-    
-    loadProfile() {
-        const saved = localStorage.getItem(GamificationConfig.storage.profile);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load profile:', e);
-            }
+    saveToLocalStorage();
+};
+
+/**
+ * Save to localStorage
+ */
+const saveToLocalStorage = () => {
+    localStorage.setItem('gamification_state', JSON.stringify({
+        level: GamificationState.level,
+        xp: GamificationState.xp,
+        totalXp: GamificationState.totalXp,
+        streak: GamificationState.streak,
+        longestStreak: GamificationState.longestStreak,
+        badges: GamificationState.badges,
+        achievements: GamificationState.achievements,
+        stats: GamificationState.stats,
+        dailyGoal: GamificationState.dailyGoal
+    }));
+};
+
+/**
+ * Load from localStorage
+ */
+const loadFromLocalStorage = () => {
+    const saved = localStorage.getItem('gamification_state');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            Object.assign(GamificationState, data);
+        } catch (e) {
+            console.error('Error loading gamification state:', e);
         }
-        
-        return {
-            xp: 0,
-            level: 1,
-            totalXP: 0,
-            levelHistory: [],
-            lastUpdated: new Date().toISOString()
-        };
     }
-    
-    saveProfile() {
-        localStorage.setItem(GamificationConfig.storage.profile, JSON.stringify(this.profile));
-    }
-    
-    calculateXPForLevel(level) {
-        return Math.floor(
-            GamificationConfig.level.baseXP * Math.pow(level, GamificationConfig.level.exponent)
-        );
-    }
-    
-    getXPForNextLevel() {
-        return this.calculateXPForLevel(this.profile.level + 1);
-    }
-    
-    getXPForCurrentLevel() {
-        return this.calculateXPForLevel(this.profile.level);
-    }
-    
-    getProgressToNextLevel() {
-        const currentLevelXP = this.getXPForCurrentLevel();
-        const nextLevelXP = this.getXPForNextLevel();
-        const xpInCurrentLevel = this.profile.xp - currentLevelXP;
-        const xpNeeded = nextLevelXP - currentLevelXP;
-        
-        return {
-            current: xpInCurrentLevel,
-            needed: xpNeeded,
-            percentage: (xpInCurrentLevel / xpNeeded) * 100
-        };
-    }
-    
-    addXP(amount, source = 'practice') {
-        const oldLevel = this.profile.level;
-        
-        this.profile.xp += amount;
-        this.profile.totalXP += amount;
-        
-        // Check for level ups
-        let levelUps = [];
-        while (this.profile.xp >= this.getXPForNextLevel()) {
-            this.profile.level++;
-            levelUps.push(this.profile.level);
-            
-            // Add level up bonus XP
-            this.profile.xp += GamificationConfig.xp.levelUpBonus;
-            
-            // Record level up
-            this.profile.levelHistory.push({
-                level: this.profile.level,
-                timestamp: new Date().toISOString(),
-                xp: this.profile.xp
-            });
-        }
-        
-        this.profile.lastUpdated = new Date().toISOString();
-        this.saveProfile();
-        
-        // Dispatch events
-        const event = new CustomEvent('gamification:xpGain', {
-            detail: { amount, source, newXP: this.profile.xp, totalXP: this.profile.totalXP }
-        });
-        document.dispatchEvent(event);
-        
-        // Dispatch level up events
-        for (const newLevel of levelUps) {
-            const levelUpEvent = new CustomEvent('gamification:levelUp', {
-                detail: { oldLevel, newLevel, xp: this.profile.xp }
-            });
-            document.dispatchEvent(levelUpEvent);
-            
-            // Call callbacks
-            this.levelUpCallbacks.forEach(cb => cb(oldLevel, newLevel));
-        }
-        
-        return {
-            xpGained: amount,
-            newXP: this.profile.xp,
-            levelUps,
-            currentLevel: this.profile.level
-        };
-    }
-    
-    onLevelUp(callback) {
-        this.levelUpCallbacks.push(callback);
-    }
-    
-    getProfile() {
-        return { ...this.profile };
-    }
-    
-    getStats() {
-        const progress = this.getProgressToNextLevel();
-        
-        return {
-            level: this.profile.level,
-            xp: this.profile.xp,
-            totalXP: this.profile.totalXP,
-            nextLevelXP: this.getXPForNextLevel(),
-            currentLevelXP: this.getXPForCurrentLevel(),
-            progressPercentage: progress.percentage,
-            xpToNextLevel: progress.needed
-        };
-    }
-}
+};
 
 // ============================================
-// STREAK SYSTEM
+// Achievement Checking
 // ============================================
 
-class StreakSystem {
-    constructor(xpSystem) {
-        this.xpSystem = xpSystem;
-        this.streak = this.loadStreak();
-        this.freezes = this.loadFreezes();
+/**
+ * Check and unlock achievements
+ */
+const checkAchievements = () => {
+    const stats = GamificationState.stats;
+    const newAchievements = [];
+    
+    // Lesson count achievements
+    if (stats.totalLessons >= 1 && !hasAchievement('first_lesson')) {
+        unlockAchievement('first_lesson', 'First Step', 'Complete your first lesson', '🎯');
+        newAchievements.push('first_lesson');
+    }
+    if (stats.totalLessons >= 10 && !hasAchievement('ten_lessons')) {
+        unlockAchievement('ten_lessons', 'Dedicated Learner', 'Complete 10 lessons', '📚');
+        newAchievements.push('ten_lessons');
+    }
+    if (stats.totalLessons >= 50 && !hasAchievement('fifty_lessons')) {
+        unlockAchievement('fifty_lessons', 'Language Enthusiast', 'Complete 50 lessons', '⭐');
+        newAchievements.push('fifty_lessons');
+    }
+    if (stats.totalLessons >= 100 && !hasAchievement('hundred_lessons')) {
+        unlockAchievement('hundred_lessons', 'Master', 'Complete 100 lessons', '🏆');
+        newAchievements.push('hundred_lessons');
     }
     
-    loadStreak() {
-        const saved = localStorage.getItem('gamification_streak');
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load streak:', e);
-            }
-        }
-        
-        return {
-            current: 0,
-            longest: 0,
-            lastPracticeDate: null,
-            lastUpdated: null
-        };
+    // Perfect score achievements
+    if (stats.perfectLessons >= 1 && !hasAchievement('perfect_score')) {
+        unlockAchievement('perfect_score', 'Perfectionist', 'Get a perfect score in a lesson', '💯');
+        newAchievements.push('perfect_score');
     }
     
-    loadFreezes() {
-        const saved = localStorage.getItem('gamification_freezes');
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load freezes:', e);
-            }
-        }
-        
-        return {
-            available: 0,
-            used: 0,
-            history: []
-        };
+    // Vocabulary achievements
+    if (stats.totalWordsLearned >= 500 && !hasAchievement('vocabulary_master')) {
+        unlockAchievement('vocabulary_master', 'Vocabulary Master', 'Learn 500 words', '📖');
+        newAchievements.push('vocabulary_master');
+    }
+    if (stats.totalWordsLearned >= 2000 && !hasAchievement('vocabulary_guru')) {
+        unlockAchievement('vocabulary_guru', 'Vocabulary Guru', 'Learn 2000 words', '📚');
+        newAchievements.push('vocabulary_guru');
     }
     
-    saveStreak() {
-        localStorage.setItem('gamification_streak', JSON.stringify(this.streak));
+    // Streak achievements
+    if (GamificationState.streak >= 7 && !hasAchievement('week_warrior')) {
+        unlockAchievement('week_warrior', 'Week Warrior', '7-day learning streak', '🔥');
+        newAchievements.push('week_warrior');
+    }
+    if (GamificationState.streak >= 30 && !hasAchievement('monthly_master')) {
+        unlockAchievement('monthly_master', 'Monthly Master', '30-day learning streak', '📅');
+        newAchievements.push('monthly_master');
     }
     
-    saveFreezes() {
-        localStorage.setItem('gamification_freezes', JSON.stringify(this.freezes));
+    if (newAchievements.length > 0) {
+        updateUI();
     }
+};
+
+/**
+ * Check if user has achievement
+ */
+const hasAchievement = (achievementId) => {
+    return GamificationState.achievements.some(a => a.id === achievementId);
+};
+
+/**
+ * Unlock achievement
+ */
+const unlockAchievement = async (id, name, description, icon) => {
+    const achievement = {
+        id,
+        name,
+        description,
+        icon,
+        earnedAt: new Date().toISOString()
+    };
     
-    updateStreak() {
-        const today = new Date().toDateString();
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toDateString();
-        
-        // Check if already updated today
-        if (this.streak.lastPracticeDate === today) {
-            return { streak: this.streak.current, increased: false };
-        }
-        
-        let increased = false;
-        
-        if (this.streak.lastPracticeDate === yesterdayStr) {
-            // Continue streak
-            this.streak.current++;
-            increased = true;
-        } else if (this.streak.lastPracticeDate !== today) {
-            // Streak broken or first practice
-            if (this.streak.lastPracticeDate && this.streak.current > 0) {
-                // Check if can use streak freeze
-                if (this.canUseFreeze()) {
-                    this.useFreeze();
-                } else {
-                    this.streak.current = 1;
-                }
-            } else {
-                this.streak.current = 1;
-            }
-            increased = true;
-        }
-        
-        // Update longest streak
-        if (this.streak.current > this.streak.longest) {
-            this.streak.longest = this.streak.current;
-        }
-        
-        this.streak.lastPracticeDate = today;
-        this.streak.lastUpdated = new Date().toISOString();
-        this.saveStreak();
-        
-        // Apply streak bonus if applicable
-        if (increased && GamificationConfig.xp.streakBonus[this.streak.current]) {
-            const bonus = GamificationConfig.xp.streakBonus[this.streak.current];
-            this.xpSystem.addXP(bonus, `streak_bonus_${this.streak.current}`);
-            
-            const event = new CustomEvent('gamification:streakBonus', {
-                detail: { streak: this.streak.current, bonus }
-            });
-            document.dispatchEvent(event);
-        }
-        
-        const event = new CustomEvent('gamification:streakUpdate', {
-            detail: { streak: this.streak.current, longest: this.streak.longest, increased }
-        });
-        document.dispatchEvent(event);
-        
-        return { streak: this.streak.current, increased, longest: this.streak.longest };
-    }
-    
-    canUseFreeze() {
-        return GamificationConfig.streak.freezeEnabled && 
-               this.freezes.available > 0 &&
-               this.freezes.used < GamificationConfig.streak.maxFreezes;
-    }
-    
-    useFreeze() {
-        if (!this.canUseFreeze()) return false;
-        
-        this.freezes.available--;
-        this.freezes.used++;
-        this.freezes.history.push({
-            date: new Date().toISOString(),
-            streakSaved: this.streak.current
-        });
-        
-        this.saveFreezes();
-        
-        const event = new CustomEvent('gamification:freezeUsed', {
-            detail: { remaining: this.freezes.available }
-        });
-        document.dispatchEvent(event);
-        
-        return true;
-    }
-    
-    addFreeze() {
-        if (this.freezes.available < GamificationConfig.streak.maxFreezes) {
-            this.freezes.available++;
-            this.saveFreezes();
-            
-            const event = new CustomEvent('gamification:freezeAdded', {
-                detail: { available: this.freezes.available }
-            });
-            document.dispatchEvent(event);
-            
-            return true;
-        }
-        return false;
-    }
-    
-    getStreak() {
-        return { ...this.streak };
-    }
-    
-    getFreezes() {
-        return { ...this.freezes };
-    }
-}
+    GamificationState.achievements.push(achievement);
+    await addXP(XP_REWARDS.ACHIEVEMENT_UNLOCK, `achievement_${id}`);
+    showAchievementUnlocked(achievement);
+    playSound('achievement');
+    saveToLocalStorage();
+};
 
 // ============================================
-// ACHIEVEMENT SYSTEM
+// UI Updates
 // ============================================
 
-class AchievementSystem {
-    constructor(xpSystem, streakSystem) {
-        this.xpSystem = xpSystem;
-        this.streakSystem = streakSystem;
-        this.achievements = this.loadAchievements();
-        this.initAchievements();
-    }
-    
-    initAchievements() {
-        if (this.achievements.length === 0) {
-            this.achievements = this.getDefaultAchievements();
-            this.saveAchievements();
-        }
-    }
-    
-    getDefaultAchievements() {
-        return [
-            // Practice Achievements
-            { id: 'first_practice', name: 'First Step', description: 'Complete your first practice session', category: GamificationConfig.categories.practice, requirement: { type: 'practice_count', target: 1 }, xpReward: 20, icon: '🎯', unlocked: false, progress: 0 },
-            { id: 'practice_10', name: 'Dedicated Learner', description: 'Complete 10 practice sessions', category: GamificationConfig.categories.practice, requirement: { type: 'practice_count', target: 10 }, xpReward: 50, icon: '📚', unlocked: false, progress: 0 },
-            { id: 'practice_100', name: 'Practice Master', description: 'Complete 100 practice sessions', category: GamificationConfig.categories.practice, requirement: { type: 'practice_count', target: 100 }, xpReward: 200, icon: '🏆', unlocked: false, progress: 0 },
-            { id: 'perfect_score', name: 'Perfect!', description: 'Get a perfect score (100/100)', category: GamificationConfig.categories.practice, requirement: { type: 'perfect_score', target: 1 }, xpReward: 50, icon: '⭐', unlocked: false, progress: 0 },
-            
-            // Streak Achievements
-            { id: 'streak_3', name: 'On Fire!', description: 'Maintain a 3-day streak', category: GamificationConfig.categories.streak, requirement: { type: 'streak', target: 3 }, xpReward: 30, icon: '🔥', unlocked: false, progress: 0 },
-            { id: 'streak_7', name: 'Weekly Warrior', description: 'Maintain a 7-day streak', category: GamificationConfig.categories.streak, requirement: { type: 'streak', target: 7 }, xpReward: 100, icon: '📅', unlocked: false, progress: 0 },
-            { id: 'streak_30', name: 'Monthly Master', description: 'Maintain a 30-day streak', category: GamificationConfig.categories.streak, requirement: { type: 'streak', target: 30 }, xpReward: 500, icon: '🌙', unlocked: false, progress: 0 },
-            { id: 'streak_100', name: 'Legendary', description: 'Maintain a 100-day streak', category: GamificationConfig.categories.streak, requirement: { type: 'streak', target: 100 }, xpReward: 1000, icon: '👑', unlocked: false, progress: 0 },
-            
-            // Mastery Achievements
-            { id: 'level_5', name: 'Rising Star', description: 'Reach level 5', category: GamificationConfig.categories.mastery, requirement: { type: 'level', target: 5 }, xpReward: 50, icon: '⭐', unlocked: false, progress: 0 },
-            { id: 'level_10', name: 'Expert', description: 'Reach level 10', category: GamificationConfig.categories.mastery, requirement: { type: 'level', target: 10 }, xpReward: 100, icon: '🌟', unlocked: false, progress: 0 },
-            { id: 'level_25', name: 'Master', description: 'Reach level 25', category: GamificationConfig.categories.mastery, requirement: { type: 'level', target: 25 }, xpReward: 250, icon: '🏅', unlocked: false, progress: 0 },
-            { id: 'level_50', name: 'Grand Master', description: 'Reach level 50', category: GamificationConfig.categories.mastery, requirement: { type: 'level', target: 50 }, xpReward: 500, icon: '💎', unlocked: false, progress: 0 },
-            
-            // Vocabulary Achievements
-            { id: 'words_10', name: 'Vocabulary Builder', description: 'Master 10 words', category: GamificationConfig.categories.mastery, requirement: { type: 'words_mastered', target: 10 }, xpReward: 50, icon: '📖', unlocked: false, progress: 0 },
-            { id: 'words_50', name: 'Word Wizard', description: 'Master 50 words', category: GamificationConfig.categories.mastery, requirement: { type: 'words_mastered', target: 50 }, xpReward: 150, icon: '🔤', unlocked: false, progress: 0 },
-            { id: 'words_100', name: 'Lexicon Legend', description: 'Master 100 words', category: GamificationConfig.categories.mastery, requirement: { type: 'words_mastered', target: 100 }, xpReward: 300, icon: '📚', unlocked: false, progress: 0 },
-            
-            // Social Achievements
-            { id: 'share_first', name: 'Social Butterfly', description: 'Share your score for the first time', category: GamificationConfig.categories.social, requirement: { type: 'share_count', target: 1 }, xpReward: 20, icon: '🦋', unlocked: false, progress: 0 },
-            { id: 'refer_first', name: 'Community Builder', description: 'Refer your first friend', category: GamificationConfig.categories.social, requirement: { type: 'referral_count', target: 1 }, xpReward: 50, icon: '👥', unlocked: false, progress: 0 },
-            
-            // Premium Achievements
-            { id: 'premium_upgrade', name: 'Premium Member', description: 'Upgrade to Premium', category: GamificationConfig.categories.premium, requirement: { type: 'premium', target: 1 }, xpReward: 200, icon: '💎', unlocked: false, progress: 0 },
-            
-            // Special Achievements
-            { id: 'night_owl', name: 'Night Owl', description: 'Practice after midnight', category: GamificationConfig.categories.special, requirement: { type: 'time_of_day', target: 'night' }, xpReward: 30, icon: '🦉', unlocked: false, progress: 0 },
-            { id: 'early_bird', name: 'Early Bird', description: 'Practice before 6 AM', category: GamificationConfig.categories.special, requirement: { type: 'time_of_day', target: 'morning' }, xpReward: 30, icon: '🐦', unlocked: false, progress: 0 }
-        ];
-    }
-    
-    loadAchievements() {
-        const saved = localStorage.getItem(GamificationConfig.storage.achievements);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load achievements:', e);
-            }
-        }
-        return [];
-    }
-    
-    saveAchievements() {
-        localStorage.setItem(GamificationConfig.storage.achievements, JSON.stringify(this.achievements));
-    }
-    
-    checkAchievement(achievementId, currentValue) {
-        const achievement = this.achievements.find(a => a.id === achievementId);
-        if (!achievement || achievement.unlocked) return false;
-        
-        const requirement = achievement.requirement;
-        let completed = false;
-        
-        switch (requirement.type) {
-            case 'practice_count':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'streak':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'level':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'perfect_score':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'words_mastered':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'share_count':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'referral_count':
-                completed = currentValue >= requirement.target;
-                break;
-            case 'premium':
-                completed = currentValue >= requirement.target;
-                break;
-        }
-        
-        if (completed) {
-            this.unlockAchievement(achievement);
-        }
-        
-        return completed;
-    }
-    
-    unlockAchievement(achievement) {
-        if (achievement.unlocked) return false;
-        
-        achievement.unlocked = true;
-        achievement.unlockedAt = new Date().toISOString();
-        
-        // Award XP
-        this.xpSystem.addXP(achievement.xpReward, `achievement_${achievement.id}`);
-        
-        this.saveAchievements();
-        
-        // Dispatch event
-        const event = new CustomEvent('gamification:achievementUnlocked', {
-            detail: { achievement }
-        });
-        document.dispatchEvent(event);
-        
-        return true;
-    }
-    
-    updateProgress(statType, value) {
-        let updated = false;
-        
-        for (const achievement of this.achievements) {
-            if (achievement.unlocked) continue;
-            
-            if (achievement.requirement.type === statType) {
-                achievement.progress = Math.min(value, achievement.requirement.target);
-                
-                if (this.checkAchievement(achievement.id, value)) {
-                    updated = true;
-                }
-            }
-        }
-        
-        this.saveAchievements();
-        return updated;
-    }
-    
-    getAchievements() {
-        return this.achievements;
-    }
-    
-    getUnlockedAchievements() {
-        return this.achievements.filter(a => a.unlocked);
-    }
-    
-    getLockedAchievements() {
-        return this.achievements.filter(a => !a.unlocked);
-    }
-    
-    getAchievementsByCategory(category) {
-        return this.achievements.filter(a => a.category === category);
-    }
-    
-    getStats() {
-        const unlocked = this.getUnlockedAchievements();
-        const total = this.achievements.length;
-        const totalXP = unlocked.reduce((sum, a) => sum + a.xpReward, 0);
-        
-        return {
-            unlocked: unlocked.length,
-            total,
-            percentage: (unlocked.length / total) * 100,
-            totalXPEarned: totalXP
-        };
-    }
-}
+/**
+ * Update UI
+ */
+const updateUI = () => {
+    updateLevelProgress();
+    updateStreakDisplay();
+    updateStatsDisplay();
+    updateBadgesDisplay();
+    updateAchievementsDisplay();
+};
 
-// ============================================
-// REWARD SYSTEM
-// ============================================
+/**
+ * Update level progress bar
+ */
+const updateLevelProgress = () => {
+    const levelElem = document.getElementById('user-level');
+    const xpElem = document.getElementById('user-xp');
+    const xpProgress = document.getElementById('xp-progress');
+    const xpText = document.getElementById('xp-text');
+    
+    if (levelElem) levelElem.textContent = GamificationState.level;
+    if (xpElem) xpElem.textContent = formatNumber(GamificationState.totalXp);
+    
+    if (xpProgress && xpText) {
+        const xpInLevel = GamificationState.xp - (LEVEL_THRESHOLDS[GamificationState.level] || 0);
+        const xpNeeded = GamificationState.xpToNextLevel;
+        const percentage = (xpInLevel / xpNeeded) * 100;
+        xpProgress.style.width = `${percentage}%`;
+        xpText.textContent = `${xpInLevel} / ${xpNeeded} XP`;
+    }
+};
 
-class RewardSystem {
-    constructor(xpSystem) {
-        this.xpSystem = xpSystem;
-        this.rewards = this.loadRewards();
-        this.initRewards();
-    }
+/**
+ * Update streak display
+ */
+const updateStreakDisplay = () => {
+    const streakElem = document.getElementById('current-streak');
+    const longestStreakElem = document.getElementById('longest-streak');
     
-    initRewards() {
-        if (this.rewards.length === 0) {
-            this.rewards = this.getDefaultRewards();
-            this.saveRewards();
-        }
-    }
+    if (streakElem) streakElem.textContent = GamificationState.streak;
+    if (longestStreakElem) longestStreakElem.textContent = GamificationState.longestStreak;
     
-    getDefaultRewards() {
-        return [
-            { id: 'reward_xp_100', name: 'XP Boost', description: 'Gain 100 bonus XP', type: GamificationConfig.rewardTypes.xp, value: 100, cost: 500, icon: '⚡', available: true },
-            { id: 'reward_streak_freeze', name: 'Streak Freeze', description: 'Protect your streak for one day', type: GamificationConfig.rewardTypes.streakFreeze, value: 1, cost: 200, icon: '❄️', available: true },
-            { id: 'reward_premium_7', name: '7 Days Premium', description: 'Free Premium for 7 days', type: GamificationConfig.rewardTypes.premiumDays, value: 7, cost: 2000, icon: '💎', available: true },
-            { id: 'reward_title_fluent', name: '"Fluent Speaker" Title', description: 'Earn the Fluent Speaker title', type: GamificationConfig.rewardTypes.title, value: 'Fluent Speaker', cost: 1000, icon: '🏷️', available: true },
-            { id: 'reward_badge_golden', name: 'Golden Badge', description: 'Special golden profile badge', type: GamificationConfig.rewardTypes.badge, value: 'golden', cost: 1500, icon: '🥇', available: true }
-        ];
-    }
-    
-    loadRewards() {
-        const saved = localStorage.getItem(GamificationConfig.storage.rewards);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load rewards:', e);
-            }
-        }
-        return [];
-    }
-    
-    saveRewards() {
-        localStorage.setItem(GamificationConfig.storage.rewards, JSON.stringify(this.rewards));
-    }
-    
-    purchaseReward(rewardId, userXP) {
-        const reward = this.rewards.find(r => r.id === rewardId);
-        if (!reward || !reward.available) {
-            return { success: false, error: 'Reward not available' };
-        }
-        
-        if (userXP < reward.cost) {
-            return { success: false, error: 'Not enough XP' };
-        }
-        
-        // Deduct XP
-        this.xpSystem.addXP(-reward.cost, 'reward_purchase');
-        
-        // Record purchase
-        reward.purchasedAt = new Date().toISOString();
-        reward.purchased = true;
-        
-        this.saveRewards();
-        
-        const event = new CustomEvent('gamification:rewardPurchased', {
-            detail: { reward }
-        });
-        document.dispatchEvent(event);
-        
-        return { success: true, reward };
-    }
-    
-    getRewards() {
-        return this.rewards;
-    }
-    
-    getAvailableRewards() {
-        return this.rewards.filter(r => r.available);
-    }
-}
-
-// ============================================
-// GAMIFICATION UI CONTROLLER
-// ============================================
-
-class GamificationUIController {
-    constructor(xpSystem, streakSystem, achievementSystem, rewardSystem) {
-        this.xpSystem = xpSystem;
-        this.streakSystem = streakSystem;
-        this.achievementSystem = achievementSystem;
-        this.rewardSystem = rewardSystem;
-        this.elements = {};
-        this.init();
-    }
-    
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.renderAll();
-        this.setupAnimations();
-    }
-    
-    bindElements() {
-        this.elements = {
-            xpValue: document.getElementById('xpValue'),
-            levelValue: document.getElementById('levelValue'),
-            streakValue: document.getElementById('streakValue'),
-            nextLevelProgress: document.getElementById('nextLevelProgress'),
-            progressFill: document.getElementById('progressFill'),
-            achievementsList: document.getElementById('achievementsList'),
-            rewardsList: document.getElementById('rewardsList'),
-            levelUpModal: document.getElementById('levelUpModal'),
-            achievementToast: document.getElementById('achievementToast')
-        };
-    }
-    
-    bindEvents() {
-        document.addEventListener('gamification:xpGain', (e) => {
-            this.showXPGain(e.detail.amount);
-            this.renderStats();
-        });
-        
-        document.addEventListener('gamification:levelUp', (e) => {
-            this.showLevelUp(e.detail.oldLevel, e.detail.newLevel);
-            this.renderStats();
-        });
-        
-        document.addEventListener('gamification:streakUpdate', (e) => {
-            this.renderStats();
-            if (e.detail.increased) {
-                this.showStreakUpdate(e.detail.streak);
-            }
-        });
-        
-        document.addEventListener('gamification:achievementUnlocked', (e) => {
-            this.showAchievementUnlocked(e.detail.achievement);
-            this.renderAchievements();
-        });
-        
-        document.addEventListener('gamification:rewardPurchased', (e) => {
-            this.showRewardPurchased(e.detail.reward);
-            this.renderRewards();
-        });
-    }
-    
-    renderAll() {
-        this.renderStats();
-        this.renderAchievements();
-        this.renderRewards();
-    }
-    
-    renderStats() {
-        const stats = this.xpSystem.getStats();
-        const streak = this.streakSystem.getStreak();
-        
-        if (this.elements.xpValue) {
-            this.elements.xpValue.textContent = stats.xp;
-        }
-        
-        if (this.elements.levelValue) {
-            this.elements.levelValue.textContent = stats.level;
-        }
-        
-        if (this.elements.streakValue) {
-            this.elements.streakValue.textContent = streak.current;
-        }
-        
-        if (this.elements.nextLevelProgress) {
-            this.elements.nextLevelProgress.textContent = `${stats.xpToNextLevel} XP to next level`;
-        }
-        
-        if (this.elements.progressFill) {
-            this.elements.progressFill.style.width = `${stats.progressPercentage}%`;
-        }
-    }
-    
-    renderAchievements() {
-        if (!this.elements.achievementsList) return;
-        
-        const achievements = this.achievementSystem.getAchievements();
-        const unlocked = achievements.filter(a => a.unlocked);
-        const locked = achievements.filter(a => !a.unlocked);
-        
-        this.elements.achievementsList.innerHTML = `
-            <div class="achievements-header">
-                <h3>Achievements</h3>
-                <span class="achievements-count">${unlocked.length}/${achievements.length}</span>
-            </div>
-            <div class="achievements-grid">
-                ${[...unlocked, ...locked].map(ach => `
-                    <div class="achievement-card ${ach.unlocked ? 'unlocked' : 'locked'}" data-id="${ach.id}">
-                        <div class="achievement-icon">${ach.icon}</div>
-                        <div class="achievement-info">
-                            <div class="achievement-name">${ach.name}</div>
-                            <div class="achievement-desc">${ach.description}</div>
-                            ${!ach.unlocked && ach.progress > 0 ? `
-                                <div class="achievement-progress">
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${(ach.progress / ach.requirement.target) * 100}%"></div>
-                                    </div>
-                                    <span>${ach.progress}/${ach.requirement.target}</span>
-                                </div>
-                            ` : ''}
-                            ${ach.unlocked ? `
-                                <div class="achievement-reward">+${ach.xpReward} XP</div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    renderRewards() {
-        if (!this.elements.rewardsList) return;
-        
-        const stats = this.xpSystem.getStats();
-        const rewards = this.rewardSystem.getAvailableRewards();
-        
-        this.elements.rewardsList.innerHTML = `
-            <div class="rewards-header">
-                <h3>Rewards Shop</h3>
-                <div class="user-xp">💰 ${stats.xp} XP available</div>
-            </div>
-            <div class="rewards-grid">
-                ${rewards.map(reward => `
-                    <div class="reward-card" data-id="${reward.id}">
-                        <div class="reward-icon">${reward.icon}</div>
-                        <div class="reward-info">
-                            <div class="reward-name">${reward.name}</div>
-                            <div class="reward-desc">${reward.description}</div>
-                            <div class="reward-cost">${reward.cost} XP</div>
-                            <button class="btn btn-sm purchase-reward" data-id="${reward.id}" ${stats.xp < reward.cost ? 'disabled' : ''}>
-                                Purchase
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        
-        // Attach purchase handlers
-        document.querySelectorAll('.purchase-reward').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = btn.dataset.id;
-                this.purchaseReward(id);
-            });
-        });
-    }
-    
-    purchaseReward(rewardId) {
-        const stats = this.xpSystem.getStats();
-        const result = this.rewardSystem.purchaseReward(rewardId, stats.xp);
-        
-        if (result.success) {
-            this.renderStats();
-            this.renderRewards();
-            this.showToast(`🎁 Purchased ${result.reward.name}!`, 'success');
+    // Update streak flame
+    const streakFlame = document.getElementById('streak-flame');
+    if (streakFlame) {
+        if (GamificationState.streak >= 7) {
+            streakFlame.textContent = '🔥';
+            streakFlame.classList.add('active');
         } else {
-            this.showToast(result.error, 'error');
+            streakFlame.textContent = '🕯️';
+            streakFlame.classList.remove('active');
         }
     }
     
-    showXPGain(amount) {
-        const xpElement = this.elements.xpValue;
-        if (!xpElement) return;
-        
-        const floatingXP = document.createElement('div');
-        floatingXP.className = 'floating-xp';
-        floatingXP.textContent = `+${amount} XP`;
-        floatingXP.style.position = 'absolute';
-        floatingXP.style.left = `${xpElement.getBoundingClientRect().left}px`;
-        floatingXP.style.top = `${xpElement.getBoundingClientRect().top}px`;
-        floatingXP.style.animation = 'floatUp 1s ease forwards';
-        
-        document.body.appendChild(floatingXP);
-        
-        setTimeout(() => floatingXP.remove(), 1000);
+    // Update next streak bonus
+    const nextBonus = Object.keys(STREAK_BONUSES).find(b => parseInt(b) > GamificationState.streak);
+    const nextBonusElem = document.getElementById('next-streak-bonus');
+    if (nextBonusElem && nextBonus) {
+        nextBonusElem.textContent = `${nextBonus} days: +${STREAK_BONUSES[nextBonus].xp} XP`;
+    }
+};
+
+/**
+ * Update stats display
+ */
+const updateStatsDisplay = () => {
+    const stats = GamificationState.stats;
+    
+    const lessonsElem = document.getElementById('total-lessons');
+    const minutesElem = document.getElementById('total-minutes');
+    const perfectElem = document.getElementById('perfect-lessons');
+    const wordsElem = document.getElementById('total-words');
+    const accuracyElem = document.getElementById('accuracy-rate');
+    
+    if (lessonsElem) lessonsElem.textContent = stats.totalLessons;
+    if (minutesElem) minutesElem.textContent = stats.totalMinutes;
+    if (perfectElem) perfectElem.textContent = stats.perfectLessons;
+    if (wordsElem) wordsElem.textContent = stats.totalWordsLearned;
+    
+    if (accuracyElem) {
+        const total = stats.totalExercisesCorrect + stats.totalExercisesIncorrect;
+        const accuracy = total > 0 ? (stats.totalExercisesCorrect / total) * 100 : 0;
+        accuracyElem.textContent = `${Math.round(accuracy)}%`;
     }
     
-    showLevelUp(oldLevel, newLevel) {
-        const modal = this.elements.levelUpModal;
-        if (modal) {
-            modal.innerHTML = `
-                <div class="level-up-content">
-                    <div class="level-up-icon">🎉</div>
-                    <h2>Level Up!</h2>
-                    <p>You reached Level ${newLevel}!</p>
-                    <div class="level-up-reward">+${GamificationConfig.xp.levelUpBonus} XP Bonus!</div>
-                    <button class="btn btn-primary" onclick="this.closest('.level-up-modal').remove()">Continue</button>
+    // Update daily goal
+    updateDailyGoalDisplay();
+};
+
+/**
+ * Update daily goal display
+ */
+const updateDailyGoalDisplay = () => {
+    const goal = GamificationState.dailyGoal;
+    const progressElem = document.getElementById('daily-goal-progress');
+    const progressText = document.getElementById('daily-goal-text');
+    
+    if (progressElem && progressText) {
+        const percentage = (goal.current / goal.target) * 100;
+        progressElem.style.width = `${Math.min(100, percentage)}%`;
+        progressText.textContent = `${goal.current} / ${goal.target} ${goal.type}`;
+        
+        if (goal.completed && !goal.notified) {
+            showDailyGoalComplete();
+            goal.notified = true;
+        }
+    }
+};
+
+/**
+ * Update badges display
+ */
+const updateBadgesDisplay = () => {
+    const container = document.getElementById('badges-container');
+    if (!container) return;
+    
+    if (GamificationState.badges.length === 0) {
+        container.innerHTML = '<p class="empty-state">Complete achievements to earn badges!</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="badges-grid">
+            ${GamificationState.badges.map(badge => `
+                <div class="badge-card" title="${badge.description}">
+                    <div class="badge-icon">${badge.icon}</div>
+                    <div class="badge-name">${badge.name}</div>
+                    <div class="badge-date">${new Date(badge.earnedAt).toLocaleDateString()}</div>
                 </div>
-            `;
-            modal.classList.add('show');
-            
-            setTimeout(() => {
-                modal.classList.remove('show');
-            }, 3000);
-        }
+            `).join('')}
+        </div>
+    `;
+};
+
+/**
+ * Update achievements display
+ */
+const updateAchievementsDisplay = () => {
+    const container = document.getElementById('achievements-container');
+    if (!container) return;
+    
+    if (GamificationState.achievements.length === 0) {
+        container.innerHTML = '<p class="empty-state">Complete lessons to earn achievements!</p>';
+        return;
     }
     
-    showStreakUpdate(streak) {
-        this.showToast(`🔥 ${streak} day streak! Keep it up!`, 'streak');
-    }
-    
-    showAchievementUnlocked(achievement) {
-        const toast = this.elements.achievementToast;
-        if (toast) {
-            toast.innerHTML = `
-                <div class="achievement-unlock">
-                    <div class="achievement-icon">${achievement.icon}</div>
-                    <div class="achievement-info">
-                        <div class="achievement-title">Achievement Unlocked!</div>
-                        <div class="achievement-name">${achievement.name}</div>
-                        <div class="achievement-reward">+${achievement.xpReward} XP</div>
-                    </div>
+    container.innerHTML = `
+        <div class="achievements-grid">
+            ${GamificationState.achievements.map(ach => `
+                <div class="achievement-card">
+                    <div class="achievement-icon">${ach.icon}</div>
+                    <div class="achievement-name">${ach.name}</div>
+                    <div class="achievement-description">${ach.description}</div>
+                    <div class="achievement-date">${new Date(ach.earnedAt).toLocaleDateString()}</div>
                 </div>
-            `;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 4000);
+            `).join('')}
+        </div>
+    `;
+};
+
+/**
+ * Update leaderboard display
+ */
+const updateLeaderboardDisplay = () => {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
+    
+    if (GamificationState.leaderboard.length === 0) {
+        container.innerHTML = '<p class="empty-state">No data available</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="leaderboard">
+            <div class="leaderboard-header">
+                <span>Rank</span>
+                <span>User</span>
+                <span>Level</span>
+                <span>XP</span>
+            </div>
+            ${GamificationState.leaderboard.map(entry => `
+                <div class="leaderboard-item ${entry.userId === GamificationState.userId ? 'current-user' : ''}">
+                    <span class="rank">${entry.rank}</span>
+                    <span class="name">${entry.userName}</span>
+                    <span class="level">${entry.level}</span>
+                    <span class="xp">${formatNumber(entry.xp)}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    // Show user rank
+    const userRankElem = document.getElementById('user-rank');
+    if (userRankElem && GamificationState.userRank) {
+        userRankElem.textContent = `#${GamificationState.userRank}`;
+    }
+};
+
+// ============================================
+// Notifications & Animations
+// ============================================
+
+/**
+ * Show XP notification
+ */
+const showXPNotification = (amount, source) => {
+    const notification = document.createElement('div');
+    notification.className = 'xp-notification';
+    notification.innerHTML = `
+        <span class="xp-icon">⭐</span>
+        <span class="xp-amount">+${amount} XP</span>
+        <span class="xp-source">${source.replace(/_/g, ' ')}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+};
+
+/**
+ * Show level up animation
+ */
+const showLevelUp = (oldLevel, newLevel) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal level-up-modal active';
+    modal.innerHTML = `
+        <div class="modal-content level-up-content">
+            <div class="level-up-animation">
+                <div class="level-up-icon">🎉</div>
+                <h2>LEVEL UP!</h2>
+                <div class="level-numbers">
+                    <span class="old-level">${oldLevel}</span>
+                    <span class="arrow">→</span>
+                    <span class="new-level">${newLevel}</span>
+                </div>
+                <p>You've reached Level ${newLevel}!</p>
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Continue</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    setTimeout(() => {
+        const closeBtn = modal.querySelector('button');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            });
         }
-    }
+    }, 100);
+};
+
+/**
+ * Show achievement unlocked notification
+ */
+const showAchievementUnlocked = (achievement) => {
+    const notification = document.createElement('div');
+    notification.className = 'achievement-notification';
+    notification.innerHTML = `
+        <div class="achievement-icon">${achievement.icon}</div>
+        <div class="achievement-info">
+            <div class="achievement-title">Achievement Unlocked!</div>
+            <div class="achievement-name">${achievement.name}</div>
+            <div class="achievement-desc">${achievement.description}</div>
+        </div>
+        <div class="achievement-xp">+${XP_REWARDS.ACHIEVEMENT_UNLOCK} XP</div>
+    `;
     
-    showRewardPurchased(reward) {
-        this.showToast(`🎁 You got ${reward.name}!`, 'success');
-    }
+    document.body.appendChild(notification);
     
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `gamification-toast toast-${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
+    setTimeout(() => {
+        notification.classList.add('show');
+        playSound('achievement');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 500);
+    }, 5000);
+};
+
+/**
+ * Show streak bonus notification
+ */
+const showStreakBonus = (bonus) => {
+    const notification = document.createElement('div');
+    notification.className = 'streak-bonus-notification';
+    notification.innerHTML = `
+        <div class="streak-icon">🔥</div>
+        <div class="streak-info">
+            <div class="streak-title">Streak Bonus!</div>
+            <div class="streak-days">${bonus.streak} Day Streak</div>
+            <div class="streak-xp">+${bonus.xpBonus} XP</div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+        playSound('level-up');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
+};
+
+/**
+ * Show daily reward
+ */
+const showDailyReward = (reward) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal daily-reward-modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="daily-reward-icon">🎁</div>
+            <h3>Daily Reward!</h3>
+            <p>You've claimed your daily login bonus!</p>
+            <div class="reward-amount">+${reward.xp} XP</div>
+            <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Great!</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    setTimeout(() => {
+        const closeBtn = modal.querySelector('button');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            });
+        }
+    }, 100);
+};
+
+/**
+ * Show daily goal complete
+ */
+const showDailyGoalComplete = () => {
+    const notification = document.createElement('div');
+    notification.className = 'daily-goal-notification';
+    notification.innerHTML = `
+        <div class="goal-icon">✅</div>
+        <div class="goal-info">
+            <div class="goal-title">Daily Goal Completed!</div>
+            <div class="goal-reward">+${XP_REWARDS.COMPLETE_DAILY_GOAL} XP</div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+        playSound('achievement');
+    }, 100);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
+};
+
+// ============================================
+// Dashboard Rendering
+// ============================================
+
+/**
+ * Render gamification dashboard
+ */
+const renderDashboard = () => {
+    const container = document.getElementById('gamification-dashboard');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="gamification-header">
+            <div class="level-card">
+                <div class="level-badge">Level ${GamificationState.level}</div>
+                <div class="xp-bar">
+                    <div class="xp-progress" id="xp-progress" style="width: 0%"></div>
+                </div>
+                <div class="xp-text" id="xp-text"></div>
+                <div class="total-xp">Total XP: <span id="user-xp">${formatNumber(GamificationState.totalXp)}</span></div>
+            </div>
+            
+            <div class="streak-card">
+                <div class="streak-icon" id="streak-flame">🕯️</div>
+                <div class="streak-info">
+                    <div class="current-streak"><span id="current-streak">${GamificationState.streak}</span> day streak</div>
+                    <div class="longest-streak">Best: <span id="longest-streak">${GamificationState.longestStreak}</span></div>
+                    <div class="next-bonus" id="next-streak-bonus"></div>
+                </div>
+            </div>
+        </div>
         
-        setTimeout(() => toast.remove(), 3000);
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="total-lessons">${GamificationState.stats.totalLessons}</div>
+                <div class="stat-label">Lessons</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-minutes">${GamificationState.stats.totalMinutes}</div>
+                <div class="stat-label">Minutes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="perfect-lessons">${GamificationState.stats.perfectLessons}</div>
+                <div class="stat-label">Perfect</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-words">${GamificationState.stats.totalWordsLearned}</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accuracy-rate">${Math.round((GamificationState.stats.totalExercisesCorrect / (GamificationState.stats.totalExercisesCorrect + GamificationState.stats.totalExercisesIncorrect)) * 100)}%</div>
+                <div class="stat-label">Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="user-rank">#${GamificationState.userRank || '?'}</div>
+                <div class="stat-label">Global Rank</div>
+            </div>
+        </div>
+        
+        <div class="daily-goal-section">
+            <h3>Daily Goal</h3>
+            <div class="daily-goal-bar">
+                <div class="goal-progress" id="daily-goal-progress" style="width: 0%"></div>
+            </div>
+            <div class="goal-text" id="daily-goal-text"></div>
+        </div>
+        
+        <div class="badges-section">
+            <h3>Badges</h3>
+            <div id="badges-container" class="badges-container"></div>
+        </div>
+        
+        <div class="achievements-section">
+            <h3>Achievements</h3>
+            <div id="achievements-container" class="achievements-container"></div>
+        </div>
+        
+        <div class="leaderboard-section">
+            <h3>Leaderboard</h3>
+            <div id="leaderboard-container" class="leaderboard-container"></div>
+        </div>
+    `;
+    
+    updateUI();
+};
+
+// ============================================
+// Event Handlers
+// ============================================
+
+/**
+ * Handle lesson completion
+ */
+const onLessonComplete = async (score, isPerfect = false) => {
+    await updateStats('lesson_complete');
+    await addXP(XP_REWARDS.LESSON_COMPLETE, 'lesson_complete');
+    
+    if (isPerfect) {
+        await updateStats('perfect_lesson');
+        await addXP(XP_REWARDS.PERFECT_LESSON, 'perfect_lesson');
     }
     
-    setupAnimations() {
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes floatUp {
-                0% {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-                100% {
-                    opacity: 0;
-                    transform: translateY(-50px);
-                }
-            }
-            
-            .floating-xp {
-                font-size: 14px;
-                font-weight: bold;
-                color: var(--color-warning);
-                pointer-events: none;
-                z-index: 1000;
-            }
-            
-            .gamification-toast {
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 12px 24px;
-                border-radius: 40px;
-                color: white;
-                font-weight: 600;
-                z-index: 1000;
-                animation: slideUp 0.3s ease;
-            }
-            
-            .toast-streak {
-                background: linear-gradient(135deg, #f59e0b, #ef4444);
-            }
-            
-            .toast-success {
-                background: #10b981;
-            }
-            
-            .toast-error {
-                background: #ef4444;
-            }
-            
-            .level-up-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 2000;
-                opacity: 0;
-                visibility: hidden;
-                transition: all 0.3s;
-            }
-            
-            .level-up-modal.show {
-                opacity: 1;
-                visibility: visible;
-            }
-            
-            .level-up-content {
-                background: var(--bg-primary);
-                border-radius: 40px;
-                padding: 40px;
-                text-align: center;
-                animation: bounceIn 0.5s ease;
-            }
-            
-            @keyframes bounceIn {
-                0% {
-                    transform: scale(0);
-                    opacity: 0;
-                }
-                50% {
-                    transform: scale(1.1);
-                }
-                100% {
-                    transform: scale(1);
-                    opacity: 1;
-                }
-            }
-            
-            .achievement-card {
-                display: flex;
-                gap: 16px;
-                padding: 16px;
-                background: var(--bg-secondary);
-                border-radius: 16px;
-                margin-bottom: 12px;
-           
+    await updateStreak();
+    await checkAchievements();
+};
+
+/**
+ * Handle exercise completion
+ */
+const onExerciseComplete = async (isCorrect) => {
+    if (isCorrect) {
+        await updateStats('exercise_correct');
+        await addXP(XP_REWARDS.EXERCISE_CORRECT, 'exercise_correct');
+    } else {
+        await updateStats('exercise_incorrect');
+    }
+};
+
+/**
+ * Handle word learned
+ */
+const onWordLearned = async (word) => {
+    await updateStats('word_learned');
+};
+
+/**
+ * Handle minutes practiced
+ */
+const onMinutesPracticed = async (minutes) => {
+    await updateStats('minutes_practiced', minutes);
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize gamification module
+ */
+const initGamification = async () => {
+    if (GamificationState.isInitialized) return;
+    
+    console.log('Initializing gamification module...');
+    
+    GamificationState.userId = getUserId();
+    
+    // Load data
+    loadFromLocalStorage();
+    await fetchGamificationData();
+    await fetchLeaderboard();
+    
+    // Render dashboard
+    renderDashboard();
+    
+    // Setup event listeners for daily claim
+    const claimBtn = document.getElementById('claim-daily-btn');
+    if (claimBtn) {
+        claimBtn.addEventListener('click', claimDailyReward);
+    }
+    
+    GamificationState.isInitialized = true;
+    
+    console.log('Gamification module initialized');
+};
+
+// ============================================
+// Export Gamification Module
+// ============================================
+
+const gamification = {
+    // State
+    get isInitialized() { return GamificationState.isInitialized; },
+    get level() { return GamificationState.level; },
+    get xp() { return GamificationState.xp; },
+    get streak() { return GamificationState.streak; },
+    get badges() { return GamificationState.badges; },
+    get achievements() { return GamificationState.achievements; },
+    
+    // API methods
+    addXP,
+    updateStreak,
+    claimDailyReward,
+    fetchLeaderboard,
+    
+    // Event handlers
+    onLessonComplete,
+    onExerciseComplete,
+    onWordLearned,
+    onMinutesPracticed,
+    
+    // UI
+    renderDashboard,
+    
+    // Initialize
+    init: initGamification
+};
+
+// Make gamification globally available
+window.gamification = gamification;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGamification);
+} else {
+    initGamification();
+}
+
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = gamification;
+}
