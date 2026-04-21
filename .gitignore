@@ -1,0 +1,472 @@
+# ============================================
+# SpeakFlow .gitignore
+# File dan folder yang akan DIEXCLUDE dari Git repository
+# ============================================
+
+# -------------------------------
+# Dependencies
+# -------------------------------
+node_modules/
+**/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+**/package-lock.json
+**/yarn.lock
+
+# -------------------------------
+# Environment Variables
+# -------------------------------
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.env.vercel
+*.env
+*.env.*
+!.env.example
+!.env.sample
+
+# -------------------------------
+# Build Outputs
+# -------------------------------
+dist/
+build/
+.next/
+out/
+.vercel/
+.vercel/output/
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/output/
+
+# -------------------------------
+# Logs
+# -------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+bun-debug.log*
+**/logs/
+**/*.log
+
+# -------------------------------
+# Runtime Data
+# -------------------------------
+pids
+*.pid
+*.seed
+*.pid.lock
+*.lock
+**/*.lock
+
+# -------------------------------
+# OS Generated Files
+# -------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.swp
+*.swo
+*~
+.~lock.*
+*.orig
+*.rej
+._.DS_Store
+**/.DS_Store
+
+# -------------------------------
+# IDE & Editor Files
+# -------------------------------
+# VS Code
+.vscode/
+.vscode-test/
+*.code-workspace
+.codebuddy/
+**/.vscode/
+
+# IntelliJ IDEA / WebStorm / PhpStorm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+**/.idea/
+**/*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+**/*.sublime-*
+
+# Vim
+*.swp
+*.swo
+*~
+**/*.swp
+**/*.swo
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# -------------------------------
+# Testing & Coverage
+# -------------------------------
+coverage/
+.nyc_output/
+**/coverage/
+**/.nyc_output/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+**/*.test.js
+**/*.spec.js
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+jest.setup.js
+jest.teardown.js
+**/__tests__/
+**/__mocks__/
+**/__fixtures__/
+**/test-results/
+**/test-reports/
+**/.jest-cache/
+
+# -------------------------------
+# AI Models (Large Files)
+# -------------------------------
+ai-models/
+**/ai-models/
+*.pth
+*.h5
+*.pb
+*.onnx
+*.bin
+*.model
+*.weights
+*.caffemodel
+*.prototxt
+*.tflite
+*.keras
+*.hdf5
+*.pickle
+*.pkl
+*.joblib
+**/*.pth
+**/*.h5
+**/*.pb
+**/*.onnx
+**/model_*.pth
+**/training_data.json
+**/validation_data.json
+**/metrics_log.csv
+
+# -------------------------------
+# Database Files
+# -------------------------------
+database/backups/
+**/database/backups/
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.dump
+*.backup
+*.sql.gz
+*.sql.zip
+**/*.sql
+**/*.sqlite
+**/*.db
+**/*.dump
+
+# -------------------------------
+# Uploads & Temporary Files
+# -------------------------------
+uploads/
+temp/
+tmp/
+**/uploads/
+**/temp/
+**/tmp/
+*.tmp
+*.temp
+*.cache
+.cache/
+**/*.tmp
+**/*.temp
+**/.cache/
+
+# -------------------------------
+# Media Files (Optional - Large)
+# -------------------------------
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.flv
+*.wmv
+*.webm
+*.m4v
+*.mpg
+*.mpeg
+*.3gp
+*.ogv
+*.m4p
+*.m4v
+*.mts
+*.m2ts
+*.vob
+*.iso
+*.raw
+*.dvr
+*.yuv
+
+# -------------------------------
+# Audio Files (Optional - Generated)
+# -------------------------------
+public/audio/*.mp3
+public/audio/*.wav
+!public/audio/correct.mp3
+!public/audio/incorrect.mp3
+!public/audio/level-up.mp3
+!public/audio/notification.mp3
+**/*.wav
+**/*.aac
+**/*.ogg
+**/*.flac
+**/*.m4a
+
+# -------------------------------
+# Archive Files
+# -------------------------------
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.bz2
+*.xz
+*.tgz
+*.lz
+*.lzma
+*.zst
+*.sz
+**/*.zip
+**/*.tar
+**/*.gz
+**/*.rar
+
+# -------------------------------
+# Docker & Container
+# -------------------------------
+docker/
+**/docker/
+Dockerfile
+Dockerfile.dev
+Dockerfile.prod
+docker-compose.yml
+docker-compose.dev.yml
+docker-compose.prod.yml
+.dockerignore
+**/Dockerfile
+**/docker-compose*.yml
+**/.dockerignore
+
+# -------------------------------
+# GitHub & CI/CD
+# -------------------------------
+.github/
+**/.github/
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+**/.git/
+**/.gitignore
+
+# -------------------------------
+# Backend Specific
+# -------------------------------
+backend/.env
+backend/.env.*
+backend/uploads/
+backend/temp/
+backend/logs/
+backend/*.log
+backend/coverage/
+backend/.nyc_output/
+backend/sessions/
+backend/__pycache__/
+**/backend/uploads/
+**/backend/temp/
+**/backend/logs/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# -------------------------------
+# Frontend Specific
+# -------------------------------
+css/*.map
+js/*.map
+public/uploads/
+public/temp/
+**/*.map
+**/*.sourcemap
+**/*.tsbuildinfo
+
+# -------------------------------
+# Certificate & Security
+# -------------------------------
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+*.secret
+*.secrets
+key.pem
+cert.pem
+*.private
+*.id_rsa
+*.id_ed25519
+**/*.key
+**/*.pem
+**/*.crt
+
+# -------------------------------
+# Configuration Files (Personal)
+# -------------------------------
+.config/
+**/.config/
+.eslintrc
+.eslintrc.js
+.eslintrc.json
+.eslintrc.yaml
+.eslintrc.yml
+.eslintignore
+.prettierrc
+.prettierrc.js
+.prettierrc.json
+.prettierrc.yaml
+.prettierrc.yml
+.prettierignore
+.stylelintrc
+.stylelintrc.js
+.stylelintrc.json
+.stylelintrc.yaml
+.stylelintrc.yml
+.stylelintignore
+.babelrc
+.babelrc.js
+.babelrc.json
+.browserslistrc
+.commitlintrc
+.commitlintrc.js
+.commitlintrc.json
+.commitlintrc.yaml
+.commitlintrc.yml
+.huskyrc
+.huskyrc.js
+.huskyrc.json
+.huskyrc.yaml
+.huskyrc.yml
+.lintstagedrc
+.lintstagedrc.js
+.lintstagedrc.json
+.lintstagedrc.yaml
+.lintstagedrc.yml
+.npmrc
+.yarnrc
+.yarnrc.yml
+.pnpmrc
+.bunrc
+
+# -------------------------------
+# Version Control & Tooling
+# -------------------------------
+.nvmrc
+.node-version
+.tool-versions
+.volta/
+**/.nvmrc
+**/.node-version
+**/.tool-versions
+
+# -------------------------------
+# Miscellaneous
+# -------------------------------
+*.bak
+*.backup
+*.old
+*.orig
+*.bkp
+*.archive
+*.swp
+*.swo
+*~
+.~lock.*
+.**.swp
+**/*.bak
+**/*.backup
+**/*.old
+**/*.orig
+
+# -------------------------------
+# Performance & Cache Directories
+# -------------------------------
+.vercel_cache/
+.cache/
+.parcel-cache/
+.next/cache/
+.pnpm-store/
+.nuxt/
+.nuxt-cache/
+.stencil/
+.stencil-cache/
+**/.vercel_cache/
+**/.cache/
+**/.parcel-cache/
+**/.pnpm-store/
+**/.nuxt/
+**/.nuxt-cache/
+
+# -------------------------------
+# Documentation (Generated)
+# -------------------------------
+docs/_build/
+docs/api/
+**/docs/_build/
+**/docs/api/
+site/
+**/site/
+
+# -------------------------------
+# Service Worker (Generated)
+# -------------------------------
+sw.js.map
+**/sw.js.map
+workbox-*.js
+**/workbox-*.js
