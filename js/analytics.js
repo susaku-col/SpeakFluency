@@ -1,963 +1,811 @@
-/* ============================================
-   SPEAKFLOW - ANALYTICS MODULE
-   Version: 1.0.0
-   Handles user analytics, event tracking, and reporting
-   ============================================ */
-
 // ============================================
-// ANALYTICS CONFIGURATION
+// SpeakFlow Analytics Module
+// User Activity Tracking & Analytics
 // ============================================
 
-const AnalyticsConfig = {
-    // API Endpoints
-    api: {
-        track: '/api/analytics/track',
-        events: '/api/analytics/events',
-        metrics: '/api/analytics/metrics',
-        export: '/api/analytics/export'
-    },
-    
-    // Tracking Settings
-    tracking: {
-        enabled: true,
-        debug: false,
-        batchSize: 10,
-        flushInterval: 30000, // 30 seconds
-        retryAttempts: 3,
-        retryDelay: 5000
-    },
-    
-    // Event Categories
-    categories: {
-        user: 'user',
-        practice: 'practice',
-        engagement: 'engagement',
-        payment: 'payment',
-        feature: 'feature',
-        error: 'error',
-        performance: 'performance'
-    },
-    
-    // Retention Periods
-    retention: {
-        events: 90, // days
-        sessions: 30,
-        metrics: 365
-    },
-    
-    // Metrics Thresholds
-    thresholds: {
-        good: 70,
-        warning: 50,
-        critical: 30
-    }
+// ============================================
+// Analytics State Management
+// ============================================
+
+const AnalyticsState = {
+    isInitialized: false,
+    sessionId: null,
+    sessionStartTime: null,
+    pageViewCount: 0,
+    eventQueue: [],
+    isSending: false,
+    userId: null,
+    userProperties: {},
+    trackingEnabled: true,
+    debugMode: false
 };
 
 // ============================================
-// EVENT TRACKER
+// Configuration
 // ============================================
 
-class EventTracker {
-    constructor() {
-        this.eventQueue = [];
-        this.sessionId = this.generateSessionId();
-        this.userId = null;
-        this.isFlushing = false;
-        this.init();
-    }
-    
-    init() {
-        this.loadFromStorage();
-        this.setupEventListeners();
-        this.startFlushInterval();
-        this.trackPageView();
-    }
-    
-    generateSessionId() {
-        return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    }
-    
-    loadFromStorage() {
-        const savedQueue = localStorage.getItem('analytics_queue');
-        if (savedQueue) {
-            try {
-                this.eventQueue = JSON.parse(savedQueue);
-                console.log(`Loaded ${this.eventQueue.length} events from storage`);
-            } catch (e) {
-                console.error('Failed to load analytics queue:', e);
-            }
-        }
-    }
-    
-    saveToStorage() {
-        localStorage.setItem('analytics_queue', JSON.stringify(this.eventQueue));
-    }
-    
-    setupEventListeners() {
-        // Page visibility
-        document.addEventListener('visibilitychange', () => {
-            this.trackEvent('page_visibility', {
-                state: document.hidden ? 'hidden' : 'visible'
-            });
-        });
-        
-        // Before unload
-        window.addEventListener('beforeunload', () => {
-            this.flush(true);
-        });
-        
-        // Online/offline
-        window.addEventListener('online', () => {
-            this.trackEvent('connection_restored', {});
-            this.flush();
-        });
-        
-        window.addEventListener('offline', () => {
-            this.trackEvent('connection_lost', {});
-        });
-        
-        // Page load performance
-        window.addEventListener('load', () => {
-            this.trackPerformance();
-        });
-    }
-    
-    startFlushInterval() {
-        setInterval(() => {
-            this.flush();
-        }, AnalyticsConfig.tracking.flushInterval);
-    }
-    
-    trackEvent(category, action, label = null, value = null, metadata = {}) {
-        if (!AnalyticsConfig.tracking.enabled) return;
-        
-        const event = {
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            category,
-            action,
-            label,
-            value,
-            metadata,
-            sessionId: this.sessionId,
-            userId: this.userId,
-            timestamp: new Date().toISOString(),
-            url: window.location.href,
-            referrer: document.referrer,
-            userAgent: navigator.userAgent,
-            screenSize: `${window.innerWidth}x${window.innerHeight}`
-        };
-        
-        this.eventQueue.push(event);
-        this.saveToStorage();
-        
-        if (AnalyticsConfig.tracking.debug) {
-            console.log('[Analytics]', event);
-        }
-        
-        // Flush immediately for important events
-        if (category === 'payment' || category === 'error') {
-            this.flush();
-        }
-        
-        return event;
-    }
-    
-    trackPageView() {
-        this.trackEvent('page_view', 'load', document.title, null, {
-            path: window.location.pathname,
-            search: window.location.search,
-            hash: window.location.hash
-        });
-    }
-    
-    trackPerformance() {
-        const perfData = performance.timing;
-        const navigationStart = perfData.navigationStart;
-        
-        const metrics = {
-            pageLoadTime: perfData.loadEventEnd - navigationStart,
-            domContentLoaded: perfData.domContentLoadedEventEnd - navigationStart,
-            firstPaint: this.getFirstPaint(),
-            firstContentfulPaint: this.getFirstContentfulPaint(),
-            domInteractive: perfData.domInteractive - navigationStart
-        };
-        
-        this.trackEvent('performance', 'page_metrics', null, null, metrics);
-    }
-    
-    getFirstPaint() {
-        if (window.performance && performance.getEntriesByType) {
-            const paintEntries = performance.getEntriesByType('paint');
-            const firstPaint = paintEntries.find(entry => entry.name === 'first-paint');
-            return firstPaint ? firstPaint.startTime : null;
-        }
-        return null;
-    }
-    
-    getFirstContentfulPaint() {
-        if (window.performance && performance.getEntriesByType) {
-            const paintEntries = performance.getEntriesByType('paint');
-            const fcp = paintEntries.find(entry => entry.name === 'first-contentful-paint');
-            return fcp ? fcp.startTime : null;
-        }
-        return null;
-    }
-    
-    async flush(sync = false) {
-        if (this.eventQueue.length === 0) return;
-        if (this.isFlushing) return;
-        
-        this.isFlushing = true;
-        const events = [...this.eventQueue];
-        
-        try {
-            const success = await this.sendEvents(events, sync);
-            if (success) {
-                this.eventQueue = this.eventQueue.filter(e => !events.includes(e));
-                this.saveToStorage();
-                console.log(`Flushed ${events.length} events`);
-            }
-        } catch (error) {
-            console.error('Failed to flush events:', error);
-        } finally {
-            this.isFlushing = false;
-        }
-    }
-    
-    async sendEvents(events, sync = false) {
-        // In production, send to server
-        // For demo, simulate API call
-        return new Promise((resolve) => {
-            setTimeout(() => resolve(true), 100);
-        });
-        
-        // Actual implementation:
-        /*
-        try {
-            const response = await fetch(AnalyticsConfig.api.track, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ events, sync })
-            });
-            return response.ok;
-        } catch (error) {
-            return false;
-        }
-        */
-    }
-    
-    setUserId(userId) {
-        this.userId = userId;
-        this.trackEvent('user', 'identify', null, null, { userId });
-    }
-    
-    clearUser() {
-        this.userId = null;
-        this.trackEvent('user', 'logout');
-    }
-}
-
-// ============================================
-// METRICS COLLECTOR
-// ============================================
-
-class MetricsCollector {
-    constructor(eventTracker) {
-        this.tracker = eventTracker;
-        this.metrics = new Map();
-        this.startCollection();
-    }
-    
-    startCollection() {
-        // Collect every minute
-        setInterval(() => this.collectMetrics(), 60000);
-        
-        // Collect immediately
-        this.collectMetrics();
-    }
-    
-    collectMetrics() {
-        const metrics = {
-            timestamp: new Date().toISOString(),
-            sessionId: this.tracker.sessionId,
-            userId: this.tracker.userId,
-            
-            // Performance metrics
-            memory: this.getMemoryMetrics(),
-            network: this.getNetworkMetrics(),
-            battery: this.getBatteryMetrics(),
-            
-            // User metrics
-            engagement: this.getEngagementMetrics(),
-            scroll: this.getScrollMetrics(),
-            clicks: this.getClickMetrics(),
-            
-            // Device metrics
-            device: this.getDeviceMetrics(),
-            connection: this.getConnectionMetrics()
-        };
-        
-        this.metrics.set(metrics.timestamp, metrics);
-        
-        // Keep only last 100 metrics
-        if (this.metrics.size > 100) {
-            const oldestKey = Array.from(this.metrics.keys())[0];
-            this.metrics.delete(oldestKey);
-        }
-        
-        this.tracker.trackEvent('metrics', 'collection', null, null, metrics);
-        
-        return metrics;
-    }
-    
-    getMemoryMetrics() {
-        if (performance.memory) {
-            return {
-                usedJSHeapSize: performance.memory.usedJSHeapSize,
-                totalJSHeapSize: performance.memory.totalJSHeapSize,
-                jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
-            };
-        }
-        return null;
-    }
-    
-    getNetworkMetrics() {
-        if (navigator.connection) {
-            return {
-                effectiveType: navigator.connection.effectiveType,
-                downlink: navigator.connection.downlink,
-                rtt: navigator.connection.rtt,
-                saveData: navigator.connection.saveData
-            };
-        }
-        return null;
-    }
-    
-    async getBatteryMetrics() {
-        if (navigator.getBattery) {
-            try {
-                const battery = await navigator.getBattery();
-                return {
-                    level: battery.level,
-                    charging: battery.charging,
-                    chargingTime: battery.chargingTime,
-                    dischargingTime: battery.dischargingTime
-                };
-            } catch (e) {
-                return null;
-            }
-        }
-        return null;
-    }
-    
-    getEngagementMetrics() {
-        return {
-            timeOnPage: this.getTimeOnPage(),
-            scrollDepth: this.getScrollDepth(),
-            activeTime: this.getActiveTime()
-        };
-    }
-    
-    getTimeOnPage() {
-        const startTime = performance.timing.navigationStart;
-        return Date.now() - startTime;
-    }
-    
-    getScrollDepth() {
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const currentScroll = window.scrollY;
-        return maxScroll > 0 ? (currentScroll / maxScroll) * 100 : 0;
-    }
-    
-    getActiveTime() {
-        let activeTime = 0;
-        let lastActive = Date.now();
-        
-        const updateActiveTime = () => {
-            if (!document.hidden) {
-                activeTime += Date.now() - lastActive;
-            }
-            lastActive = Date.now();
-        };
-        
-        document.addEventListener('visibilitychange', updateActiveTime);
-        window.addEventListener('scroll', updateActiveTime);
-        window.addEventListener('click', updateActiveTime);
-        window.addEventListener('keypress', updateActiveTime);
-        
-        return activeTime;
-    }
-    
-    getClickMetrics() {
-        // Track click heatmap data
-        const clicks = JSON.parse(localStorage.getItem('click_heatmap') || '[]');
-        return {
-            totalClicks: clicks.length,
-            lastClick: clicks[clicks.length - 1]
-        };
-    }
-    
-    getDeviceMetrics() {
-        return {
-            screenWidth: window.innerWidth,
-            screenHeight: window.innerHeight,
-            pixelRatio: window.devicePixelRatio,
-            orientation: screen.orientation?.type || 'unknown',
-            platform: navigator.platform,
-            language: navigator.language
-        };
-    }
-    
-    getConnectionMetrics() {
-        return {
-            online: navigator.onLine,
-            type: navigator.connection?.type || 'unknown'
-        };
-    }
-    
-    getMetrics() {
-        return Array.from(this.metrics.values());
-    }
-}
-
-// ============================================
-// USER BEHAVIOR ANALYZER
-// ============================================
-
-class UserBehaviorAnalyzer {
-    constructor(eventTracker) {
-        this.tracker = eventTracker;
-        this.behavior = {
-            paths: [],
-            funnels: new Map(),
-            segments: new Map()
-        };
-        this.init();
-    }
-    
-    init() {
-        this.trackUserJourney();
-        this.setupFunnels();
-        this.analyzeSegments();
-    }
-    
-    trackUserJourney() {
-        // Track page transitions
-        let currentPage = window.location.pathname;
-        
-        const trackTransition = () => {
-            const newPage = window.location.pathname;
-            if (newPage !== currentPage) {
-                this.tracker.trackEvent('user_journey', 'page_transition', null, null, {
-                    from: currentPage,
-                    to: newPage,
-                    timeOnPage: this.getTimeOnPage()
-                });
-                currentPage = newPage;
-            }
-        };
-        
-        // Listen for navigation
-        window.addEventListener('popstate', trackTransition);
-        
-        // Override pushState
-        const originalPushState = history.pushState;
-        history.pushState = function(...args) {
-            originalPushState.apply(this, args);
-            trackTransition();
-        };
-    }
-    
-    getTimeOnPage() {
-        const startTime = performance.timing.navigationStart;
-        return Date.now() - startTime;
-    }
-    
-    setupFunnels() {
-        // Define conversion funnels
-        const funnels = {
-            onboarding: ['/welcome', '/onboarding/goal', '/onboarding/level', '/onboarding/persona', '/dashboard'],
-            practice: ['/dashboard', '/practice', '/practice/record', '/practice/feedback'],
-            premium: ['/dashboard', '/pricing', '/checkout', '/payment/success']
-        };
-        
-        for (const [name, steps] of Object.entries(funnels)) {
-            this.behavior.funnels.set(name, {
-                steps,
-                conversions: new Array(steps.length).fill(0)
-            });
-        }
-    }
-    
-    analyzeSegments() {
-        // Segment users by behavior
-        const segments = {
-            power_users: { condition: (u) => u.sessions > 10 && u.xp > 1000 },
-            casual_users: { condition: (u) => u.sessions <= 5 },
-            at_risk: { condition: (u) => u.lastActive > 7 },
-            converters: { condition: (u) => u.isPremium }
-        };
-        
-        this.behavior.segments = segments;
-    }
-    
-    trackFunnelStep(funnelName, stepIndex) {
-        const funnel = this.behavior.funnels.get(funnelName);
-        if (funnel && stepIndex < funnel.steps.length) {
-            funnel.conversions[stepIndex]++;
-            this.tracker.trackEvent('funnel', funnelName, funnel.steps[stepIndex], stepIndex);
-        }
-    }
-    
-    async getUserSegments(userData) {
-        const segments = [];
-        for (const [name, config] of Object.entries(this.behavior.segments)) {
-            if (config.condition(userData)) {
-                segments.push(name);
-            }
-        }
-        return segments;
-    }
-}
-
-// ============================================
-// REPORTING ENGINE
-// ============================================
-
-class ReportingEngine {
-    constructor(eventTracker, metricsCollector, behaviorAnalyzer) {
-        this.tracker = eventTracker;
-        this.metrics = metricsCollector;
-        this.behavior = behaviorAnalyzer;
-        this.reports = new Map();
-    }
-    
-    async generateDailyReport(date = new Date()) {
-        const report = {
-            date: date.toISOString().split('T')[0],
-            summary: {},
-            metrics: {},
-            events: {},
-            users: {},
-            performance: {}
-        };
-        
-        // Summary metrics
-        report.summary = await this.getDailySummary(date);
-        
-        // User metrics
-        report.users = await this.getUserMetrics(date);
-        
-        // Performance metrics
-        report.performance = await this.getPerformanceMetrics(date);
-        
-        // Event breakdown
-        report.events = await this.getEventBreakdown(date);
-        
-        this.reports.set(report.date, report);
-        
-        return report;
-    }
-    
-    async getDailySummary(date) {
-        // In production, query database
-        // For demo, return simulated data
-        return {
-            totalUsers: 1247 + Math.floor(Math.random() * 100),
-            activeUsers: 384 + Math.floor(Math.random() * 50),
-            newUsers: 42 + Math.floor(Math.random() * 20),
-            totalSessions: 1250 + Math.floor(Math.random() * 200),
-            totalPracticeMinutes: 3240 + Math.floor(Math.random() * 500),
-            averageScore: 72 + Math.floor(Math.random() * 10),
-            conversionRate: 8.5 + Math.random() * 3,
-            retentionRate: 65 + Math.random() * 10
-        };
-    }
-    
-    async getUserMetrics(date) {
-        return {
-            total: 5000,
-            premium: 425,
-            free: 4575,
-            premiumRate: 8.5,
-            averageStreak: 3.2,
-            averageLevel: 4.5,
-            averageXP: 1250
-        };
-    }
-    
-    async getPerformanceMetrics(date) {
-        const metrics = this.metrics.getMetrics();
-        const recentMetrics = metrics.slice(-10);
-        
-        const avgLoadTime = recentMetrics.reduce((sum, m) => {
-            const pageLoad = m.performance?.pageLoadTime || 0;
-            return sum + pageLoad;
-        }, 0) / recentMetrics.length;
-        
-        return {
-            averagePageLoadTime: avgLoadTime,
-            averageApiResponseTime: 245,
-            errorRate: 2.3,
-            crashRate: 0.5
-        };
-    }
-    
-    async getEventBreakdown(date) {
-        return {
-            page_views: 15000,
-            practice_sessions: 850,
-            upgrades: 32,
-            shares: 128,
-            errors: 45
-        };
-    }
-    
-    async generateWeeklyReport() {
-        const reports = [];
-        for (let i = 0; i < 7; i++) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const report = await this.generateDailyReport(date);
-            reports.push(report);
-        }
-        
-        return this.aggregateReports(reports);
-    }
-    
-    async generateMonthlyReport() {
-        const reports = [];
-        for (let i = 0; i < 30; i++) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const report = await this.generateDailyReport(date);
-            reports.push(report);
-        }
-        
-        return this.aggregateReports(reports);
-    }
-    
-    aggregateReports(reports) {
-        const aggregated = {
-            period: {
-                start: reports[reports.length - 1].date,
-                end: reports[0].date
-            },
-            totals: {
-                users: 0,
-                sessions: 0,
-                practiceMinutes: 0,
-                upgrades: 0
-            },
-            averages: {
-                activeUsers: 0,
-                score: 0,
-                retention: 0
-            },
-            trends: {
-                users: [],
-                engagement: [],
-                revenue: []
-            }
-        };
-        
-        for (const report of reports) {
-            aggregated.totals.users += report.summary.totalUsers;
-            aggregated.totals.sessions += report.summary.totalSessions;
-            aggregated.totals.practiceMinutes += report.summary.totalPracticeMinutes;
-            
-            aggregated.averages.activeUsers += report.summary.activeUsers;
-            aggregated.averages.score += report.summary.averageScore;
-            aggregated.averages.retention += report.summary.retentionRate;
-            
-            aggregated.trends.users.push({
-                date: report.date,
-                value: report.summary.activeUsers
-            });
-        }
-        
-        aggregated.averages.activeUsers /= reports.length;
-        aggregated.averages.score /= reports.length;
-        aggregated.averages.retention /= reports.length;
-        
-        return aggregated;
-    }
-    
-    async exportReport(format = 'csv', report) {
-        if (format === 'csv') {
-            return this.toCSV(report);
-        } else if (format === 'json') {
-            return JSON.stringify(report, null, 2);
-        } else if (format === 'pdf') {
-            return this.toPDF(report);
-        }
-    }
-    
-    toCSV(report) {
-        const rows = [];
-        
-        // Headers
-        rows.push(['Metric', 'Value'].join(','));
-        
-        // Add summary
-        for (const [key, value] of Object.entries(report.summary)) {
-            rows.push([key, value].join(','));
-        }
-        
-        return rows.join('\n');
-    }
-    
-    toPDF(report) {
-        // In production, generate PDF
-        // For demo, return HTML string
-        return `
-            <html>
-                <head><title>SpeakFlow Report - ${report.date}</title></head>
-                <body>
-                    <h1>SpeakFlow Analytics Report</h1>
-                    <h2>Date: ${report.date}</h2>
-                    <h3>Summary</h3>
-                    <pre>${JSON.stringify(report.summary, null, 2)}</pre>
-                </body>
-            </html>
-        `;
-    }
-}
-
-// ============================================
-// DASHBOARD ANALYTICS
-// ============================================
-
-class DashboardAnalytics {
-    constructor(eventTracker, metricsCollector, reportingEngine) {
-        this.tracker = eventTracker;
-        this.metrics = metricsCollector;
-        this.reporting = reportingEngine;
-        this.dashboardData = {};
-        this.updateInterval = null;
-    }
-    
-    startRealtimeUpdates(interval = 30000) {
-        this.updateInterval = setInterval(() => {
-            this.updateDashboardData();
-        }, interval);
-        
-        this.updateDashboardData();
-    }
-    
-    stopRealtimeUpdates() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-    }
-    
-    async updateDashboardData() {
-        this.dashboardData = {
-            timestamp: new Date().toISOString(),
-            realtime: await this.getRealtimeMetrics(),
-            trends: await this.getTrends(),
-            topEvents: await this.getTopEvents(),
-            userActivity: await this.getUserActivity()
-        };
-        
-        this.tracker.trackEvent('dashboard', 'update', null, null, this.dashboardData);
-        
-        // Dispatch event for UI update
-        const event = new CustomEvent('analytics:update', {
-            detail: this.dashboardData
-        });
-        document.dispatchEvent(event);
-    }
-    
-    async getRealtimeMetrics() {
-        return {
-            onlineUsers: 234 + Math.floor(Math.random() * 50),
-            activePractices: 45 + Math.floor(Math.random() * 20),
-            eventsPerMinute: 120 + Math.floor(Math.random() * 40),
-            serverLoad: 45 + Math.random() * 30
-        };
-    }
-    
-    async getTrends() {
-        return {
-            users7d: [1240, 1280, 1320, 1350, 1380, 1400, 1420],
-            sessions7d: [2450, 2520, 2580, 2650, 2720, 2780, 2850],
-            scores7d: [68, 69, 70, 71, 72, 73, 74]
-        };
-    }
-    
-    async getTopEvents() {
-        return [
-            { name: 'page_view', count: 15000, change: '+12%' },
-            { name: 'practice_start', count: 3200, change: '+8%' },
-            { name: 'share_score', count: 850, change: '+15%' },
-            { name: 'upgrade_click', count: 420, change: '+5%' }
-        ];
-    }
-    
-    async getUserActivity() {
-        return {
-            hourByHour: Array(24).fill(0).map(() => Math.floor(Math.random() * 200)),
-            dayOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(() => Math.floor(Math.random() * 1000))
-        };
-    }
-    
-    getDashboardData() {
-        return this.dashboardData;
-    }
-}
-
-// ============================================
-// ANALYTICS UI CONTROLLER
-// ============================================
-
-class AnalyticsUIController {
-    constructor(dashboardAnalytics, reportingEngine) {
-        this.dashboard = dashboardAnalytics;
-        this.reporting = reportingEngine;
-        this.elements = {};
-        this.init();
-    }
-    
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.setupListeners();
-        this.dashboard.startRealtimeUpdates();
-    }
-    
-    bindElements() {
-        this.elements = {
-            realtimeUsers: document.getElementById('realtimeUsers'),
-            activePractices: document.getElementById('activePractices'),
-            eventsPerMinute: document.getElementById('eventsPerMinute'),
-            userChart: document.getElementById('userChart'),
-            eventList: document.getElementById('eventList'),
-            exportBtn: document.getElementById('exportAnalyticsBtn')
-        };
-    }
-    
-    bindEvents() {
-        if (this.elements.exportBtn) {
-            this.elements.exportBtn.addEventListener('click', () => this.exportReport());
-        }
-    }
-    
-    setupListeners() {
-        document.addEventListener('analytics:update', (e) => {
-            this.updateUI(e.detail);
-        });
-    }
-    
-    updateUI(data) {
-        if (this.elements.realtimeUsers) {
-            this.elements.realtimeUsers.textContent = data.realtime?.onlineUsers || 0;
-        }
-        
-        if (this.elements.activePractices) {
-            this.elements.activePractices.textContent = data.realtime?.activePractices || 0;
-        }
-        
-        if (this.elements.eventsPerMinute) {
-            this.elements.eventsPerMinute.textContent = data.realtime?.eventsPerMinute || 0;
-        }
-        
-        this.updateCharts(data);
-        this.updateEventList(data);
-    }
-    
-    updateCharts(data) {
-        if (this.elements.userChart && data.trends) {
-            // In production, render charts with Chart.js or D3
-            console.log('Updating charts with:', data.trends);
-        }
-    }
-    
-    updateEventList(data) {
-        if (this.elements.eventList && data.topEvents) {
-            this.elements.eventList.innerHTML = data.topEvents.map(event => `
-                <div class="event-item">
-                    <span class="event-name">${event.name}</span>
-                    <span class="event-count">${event.count.toLocaleString()}</span>
-                    <span class="event-change ${event.change.includes('+') ? 'positive' : 'negative'}">${event.change}</span>
-                </div>
-            `).join('');
-        }
-    }
-    
-    async exportReport() {
-        const report = await this.reporting.generateDailyReport();
-        const csv = await this.reporting.exportReport('csv', report);
-        
-        // Download CSV
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `speakflow_report_${report.date}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-}
-
-// ============================================
-// EXPORTS
-// ============================================
-
-// Initialize analytics system
-const eventTracker = new EventTracker();
-const metricsCollector = new MetricsCollector(eventTracker);
-const behaviorAnalyzer = new UserBehaviorAnalyzer(eventTracker);
-const reportingEngine = new ReportingEngine(eventTracker, metricsCollector, behaviorAnalyzer);
-const dashboardAnalytics = new DashboardAnalytics(eventTracker, metricsCollector, reportingEngine);
-const analyticsUI = new AnalyticsUIController(dashboardAnalytics, reportingEngine);
-
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.Analytics = {
-    tracker: eventTracker,
-    metrics: metricsCollector,
-    behavior: behaviorAnalyzer,
-    reporting: reportingEngine,
-    dashboard: dashboardAnalytics,
-    ui: analyticsUI,
-    config: AnalyticsConfig
+const ANALYTICS_CONFIG = {
+    API_ENDPOINT: '/api/analytics/track',
+    BATCH_SIZE: 10,
+    BATCH_INTERVAL: 5000, // 5 seconds
+    MAX_QUEUE_SIZE: 100,
+    SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
+    ENABLE_OUTBOUND_LINKS: true,
+    ENABLE_FORM_TRACKING: true,
+    ENABLE_ERROR_TRACKING: true,
+    ENABLE_PERFORMANCE_TRACKING: true
 };
 
-// Module exports
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        AnalyticsConfig,
-        EventTracker,
-        MetricsCollector,
-        UserBehaviorAnalyzer,
-        ReportingEngine,
-        DashboardAnalytics,
-        AnalyticsUIController
+// ============================================
+// Event Types
+// ============================================
+
+const EVENT_TYPES = {
+    // Page events
+    PAGE_VIEW: 'page_view',
+    PAGE_SCROLL: 'page_scroll',
+    PAGE_EXIT: 'page_exit',
+    
+    // User events
+    USER_LOGIN: 'user_login',
+    USER_LOGOUT: 'user_logout',
+    USER_SIGNUP: 'user_signup',
+    USER_UPDATE: 'user_update',
+    
+    // Learning events
+    LESSON_START: 'lesson_start',
+    LESSON_COMPLETE: 'lesson_complete',
+    LESSON_ABANDON: 'lesson_abandon',
+    EXERCISE_SUBMIT: 'exercise_submit',
+    PERFECT_SCORE: 'perfect_score',
+    
+    // Voice events
+    RECORDING_START: 'recording_start',
+    RECORDING_STOP: 'recording_stop',
+    VOICE_ANALYSIS: 'voice_analysis',
+    PRONUNCIATION_SCORE: 'pronunciation_score',
+    
+    // AI events
+    AI_CHAT: 'ai_chat',
+    AI_GRAMMAR_CHECK: 'ai_grammar_check',
+    AI_TRANSLATION: 'ai_translation',
+    
+    // Engagement events
+    FEATURE_USED: 'feature_used',
+    CONTENT_SHARED: 'content_shared',
+    SEARCH_PERFORMED: 'search_performed',
+    FILTER_APPLIED: 'filter_applied',
+    
+    // Payment events
+    SUBSCRIPTION_VIEW: 'subscription_view',
+    SUBSCRIPTION_START: 'subscription_start',
+    SUBSCRIPTION_CANCEL: 'subscription_cancel',
+    PAYMENT_SUCCESS: 'payment_success',
+    PAYMENT_FAIL: 'payment_fail',
+    
+    // Support events
+    TICKET_CREATED: 'ticket_created',
+    FEEDBACK_SUBMITTED: 'feedback_submitted',
+    
+    // System events
+    ERROR_OCCURRED: 'error_occurred',
+    PERFORMANCE_METRIC: 'performance_metric',
+    OUTBOUND_CLICK: 'outbound_click'
+};
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Generate unique session ID
+ */
+const generateSessionId = () => {
+    return `${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+};
+
+/**
+ * Get or create session ID
+ */
+const getSessionId = () => {
+    let sessionId = sessionStorage.getItem('analytics_session_id');
+    let sessionStart = sessionStorage.getItem('analytics_session_start');
+    const now = Date.now();
+    
+    if (!sessionId || !sessionStart || (now - parseInt(sessionStart)) > ANALYTICS_CONFIG.SESSION_TIMEOUT) {
+        sessionId = generateSessionId();
+        sessionStart = now.toString();
+        sessionStorage.setItem('analytics_session_id', sessionId);
+        sessionStorage.setItem('analytics_session_start', sessionStart);
+    }
+    
+    return sessionId;
+};
+
+/**
+ * Get user ID from auth
+ */
+const getUserId = () => {
+    return auth?.user?.id || localStorage.getItem('user_id') || null;
+};
+
+/**
+ * Get user properties
+ */
+const getUserProperties = () => {
+    const user = auth?.user;
+    if (user) {
+        return {
+            user_id: user.id,
+            user_email: user.email,
+            user_name: user.name,
+            user_role: user.role,
+            user_level: user.stats?.level || 1,
+            user_subscription: user.subscription?.plan || 'free'
+        };
+    }
+    return {};
+};
+
+/**
+ * Get page metadata
+ */
+const getPageMetadata = () => {
+    return {
+        url: window.location.href,
+        path: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        title: document.title,
+        referrer: document.referrer,
+        screen_width: window.screen.width,
+        screen_height: window.screen.height,
+        viewport_width: window.innerWidth,
+        viewport_height: window.innerHeight
     };
+};
+
+/**
+ * Get device info
+ */
+const getDeviceInfo = () => {
+    const ua = navigator.userAgent;
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    const isDesktop = !isMobile && !isTablet;
+    
+    let platform = 'unknown';
+    if (/Windows/i.test(ua)) platform = 'windows';
+    else if (/Mac/i.test(ua)) platform = 'mac';
+    else if (/Linux/i.test(ua)) platform = 'linux';
+    else if (/Android/i.test(ua)) platform = 'android';
+    else if (/iPhone|iPad|iPod/i.test(ua)) platform = 'ios';
+    
+    let browser = 'unknown';
+    if (/Chrome/i.test(ua) && !/Edge/i.test(ua)) browser = 'chrome';
+    else if (/Firefox/i.test(ua)) browser = 'firefox';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'safari';
+    else if (/Edge/i.test(ua)) browser = 'edge';
+    else if (/MSIE|Trident/i.test(ua)) browser = 'ie';
+    
+    return {
+        device_type: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
+        platform: platform,
+        browser: browser,
+        browser_version: ua.match(/(Chrome|Firefox|Safari|Edge)\/(\d+)/)?.[2] || 'unknown',
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+};
+
+/**
+ Get performance timing
+ */
+const getPerformanceTiming = () => {
+    if (!window.performance || !window.performance.timing) return {};
+    
+    const timing = window.performance.timing;
+    const navigationStart = timing.navigationStart;
+    
+    if (!navigationStart) return {};
+    
+    return {
+        page_load_time: timing.loadEventEnd - navigationStart,
+        dom_ready_time: timing.domContentLoadedEventEnd - navigationStart,
+        response_time: timing.responseEnd - timing.requestStart,
+        first_paint: performance.getEntriesByType('paint')?.find(p => p.name === 'first-paint')?.startTime || 0,
+        first_contentful_paint: performance.getEntriesByType('paint')?.find(p => p.name === 'first-contentful-paint')?.startTime || 0
+    };
+};
+
+// ============================================
+// Event Tracking Core
+// ============================================
+
+/**
+ * Add event to queue
+ */
+const addToQueue = (event) => {
+    if (!AnalyticsState.trackingEnabled) return;
+    
+    AnalyticsState.eventQueue.push({
+        ...event,
+        timestamp: new Date().toISOString(),
+        session_id: AnalyticsState.sessionId,
+        user_id: getUserId(),
+        user_properties: getUserProperties(),
+        page_metadata: getPageMetadata(),
+        device_info: getDeviceInfo()
+    });
+    
+    // Trim queue if too large
+    if (AnalyticsState.eventQueue.length > ANALYTICS_CONFIG.MAX_QUEUE_SIZE) {
+        AnalyticsState.eventQueue = AnalyticsState.eventQueue.slice(-ANALYTICS_CONFIG.MAX_QUEUE_SIZE);
+    }
+    
+    if (AnalyticsState.debugMode) {
+        console.log('[Analytics] Event queued:', event);
+    }
+    
+    // Send immediately if batch size reached
+    if (AnalyticsState.eventQueue.length >= ANALYTICS_CONFIG.BATCH_SIZE) {
+        sendEvents();
+    }
+};
+
+/**
+ * Send events to server
+ */
+const sendEvents = async () => {
+    if (AnalyticsState.isSending || AnalyticsState.eventQueue.length === 0) return;
+    
+    AnalyticsState.isSending = true;
+    const eventsToSend = [...AnalyticsState.eventQueue];
+    AnalyticsState.eventQueue = [];
+    
+    try {
+        const response = await fetch(ANALYTICS_CONFIG.API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({
+                events: eventsToSend,
+                session_id: AnalyticsState.sessionId
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        if (AnalyticsState.debugMode) {
+            console.log(`[Analytics] Sent ${eventsToSend.length} events`);
+        }
+    } catch (error) {
+        console.error('[Analytics] Failed to send events:', error);
+        // Re-queue events
+        AnalyticsState.eventQueue = [...eventsToSend, ...AnalyticsState.eventQueue];
+    } finally {
+        AnalyticsState.isSending = false;
+    }
+};
+
+/**
+ * Track event
+ */
+const trackEvent = (eventType, properties = {}) => {
+    addToQueue({
+        event_type: eventType,
+        properties: properties
+    });
+};
+
+/**
+ * Track page view
+ */
+const trackPageView = (pageName = null) => {
+    AnalyticsState.pageViewCount++;
+    trackEvent(EVENT_TYPES.PAGE_VIEW, {
+        page_name: pageName || document.title,
+        page_url: window.location.href,
+        page_path: window.location.pathname,
+        page_view_count: AnalyticsState.pageViewCount
+    });
+};
+
+/**
+ * Track user action
+ */
+const trackUserAction = (action, properties = {}) => {
+    trackEvent(EVENT_TYPES.FEATURE_USED, {
+        action: action,
+        ...properties
+    });
+};
+
+/**
+ * Track error
+ */
+const trackError = (error, context = {}) => {
+    trackEvent(EVENT_TYPES.ERROR_OCCURRED, {
+        error_message: error.message,
+        error_stack: error.stack,
+        error_name: error.name,
+        ...context
+    });
+};
+
+/**
+ * Track performance
+ */
+const trackPerformance = () => {
+    if (!ANALYTICS_CONFIG.ENABLE_PERFORMANCE_TRACKING) return;
+    
+    const timing = getPerformanceTiming();
+    if (Object.keys(timing).length > 0) {
+        trackEvent(EVENT_TYPES.PERFORMANCE_METRIC, timing);
+    }
+};
+
+// ============================================
+// Specific Event Trackers
+// ============================================
+
+/**
+ * Track lesson progress
+ */
+const trackLessonProgress = (lessonId, lessonTitle, progress, score = null) => {
+    trackEvent(EVENT_TYPES.LESSON_COMPLETE, {
+        lesson_id: lessonId,
+        lesson_title: lessonTitle,
+        progress: progress,
+        score: score,
+        duration: calculateLessonDuration(lessonId)
+    });
+};
+
+/**
+ * Track pronunciation score
+ */
+const trackPronunciationScore = (score, text, duration) => {
+    trackEvent(EVENT_TYPES.PRONUNCIATION_SCORE, {
+        score: score,
+        text_length: text?.length || 0,
+        duration: duration
+    });
+};
+
+/**
+ * Track AI interaction
+ */
+const trackAIInteraction = (type, inputLength, responseLength, duration) => {
+    trackEvent(EVENT_TYPES.AI_CHAT, {
+        ai_type: type,
+        input_length: inputLength,
+        response_length: responseLength,
+        duration: duration
+    });
+};
+
+/**
+ * Track subscription event
+ */
+const trackSubscriptionEvent = (action, plan, amount = null) => {
+    trackEvent(EVENT_TYPES.SUBSCRIPTION_START, {
+        action: action,
+        plan: plan,
+        amount: amount
+    });
+};
+
+/**
+ * Track search
+ */
+const trackSearch = (query, resultCount) => {
+    trackEvent(EVENT_TYPES.SEARCH_PERFORMED, {
+        query: query,
+        result_count: resultCount
+    });
+};
+
+/**
+ * Track content share
+ */
+const trackShare = (contentType, contentId, platform) => {
+    trackEvent(EVENT_TYPES.CONTENT_SHARED, {
+        content_type: contentType,
+        content_id: contentId,
+        platform: platform
+    });
+};
+
+// ============================================
+// Session Management
+// ============================================
+
+/**
+ * Start session
+ */
+const startSession = () => {
+    AnalyticsState.sessionId = getSessionId();
+    AnalyticsState.sessionStartTime = Date.now();
+    
+    trackEvent(EVENT_TYPES.PAGE_VIEW, {
+        event: 'session_start',
+        session_id: AnalyticsState.sessionId
+    });
+    
+    if (AnalyticsState.debugMode) {
+        console.log('[Analytics] Session started:', AnalyticsState.sessionId);
+    }
+};
+
+/**
+ * End session
+ */
+const endSession = () => {
+    const sessionDuration = Date.now() - AnalyticsState.sessionStartTime;
+    trackEvent(EVENT_TYPES.PAGE_EXIT, {
+        session_duration: sessionDuration,
+        page_view_count: AnalyticsState.pageViewCount
+    });
+    
+    sendEvents(); // Send remaining events
+};
+
+// ============================================
+// User Properties
+// ============================================
+
+/**
+ * Identify user
+ */
+const identifyUser = (userId, properties = {}) => {
+    AnalyticsState.userId = userId;
+    AnalyticsState.userProperties = properties;
+    
+    trackEvent(EVENT_TYPES.USER_LOGIN, {
+        user_id: userId,
+        ...properties
+    });
+};
+
+/**
+ * Update user properties
+ */
+const updateUserProperties = (properties) => {
+    AnalyticsState.userProperties = { ...AnalyticsState.userProperties, ...properties };
+    trackEvent(EVENT_TYPES.USER_UPDATE, properties);
+};
+
+// ============================================
+// Auto-Tracking Setup
+// ============================================
+
+/**
+ * Setup page view tracking
+ */
+const setupPageViewTracking = () => {
+    // Track initial page view
+    trackPageView();
+    
+    // Track navigation for SPA
+    let lastUrl = window.location.href;
+    const observer = new MutationObserver(() => {
+        if (window.location.href !== lastUrl) {
+            lastUrl = window.location.href;
+            setTimeout(() => trackPageView(), 100);
+        }
+    });
+    observer.observe(document.querySelector('body'), { childList: true, subtree: true });
+    
+    // Track before unload
+    window.addEventListener('beforeunload', () => {
+        endSession();
+    });
+};
+
+/**
+ * Setup click tracking
+ */
+const setupClickTracking = () => {
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-track-click]');
+        if (target) {
+            const eventName = target.dataset.trackClick;
+            const properties = {};
+            
+            // Get all data-track-* attributes
+            for (const attr of target.attributes) {
+                if (attr.name.startsWith('data-track-')) {
+                    const key = attr.name.replace('data-track-', '');
+                    properties[key] = attr.value;
+                }
+            }
+            
+            trackUserAction(eventName, properties);
+        }
+        
+        // Track outbound links
+        if (ANALYTICS_CONFIG.ENABLE_OUTBOUND_LINKS) {
+            const link = e.target.closest('a');
+            if (link && link.href && !link.href.startsWith(window.location.origin)) {
+                trackEvent(EVENT_TYPES.OUTBOUND_CLICK, {
+                    link_url: link.href,
+                    link_text: link.innerText,
+                    link_target: link.target
+                });
+            }
+        }
+    });
+};
+
+/**
+ * Setup form tracking
+ */
+const setupFormTracking = () => {
+    if (!ANALYTICS_CONFIG.ENABLE_FORM_TRACKING) return;
+    
+    document.addEventListener('submit', (e) => {
+        const form = e.target;
+        const formId = form.id || form.name;
+        
+        trackUserAction('form_submit', {
+            form_id: formId,
+            form_action: form.action,
+            form_method: form.method
+        });
+    });
+    
+    // Track input focus
+    document.addEventListener('focusin', (e) => {
+        const input = e.target;
+        if (input.matches('input, textarea, select')) {
+            const form = input.closest('form');
+            trackUserAction('input_focus', {
+                input_name: input.name,
+                input_type: input.type,
+                form_id: form?.id || form?.name
+            });
+        }
+    });
+};
+
+/**
+ * Setup scroll tracking
+ */
+const setupScrollTracking = () => {
+    let scrollTimeout;
+    let maxScrollDepth = 0;
+    
+    window.addEventListener('scroll', () => {
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        
+        scrollTimeout = setTimeout(() => {
+            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+            
+            if (scrollPercent > maxScrollDepth) {
+                maxScrollDepth = scrollPercent;
+                trackEvent(EVENT_TYPES.PAGE_SCROLL, {
+                    scroll_depth: Math.round(maxScrollDepth)
+                });
+            }
+        }, 500);
+    });
+};
+
+/**
+ * Setup error tracking
+ */
+const setupErrorTracking = () => {
+    if (!ANALYTICS_CONFIG.ENABLE_ERROR_TRACKING) return;
+    
+    window.addEventListener('error', (e) => {
+        trackError(e.error || new Error(e.message), {
+            filename: e.filename,
+            lineno: e.lineno,
+            colno: e.colno
+        });
+    });
+    
+    window.addEventListener('unhandledrejection', (e) => {
+        trackError(e.reason, {
+            type: 'unhandled_rejection'
+        });
+    });
+};
+
+// ============================================
+// Performance Tracking
+// ============================================
+
+/**
+ * Track web vitals
+ */
+const trackWebVitals = () => {
+    if ('web-vitals' in window) {
+        import('web-vitals').then(({ getCLS, getFID, getLCP, getFCP, getTTFB }) => {
+            getCLS((metric) => trackPerformanceMetric('CLS', metric.value));
+            getFID((metric) => trackPerformanceMetric('FID', metric.value));
+            getLCP((metric) => trackPerformanceMetric('LCP', metric.value));
+            getFCP((metric) => trackPerformanceMetric('FCP', metric.value));
+            getTTFB((metric) => trackPerformanceMetric('TTFB', metric.value));
+        });
+    }
+};
+
+/**
+ * Track performance metric
+ */
+const trackPerformanceMetric = (name, value) => {
+    trackEvent(EVENT_TYPES.PERFORMANCE_METRIC, {
+        metric_name: name,
+        metric_value: value
+    });
+};
+
+// ============================================
+// Helper Functions for Lesson Tracking
+// ============================================
+
+let lessonStartTimes = new Map();
+
+/**
+ * Start tracking lesson
+ */
+const startLessonTracking = (lessonId, lessonTitle) => {
+    lessonStartTimes.set(lessonId, Date.now());
+    trackEvent(EVENT_TYPES.LESSON_START, {
+        lesson_id: lessonId,
+        lesson_title: lessonTitle
+    });
+};
+
+/**
+ * Calculate lesson duration
+ */
+const calculateLessonDuration = (lessonId) => {
+    const startTime = lessonStartTimes.get(lessonId);
+    if (startTime) {
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        lessonStartTimes.delete(lessonId);
+        return duration;
+    }
+    return null;
+};
+
+/**
+ * Track lesson abandonment
+ */
+const trackLessonAbandon = (lessonId, lessonTitle, progress) => {
+    trackEvent(EVENT_TYPES.LESSON_ABANDON, {
+        lesson_id: lessonId,
+        lesson_title: lessonTitle,
+        progress: progress,
+        duration: calculateLessonDuration(lessonId)
+    });
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize analytics module
+ */
+const initAnalytics = () => {
+    if (AnalyticsState.isInitialized) return;
+    
+    console.log('Initializing analytics module...');
+    
+    // Check if tracking is enabled
+    AnalyticsState.trackingEnabled = localStorage.getItem('analytics_enabled') !== 'false';
+    AnalyticsState.debugMode = localStorage.getItem('analytics_debug') === 'true';
+    
+    // Start session
+    startSession();
+    
+    // Setup auto-tracking
+    setupPageViewTracking();
+    setupClickTracking();
+    setupFormTracking();
+    setupScrollTracking();
+    setupErrorTracking();
+    
+    // Track performance after page load
+    window.addEventListener('load', () => {
+        trackPerformance();
+        trackWebVitals();
+    });
+    
+    // Send events periodically
+    setInterval(() => {
+        if (AnalyticsState.eventQueue.length > 0) {
+            sendEvents();
+        }
+    }, ANALYTICS_CONFIG.BATCH_INTERVAL);
+    
+    AnalyticsState.isInitialized = true;
+    
+    console.log('Analytics module initialized');
+};
+
+/**
+ * Enable/disable tracking
+ */
+const setTrackingEnabled = (enabled) => {
+    AnalyticsState.trackingEnabled = enabled;
+    localStorage.setItem('analytics_enabled', enabled);
+    
+    if (!enabled) {
+        AnalyticsState.eventQueue = [];
+    }
+    
+    trackUserAction('tracking_' + (enabled ? 'enabled' : 'disabled'));
+};
+
+/**
+ * Enable debug mode
+ */
+const setDebugMode = (enabled) => {
+    AnalyticsState.debugMode = enabled;
+    localStorage.setItem('analytics_debug', enabled);
+};
+
+// ============================================
+// Export Analytics Module
+// ============================================
+
+const analytics = {
+    // State
+    get isEnabled() { return AnalyticsState.trackingEnabled; },
+    get sessionId() { return AnalyticsState.sessionId; },
+    
+    // Core
+    trackEvent,
+    trackPageView,
+    trackUserAction,
+    trackError,
+    
+    // Learning
+    trackLessonProgress,
+    trackLessonAbandon,
+    startLessonTracking,
+    trackPronunciationScore,
+    
+    // AI
+    trackAIInteraction,
+    
+    // Business
+    trackSubscriptionEvent,
+    trackSearch,
+    trackShare,
+    
+    // User
+    identifyUser,
+    updateUserProperties,
+    
+    // Settings
+    setTrackingEnabled,
+    setDebugMode,
+    
+    // Initialize
+    init: initAnalytics
+};
+
+// Make analytics globally available
+window.analytics = analytics;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAnalytics);
+} else {
+    initAnalytics();
 }
 
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Analytics module initialized');
-    
-    // Set user ID if logged in
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-        eventTracker.setUserId(userId);
-    }
-    
-    // Debug mode
-    if (window.location.hostname === 'localhost') {
-        window.debugAnalytics = {
-            tracker: eventTracker,
-            metrics: metricsCollector,
-            behavior: behaviorAnalyzer
-        };
-        console.log('Analytics debug mode enabled');
-    }
-});
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = analytics;
+}
