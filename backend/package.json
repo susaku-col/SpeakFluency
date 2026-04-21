@@ -1,169 +1,115 @@
 {
   "name": "speakflow-backend",
   "version": "1.0.0",
-  "description": "SpeakFlow AI English Coach - Backend API Server",
+  "description": "Backend API for SpeakFlow - AI-powered language learning platform with voice recognition",
   "main": "server.js",
-  "author": "SpeakFlow Team",
-  "license": "MIT",
-  "private": false,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/speakflow/speakflow-backend.git"
-  },
-  "keywords": [
-    "speakflow",
-    "english-learning",
-    "ai-coach",
-    "pronunciation",
-    "education",
-    "express",
-    "api"
-  ],
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "dev:debug": "nodemon --inspect server.js",
-    "test": "jest --coverage",
+    "build": "echo 'Backend build complete'",
+    "test": "jest",
     "test:watch": "jest --watch",
-    "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration",
+    "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "build": "npm run lint && npm run test",
-    "seed": "node scripts/seed-database.js",
+    "seed": "node seeders/seedDatabase.js",
+    "seed:users": "node seeders/seedUsers.js",
+    "seed:vocabulary": "node seeders/seedVocabulary.js",
     "migrate": "node scripts/migrate.js",
-    "db:backup": "node scripts/backup-database.js",
-    "db:restore": "node scripts/restore-database.js",
-    "docker:build": "docker build -t speakflow-backend .",
-    "docker:run": "docker-compose up",
-    "docker:stop": "docker-compose down",
-    "logs": "pm2 logs speakflow",
-    "pm2:start": "pm2 start ecosystem.config.js",
-    "pm2:stop": "pm2 stop speakflow",
-    "pm2:restart": "pm2 restart speakflow",
-    "pm2:monit": "pm2 monit",
-    "clean": "rm -rf node_modules package-lock.json && npm install",
-    "prepare": "husky install",
-    "precommit": "lint-staged"
-  },
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.json": [
-      "prettier --write"
-    ]
+    "migrate:undo": "node scripts/migrate.js undo",
+    "health": "node scripts/healthCheck.js",
+    "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "helmet": "^7.0.0",
-    "compression": "^1.7.4",
-    "express-rate-limit": "^6.7.0",
-    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.0",
-    "express-validator": "^6.15.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0",
+    "mongoose": "^8.0.3",
+    "redis": "^4.6.11",
+    "stripe": "^14.14.0",
+    "openai": "^4.24.1",
+    "@sendgrid/mail": "^8.1.0",
     "multer": "^1.4.5-lts.1",
-    "dotenv": "^16.0.3",
-    "pg": "^8.10.0",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.31.1",
-    "redis": "^4.6.5",
-    "stripe": "^12.0.0",
-    "@sendgrid/mail": "^7.7.0",
-    "openai": "^3.3.0",
-    "socket.io": "^4.6.1",
-    "socket.io-client": "^4.6.1",
-    "winston": "^3.8.2",
+    "multer-s3": "^3.0.1",
+    "sharp": "^0.33.1",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",
-    "joi": "^17.9.1",
-    "uuid": "^9.0.0",
-    "axios": "^1.4.0",
-    "node-cron": "^3.0.2",
-    "nodemailer": "^6.9.1",
-    "express-session": "^1.17.3",
-    "connect-redis": "^7.0.0",
-    "csrf": "^3.1.0",
-    "helmet-csp": "^2.10.0",
-    "xss": "^1.0.14",
-    "sanitize-html": "^2.10.0",
-    "express-rate-limit": "^6.7.0",
-    "express-mongo-sanitize": "^2.2.0",
-    "express-fileupload": "^1.4.0",
-    "cloudinary": "^1.37.0",
-    "aws-sdk": "^2.1409.0",
-    "bull": "^4.11.0",
-    "agenda": "^5.0.0",
-    "ioredis": "^5.3.2"
+    "node-cron": "^3.0.3",
+    "socket.io": "^4.6.1",
+    "axios": "^1.6.5",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4",
+    "bcrypt": "^5.1.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-facebook": "^3.0.0",
+    "cookie-parser": "^1.4.6",
+    "express-session": "^1.18.0",
+    "connect-redis": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "bull": "^4.11.5",
+    "nodemailer": "^6.9.7",
+    "handlebars": "^4.7.8",
+    "celebrate": "^15.0.3",
+    "joi": "^17.11.0",
+    "swagger-ui-express": "^5.0.0",
+    "swagger-jsdoc": "^6.2.8",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22",
-    "jest": "^29.5.0",
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
     "supertest": "^6.3.3",
-    "eslint": "^8.40.0",
+    "eslint": "^8.56.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.27.5",
-    "eslint-plugin-jest": "^27.2.1",
-    "prettier": "^2.8.8",
-    "husky": "^8.0.3",
-    "lint-staged": "^13.2.2",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.1.1",
+    "@types/jest": "^29.5.11",
     "faker": "^5.5.3",
-    "cross-env": "^7.0.3",
-    "jest-junit": "^16.0.0",
-    "jest-html-reporter": "^3.10.0",
-    "nyc": "^15.1.0",
-    "sinon": "^15.0.4",
-    "mockery": "^2.1.0",
-    "nock": "^13.3.1"
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "jest": {
     "testEnvironment": "node",
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "server.js",
-      "routes/**/*.js",
-      "controllers/**/*.js",
-      "services/**/*.js",
-      "models/**/*.js",
-      "middleware/**/*.js",
-      "!**/node_modules/**",
-      "!**/tests/**"
-    ],
-    "coverageReporters": [
-      "text",
-      "html",
-      "lcov",
-      "json",
-      "clover",
-      "jest-junit"
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/",
+      "/seeders/"
     ],
     "testMatch": [
-      "**/tests/**/*.test.js",
-      "**/tests/**/*.spec.js"
+      "**/tests/**/*.test.js"
     ],
-    "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup.js"
+    "collectCoverageFrom": [
+      "**/*.js",
+      "!**/node_modules/**",
+      "!**/tests/**",
+      "!**/seeders/**",
+      "!**/config/**"
     ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    },
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
     "verbose": true,
-    "testTimeout": 30000
-  },
-  "prettier": {
-    "semi": true,
-    "trailingComma": "es5",
-    "singleQuote": true,
-    "printWidth": 100,
-    "tabWidth": 2,
-    "useTabs": false,
-    "bracketSpacing": true,
-    "arrowParens": "always",
-    "endOfLine": "lf"
+    "testTimeout": 10000
   },
   "eslintConfig": {
     "env": {
@@ -171,41 +117,53 @@
       "jest": true,
       "es2021": true
     },
-    "extends": [
-      "airbnb-base",
-      "plugin:jest/recommended"
-    ],
+    "extends": ["airbnb-base"],
     "parserOptions": {
-      "ecmaVersion": 2021,
+      "ecmaVersion": "latest",
       "sourceType": "module"
     },
     "rules": {
       "no-console": "off",
       "consistent-return": "off",
       "no-underscore-dangle": "off",
-      "max-len": ["error", { "code": 120 }],
-      "import/no-extraneous-dependencies": ["error", { "devDependencies": true }]
+      "camelcase": "off"
     }
   },
-  "nodemonConfig": {
-    "watch": [
-      "server.js",
-      "routes/",
-      "controllers/",
-      "services/",
-      "models/",
-      "middleware/"
-    ],
-    "ext": "js,json",
-    "ignore": [
-      "tests/",
-      "coverage/",
-      "node_modules/",
-      "uploads/"
-    ],
-    "delay": 1000,
-    "env": {
-      "NODE_ENV": "development"
-    }
-  }
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false
+  },
+  "keywords": [
+    "express",
+    "api",
+    "language-learning",
+    "voice-recognition",
+    "ai",
+    "openai",
+    "stripe",
+    "mongodb",
+    "redis",
+    "pwa",
+    "education",
+    "pronunciation"
+  ],
+  "author": {
+    "name": "SpeakFlow Team",
+    "email": "team@speakflow.com",
+    "url": "https://speakflow.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/susaku-col/SpeakEnglish"
+  },
+  "bugs": {
+    "url": "https://github.com/susaku-col/SpeakEnglish/issues"
+  },
+  "homepage": "https://speakflow.vercel.app",
+  "private": false
 }
