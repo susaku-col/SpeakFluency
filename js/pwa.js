@@ -1,925 +1,770 @@
-/* ============================================
-   SPEAKFLOW - PWA MODULE
-   Version: 1.0.0
-   Handles PWA installation, updates, and offline capabilities
-   ============================================ */
-
 // ============================================
-// PWA CONFIGURATION
+// SpeakFlow PWA Module
+// Progressive Web App Functionality
 // ============================================
 
-const PWAConfig = {
-    // App Metadata
-    app: {
-        name: 'SpeakFlow',
-        shortName: 'SpeakFlow',
-        description: 'AI English Speaking Coach',
-        themeColor: '#3b82f6',
-        backgroundColor: '#ffffff',
-        scope: '/',
-        startUrl: '/'
-    },
-    
-    // Service Worker
-    sw: {
-        url: '/sw.js',
-        scope: '/',
-        updateInterval: 3600000, // 1 hour
-        skipWaiting: true
-    },
-    
-    // Installation
-    install: {
-        promptDelay: 30000, // 30 seconds after page load
-        maxPrompts: 3,
-        promptCooldown: 7 * 24 * 3600000 // 7 days
-    },
-    
-    // Update
-    update: {
-        checkInterval: 3600000, // 1 hour
-        autoReload: true,
-        reloadDelay: 5000 // 5 seconds
-    },
-    
-    // Storage Keys
-    storage: {
-        installPromptCount: 'pwa_install_prompt_count',
-        lastPromptDate: 'pwa_last_prompt_date',
-        updateAvailable: 'pwa_update_available'
-    }
+// ============================================
+// PWA State Management
+// ============================================
+
+const PWAState = {
+    isInitialized: false,
+    isInstallable: false,
+    isInstalled: false,
+    deferredPrompt: null,
+    serviceWorker: null,
+    subscription: null,
+    updateAvailable: false,
+    waitingWorker: null,
+    isOfflineReady: false
 };
 
 // ============================================
-// PWA INSTALLATION MANAGER
+// Configuration
 // ============================================
 
-class PWAInstallManager {
-    constructor() {
-        this.deferredPrompt = null;
-        this.isInstalled = false;
-        this.promptCount = this.loadPromptCount();
-        this.lastPromptDate = this.loadLastPromptDate();
-        this.init();
-    }
-    
-    init() {
-        this.checkInstallation();
-        this.setupBeforeInstallPrompt();
-        this.setupAppInstalled();
-        this.showInstallPromptIfNeeded();
-    }
-    
-    loadPromptCount() {
-        const count = localStorage.getItem(PWAConfig.storage.installPromptCount);
-        return count ? parseInt(count) : 0;
-    }
-    
-    savePromptCount() {
-        localStorage.setItem(PWAConfig.storage.installPromptCount, this.promptCount.toString());
-    }
-    
-    loadLastPromptDate() {
-        const date = localStorage.getItem(PWAConfig.storage.lastPromptDate);
-        return date ? new Date(parseInt(date)) : null;
-    }
-    
-    saveLastPromptDate() {
-        localStorage.setItem(PWAConfig.storage.lastPromptDate, Date.now().toString());
-    }
-    
-    checkInstallation() {
-        // Check if app is already installed (standalone mode)
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                            window.navigator.standalone === true;
-        
-        this.isInstalled = isStandalone;
-        
-        if (this.isInstalled) {
-            const event = new CustomEvent('pwa:installed', {
-                detail: { isInstalled: true }
-            });
-            document.dispatchEvent(event);
-        }
-        
-        return this.isInstalled;
-    }
-    
-    setupBeforeInstallPrompt() {
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            
-            // Stash the event so it can be triggered later
-            this.deferredPrompt = e;
-            
-            // Check if we should show the prompt
-            if (this.shouldShowPrompt()) {
-                this.showInstallPrompt();
-            }
-            
-            // Dispatch event for UI
-            const event = new CustomEvent('pwa:installAvailable', {
-                detail: { canInstall: true }
-            });
-            document.dispatchEvent(event);
-        });
-    }
-    
-    setupAppInstalled() {
-        window.addEventListener('appinstalled', (e) => {
-            this.isInstalled = true;
-            this.deferredPrompt = null;
-            
-            const event = new CustomEvent('pwa:installed', {
-                detail: { isInstalled: true, timestamp: new Date() }
-            });
-            document.dispatchEvent(event);
-            
-            // Track installation
-            this.trackInstallation();
-        });
-    }
-    
-    shouldShowPrompt() {
-        // Don't show if already installed
-        if (this.isInstalled) return false;
-        
-        // Don't show if max prompts reached
-        if (this.promptCount >= PWAConfig.install.maxPrompts) return false;
-        
-        // Don't show if on cooldown
-        if (this.lastPromptDate) {
-            const cooldownEnd = new Date(this.lastPromptDate.getTime() + PWAConfig.install.promptCooldown);
-            if (new Date() < cooldownEnd) return false;
-        }
-        
-        return true;
-    }
-    
-    showInstallPrompt() {
-        if (!this.deferredPrompt) return;
-        
-        // Show the prompt
-        this.deferredPrompt.prompt();
-        
-        // Wait for the user to respond to the prompt
-        this.deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-                this.trackPromptResult('accepted');
-            } else {
-                console.log('User dismissed the install prompt');
-                this.trackPromptResult('dismissed');
-            }
-            
-            this.deferredPrompt = null;
-        });
-        
-        // Update prompt tracking
-        this.promptCount++;
-        this.savePromptCount();
-        this.saveLastPromptDate();
-    }
-    
-    showInstallPromptIfNeeded() {
-        // Show prompt after delay if conditions are met
-        setTimeout(() => {
-            if (this.shouldShowPrompt() && this.deferredPrompt) {
-                this.showInstallPrompt();
-            }
-        }, PWAConfig.install.promptDelay);
-    }
-    
-    manualInstall() {
-        if (this.deferredPrompt) {
-            this.showInstallPrompt();
-        } else {
-            // Fallback: show instructions
-            this.showInstallInstructions();
-        }
-    }
-    
-    showInstallInstructions() {
-        const modal = document.createElement('div');
-        modal.className = 'pwa-install-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Install SpeakFlow App</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Install SpeakFlow on your device for the best experience:</p>
-                    <div class="install-instructions">
-                        <div class="instruction">
-                            <div class="instruction-icon">📱</div>
-                            <div class="instruction-text">
-                                <strong>On Android:</strong>
-                                <ol>
-                                    <li>Tap the menu icon (⋮)</li>
-                                    <li>Select "Install App" or "Add to Home Screen"</li>
-                                    <li>Follow the prompts to install</li>
-                                </ol>
-                            </div>
-                        </div>
-                        <div class="instruction">
-                            <div class="instruction-icon">🍎</div>
-                            <div class="instruction-text">
-                                <strong>On iOS:</strong>
-                                <ol>
-                                    <li>Tap the share icon (⎔)</li>
-                                    <li>Select "Add to Home Screen"</li>
-                                    <li>Tap "Add" in the top right</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary close-modal">Got it</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        const closeModal = () => modal.remove();
-        modal.querySelectorAll('.modal-close, .close-modal').forEach(btn => {
-            btn.addEventListener('click', closeModal);
-        });
-    }
-    
-    trackPromptResult(result) {
-        // Analytics tracking
-        console.log(`[PWA] Install prompt ${result}`);
-        
-        const event = new CustomEvent('pwa:promptResult', {
-            detail: { result, promptCount: this.promptCount }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    trackInstallation() {
-        console.log('[PWA] App installed');
-        
-        const event = new CustomEvent('pwa:installationTracked', {
-            detail: { timestamp: new Date() }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    canInstall() {
-        return this.deferredPrompt !== null && !this.isInstalled;
-    }
-}
+const PWA_CONFIG = {
+    SW_URL: '/sw.js',
+    MANIFEST_URL: '/manifest.json',
+    UPDATE_INTERVAL: 60 * 60 * 1000, // 1 hour
+    CHECK_ONLINE_INTERVAL: 30000, // 30 seconds
+    CACHE_NAME: 'speakflow-v1',
+    OFFLINE_URL: '/offline.html'
+};
 
 // ============================================
-// SERVICE WORKER MANAGER
+// Service Worker Registration
 // ============================================
 
-class ServiceWorkerManager {
-    constructor() {
-        this.registration = null;
-        this.updateAvailable = false;
-        this.waitingWorker = null;
-        this.init();
+/**
+ * Register service worker
+ */
+const registerServiceWorker = async () => {
+    if (!('serviceWorker' in navigator)) {
+        console.warn('Service workers not supported');
+        return false;
     }
-    
-    init() {
-        this.register();
-        this.setupUpdateCheck();
-        this.setupMessageListener();
-    }
-    
-    async register() {
-        if (!('serviceWorker' in navigator)) {
-            console.warn('Service Worker not supported');
-            return;
-        }
+
+    try {
+        const registration = await navigator.serviceWorker.register(PWA_CONFIG.SW_URL, {
+            scope: '/'
+        });
         
-        try {
-            this.registration = await navigator.serviceWorker.register(PWAConfig.sw.url, {
-                scope: PWAConfig.sw.scope
+        PWAState.serviceWorker = registration;
+        
+        console.log('Service Worker registered:', registration);
+        
+        // Handle updates
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            PWAState.updateAvailable = true;
+            
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    PWAState.waitingWorker = newWorker;
+                    showUpdatePrompt();
+                }
             });
-            
-            console.log('Service Worker registered:', this.registration);
-            
-            // Check for updates
-            this.checkForUpdate();
-            
-            // Handle waiting worker
-            if (this.registration.waiting) {
-                this.handleWaitingWorker(this.registration.waiting);
-            }
-            
-            // Handle controller change
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('Service Worker controller changed');
-                window.location.reload();
-            });
-            
-        } catch (error) {
-            console.error('Service Worker registration failed:', error);
-        }
-    }
-    
-    setupUpdateCheck() {
+        });
+        
         // Check for updates periodically
         setInterval(() => {
-            this.checkForUpdate();
-        }, PWAConfig.update.checkInterval);
-    }
-    
-    async checkForUpdate() {
-        if (!this.registration) return;
+            registration.update();
+        }, PWA_CONFIG.UPDATE_INTERVAL);
         
-        try {
-            await this.registration.update();
-            console.log('Checked for Service Worker update');
-        } catch (error) {
-            console.error('Failed to check for update:', error);
-        }
+        return true;
+    } catch (error) {
+        console.error('Service Worker registration failed:', error);
+        return false;
+    }
+};
+
+/**
+ * Check for service worker updates
+ */
+const checkForUpdates = async () => {
+    if (!PWAState.serviceWorker) return;
+    
+    try {
+        await PWAState.serviceWorker.update();
+    } catch (error) {
+        console.error('Update check failed:', error);
+    }
+};
+
+/**
+ * Apply pending update
+ */
+const applyUpdate = () => {
+    if (PWAState.waitingWorker) {
+        PWAState.waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+        window.location.reload();
+    }
+};
+
+/**
+ * Show update prompt
+ */
+const showUpdatePrompt = () => {
+    const prompt = document.createElement('div');
+    prompt.className = 'update-prompt';
+    prompt.innerHTML = `
+        <div class="update-content">
+            <span class="update-icon">🔄</span>
+            <div class="update-text">
+                <strong>Update Available!</strong>
+                <p>A new version is ready. Refresh to get the latest features.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="pwa.applyUpdate()">Refresh</button>
+            <button class="update-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+        </div>
+    `;
+    
+    document.body.appendChild(prompt);
+    
+    setTimeout(() => {
+        prompt.classList.add('show');
+    }, 100);
+};
+
+// ============================================
+// Installation Handling
+// ============================================
+
+/**
+ * Handle beforeinstallprompt event
+ */
+const handleBeforeInstallPrompt = (event) => {
+    event.preventDefault();
+    PWAState.deferredPrompt = event;
+    PWAState.isInstallable = true;
+    
+    // Show install banner
+    showInstallBanner();
+};
+
+/**
+ * Show install banner
+ */
+const showInstallBanner = () => {
+    // Check if banner was dismissed
+    if (localStorage.getItem('install_banner_dismissed')) return;
+    
+    // Check if already installed
+    if (PWAState.isInstalled) return;
+    
+    const banner = document.createElement('div');
+    banner.className = 'install-banner';
+    banner.innerHTML = `
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <strong>Install SpeakFlow App</strong>
+                <p>Get a better experience with our native app</p>
+            </div>
+            <div class="install-buttons">
+                <button class="btn btn-primary btn-sm" id="install-btn">Install</button>
+                <button class="btn btn-outline btn-sm" id="dismiss-btn">Not Now</button>
+            </div>
+            <button class="install-close" id="close-banner">&times;</button>
+        </div>
+    `;
+    
+    document.body.appendChild(banner);
+    
+    const installBtn = banner.querySelector('#install-btn');
+    const dismissBtn = banner.querySelector('#dismiss-btn');
+    const closeBtn = banner.querySelector('#close-banner');
+    
+    installBtn.addEventListener('click', () => {
+        promptInstall();
+        banner.remove();
+    });
+    
+    dismissBtn.addEventListener('click', () => {
+        localStorage.setItem('install_banner_dismissed', 'true');
+        banner.remove();
+    });
+    
+    closeBtn.addEventListener('click', () => {
+        localStorage.setItem('install_banner_dismissed', 'true');
+        banner.remove();
+    });
+    
+    setTimeout(() => {
+        banner.classList.add('show');
+    }, 100);
+};
+
+/**
+ * Prompt for install
+ */
+const promptInstall = async () => {
+    if (!PWAState.deferredPrompt) {
+        showToast('Installation not available', 'info');
+        return;
     }
     
-    setupMessageListener() {
-        navigator.serviceWorker.addEventListener('message', (event) => {
-            const data = event.data;
-            
-            switch (data.type) {
-                case 'UPDATE_AVAILABLE':
-                    this.handleUpdateAvailable();
-                    break;
-                case 'CACHE_STATUS':
-                    console.log('Cache status:', data.data);
-                    break;
-                case 'SYNC_COMPLETE':
-                    this.handleSyncComplete(data);
-                    break;
-                default:
-                    console.log('Unknown message type:', data.type);
+    PWAState.deferredPrompt.prompt();
+    const result = await PWAState.deferredPrompt.userChoice;
+    
+    if (result.outcome === 'accepted') {
+        console.log('User accepted install');
+        PWAState.isInstalled = true;
+        showToast('Thank you for installing!', 'success');
+    } else {
+        console.log('User dismissed install');
+    }
+    
+    PWAState.deferredPrompt = null;
+    PWAState.isInstallable = false;
+};
+
+/**
+ * Check if app is installed
+ */
+const checkInstalled = () => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        PWAState.isInstalled = true;
+    } else if (window.navigator.standalone === true) {
+        PWAState.isInstalled = true;
+    }
+    
+    // Update UI based on install status
+    const installBtn = document.getElementById('install-app-btn');
+    if (installBtn) {
+        installBtn.style.display = PWAState.isInstalled ? 'none' : 'block';
+    }
+};
+
+// ============================================
+// Push Notifications
+// ============================================
+
+/**
+ * Request notification permission
+ */
+const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+        console.warn('Notifications not supported');
+        return false;
+    }
+    
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+        await subscribeToPush();
+        showToast('Notifications enabled!', 'success');
+        return true;
+    } else {
+        showToast('Notifications disabled', 'info');
+        return false;
+    }
+};
+
+/**
+ * Subscribe to push notifications
+ */
+const subscribeToPush = async () => {
+    if (!PWAState.serviceWorker) return null;
+    
+    try {
+        const subscription = await PWAState.serviceWorker.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(process.env.VAPID_PUBLIC_KEY)
+        });
+        
+        PWAState.subscription = subscription;
+        
+        // Send subscription to server
+        await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify(subscription)
+        });
+        
+        return subscription;
+    } catch (error) {
+        console.error('Push subscription failed:', error);
+        return null;
+    }
+};
+
+/**
+ * Unsubscribe from push notifications
+ */
+const unsubscribeFromPush = async () => {
+    if (!PWAState.subscription) return;
+    
+    try {
+        await PWAState.subscription.unsubscribe();
+        
+        await fetch('/api/notifications/unsubscribe', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({ endpoint: PWAState.subscription.endpoint })
+        });
+        
+        PWAState.subscription = null;
+        showToast('Notifications disabled', 'info');
+    } catch (error) {
+        console.error('Unsubscribe failed:', error);
+    }
+};
+
+/**
+ * Convert base64 to Uint8Array for VAPID
+ */
+const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+};
+
+/**
+ * Send test notification
+ */
+const sendTestNotification = async () => {
+    if (!PWAState.subscription) {
+        showToast('Enable notifications first', 'warning');
+        return;
+    }
+    
+    try {
+        await fetch('/api/notifications/test', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
             }
         });
+        
+        showToast('Test notification sent!', 'success');
+    } catch (error) {
+        console.error('Test notification failed:', error);
+    }
+};
+
+// ============================================
+// Offline Support
+// ============================================
+
+/**
+ * Check offline readiness
+ */
+const checkOfflineReadiness = async () => {
+    if (!navigator.onLine) {
+        showOfflineReady();
+        return;
     }
     
-    handleUpdateAvailable() {
-        this.updateAvailable = true;
-        
-        const event = new CustomEvent('pwa:updateAvailable', {
-            detail: { updateAvailable: true }
-        });
-        document.dispatchEvent(event);
-        
-        // Show update notification
-        this.showUpdateNotification();
+    // Check if critical assets are cached
+    const cache = await caches.open(PWA_CONFIG.CACHE_NAME);
+    const cachedIndex = await cache.match('/index.html');
+    
+    if (cachedIndex) {
+        PWAState.isOfflineReady = true;
+    } else {
+        // Cache critical assets
+        await cacheCriticalAssets();
+    }
+};
+
+/**
+ * Cache critical assets
+ */
+const cacheCriticalAssets = async () => {
+    const criticalAssets = [
+        '/',
+        '/index.html',
+        '/offline.html',
+        '/css/main.css',
+        '/css/components.css',
+        '/js/app.js',
+        '/manifest.json'
+    ];
+    
+    const cache = await caches.open(PWA_CONFIG.CACHE_NAME);
+    await cache.addAll(criticalAssets);
+    
+    PWAState.isOfflineReady = true;
+};
+
+/**
+ * Show offline ready message
+ */
+const showOfflineReady = () => {
+    const message = document.createElement('div');
+    message.className = 'offline-ready';
+    message.innerHTML = `
+        <div class="offline-ready-content">
+            <span class="offline-icon">📡</span>
+            <span>Ready for offline use!</span>
+            <button class="offline-close">&times;</button>
+        </div>
+    `;
+    
+    document.body.appendChild(message);
+    
+    const closeBtn = message.querySelector('.offline-close');
+    closeBtn.addEventListener('click', () => {
+        message.remove();
+    });
+    
+    setTimeout(() => {
+        message.classList.add('show');
+        setTimeout(() => {
+            message.classList.remove('show');
+            setTimeout(() => message.remove(), 500);
+        }, 5000);
+    }, 100);
+};
+
+// ============================================
+// PWA Installation Check
+// ============================================
+
+/**
+ * Check if app can be installed
+ */
+const checkInstallability = () => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        PWAState.isInstalled = true;
     }
     
-    handleWaitingWorker(worker) {
-        this.waitingWorker = worker;
-        
-        worker.addEventListener('statechange', () => {
-            if (worker.state === 'activated') {
-                console.log('New Service Worker activated');
-                window.location.reload();
-            }
-        });
+    if (window.navigator.standalone === true) {
+        PWAState.isInstalled = true;
     }
+};
+
+/**
+ * Show installation instructions for iOS
+ */
+const showIOSInstructions = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
-    showUpdateNotification() {
-        const notification = document.createElement('div');
-        notification.className = 'pwa-update-notification';
-        notification.innerHTML = `
-            <div class="update-content">
-                <span class="update-icon">🔄</span>
-                <span class="update-text">New version available!</span>
-                <button class="update-btn" id="updateNowBtn">Update Now</button>
-                <button class="close-btn" id="closeUpdateBtn">×</button>
+    if (isIOS && !PWAState.isInstalled) {
+        const instructions = document.createElement('div');
+        instructions.className = 'ios-instructions';
+        instructions.innerHTML = `
+            <div class="ios-instructions-content">
+                <div class="ios-icon">📱</div>
+                <h4>Install SpeakFlow App</h4>
+                <ol>
+                    <li>Tap the Share button <span class="share-icon">⎙</span></li>
+                    <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong> in the top right corner</li>
+                </ol>
+                <button class="btn btn-outline btn-sm" id="close-instructions">Got it</button>
             </div>
         `;
         
-        document.body.appendChild(notification);
+        document.body.appendChild(instructions);
         
-        const updateBtn = notification.querySelector('#updateNowBtn');
-        const closeBtn = notification.querySelector('#closeUpdateBtn');
-        
-        updateBtn?.addEventListener('click', () => {
-            this.applyUpdate();
-            notification.remove();
+        const closeBtn = instructions.querySelector('#close-instructions');
+        closeBtn.addEventListener('click', () => {
+            instructions.classList.remove('show');
+            setTimeout(() => instructions.remove(), 300);
+            localStorage.setItem('ios_instructions_shown', 'true');
         });
         
-        closeBtn?.addEventListener('click', () => {
-            notification.remove();
-        });
-        
-        // Auto-hide after 30 seconds
         setTimeout(() => {
-            notification.remove();
-        }, 30000);
+            instructions.classList.add('show');
+        }, 100);
     }
-    
-    applyUpdate() {
-        if (this.waitingWorker) {
-            this.waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-        } else if (this.registration && this.registration.waiting) {
-            this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        } else {
-            window.location.reload();
-        }
-    }
-    
-    handleSyncComplete(data) {
-        console.log('Sync completed:', data);
-        
-        const event = new CustomEvent('pwa:syncComplete', {
-            detail: data
-        });
-        document.dispatchEvent(event);
-    }
-    
-    async getCacheStatus() {
-        if (!this.registration || !this.registration.active) return null;
-        
-        return new Promise((resolve) => {
-            const channel = new MessageChannel();
-            channel.port1.onmessage = (event) => {
-                resolve(event.data);
-            };
-            
-            this.registration.active.postMessage(
-                { type: 'GET_CACHE_STATUS' },
-                [channel.port2]
-            );
-        });
-    }
-    
-    async clearCache() {
-        if (!this.registration || !this.registration.active) return;
-        
-        this.registration.active.postMessage({ type: 'CLEAR_CACHE' });
-    }
-}
-
-// ============================================
-// OFFLINE SYNC MANAGER
-// ============================================
-
-class OfflineSyncManager {
-    constructor(swManager) {
-        this.swManager = swManager;
-        this.syncQueue = [];
-        this.isSyncing = false;
-        this.init();
-    }
-    
-    init() {
-        this.loadQueue();
-        this.setupSyncListeners();
-        this.setupBackgroundSync();
-    }
-    
-    loadQueue() {
-        const saved = localStorage.getItem('pwa_sync_queue');
-        if (saved) {
-            try {
-                this.syncQueue = JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load sync queue:', e);
-            }
-        }
-    }
-    
-    saveQueue() {
-        localStorage.setItem('pwa_sync_queue', JSON.stringify(this.syncQueue));
-    }
-    
-    setupSyncListeners() {
-        window.addEventListener('online', () => {
-            console.log('Online detected, syncing...');
-            this.processQueue();
-        });
-        
-        document.addEventListener('pwa:syncComplete', () => {
-            this.processQueue();
-        });
-    }
-    
-    setupBackgroundSync() {
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.sync.register('sync-practices').catch(err => {
-                    console.error('Background sync registration failed:', err);
-                });
-            });
-        }
-    }
-    
-    addToQueue(data, type) {
-        this.syncQueue.push({
-            id: this.generateId(),
-            type,
-            data,
-            timestamp: Date.now(),
-            attempts: 0
-        });
-        
-        this.saveQueue();
-        
-        // Process immediately if online
-        if (navigator.onLine) {
-            this.processQueue();
-        }
-        
-        return true;
-    }
-    
-    async processQueue() {
-        if (this.isSyncing) return;
-        if (this.syncQueue.length === 0) return;
-        if (!navigator.onLine) return;
-        
-        this.isSyncing = true;
-        
-        const toProcess = [...this.syncQueue];
-        const succeeded = [];
-        const failed = [];
-        
-        for (const item of toProcess) {
-            const success = await this.processItem(item);
-            
-            if (success) {
-                succeeded.push(item.id);
-            } else {
-                item.attempts++;
-                if (item.attempts >= 5) {
-                    failed.push(item.id);
-                }
-            }
-        }
-        
-        // Remove succeeded and permanently failed items
-        this.syncQueue = this.syncQueue.filter(item => 
-            !succeeded.includes(item.id) && !failed.includes(item.id)
-        );
-        
-        this.saveQueue();
-        this.isSyncing = false;
-        
-        // Dispatch event
-        const event = new CustomEvent('pwa:queueProcessed', {
-            detail: { succeeded: succeeded.length, failed: failed.length, remaining: this.syncQueue.length }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    async processItem(item) {
-        try {
-            const response = await fetch(item.data.url, {
-                method: item.data.method || 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...item.data.headers
-                },
-                body: item.data.body ? JSON.stringify(item.data.body) : undefined
-            });
-            
-            return response.ok;
-        } catch (error) {
-            console.error(`Failed to sync item ${item.id}:`, error);
-            return false;
-        }
-    }
-    
-    generateId() {
-        return `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-    
-    getQueueSize() {
-        return this.syncQueue.length;
-    }
-    
-    clearQueue() {
-        this.syncQueue = [];
-        this.saveQueue();
-    }
-}
-
-// ============================================
-// PWA UI CONTROLLER
-// ============================================
-
-class PWAUIController {
-    constructor(installManager, swManager, syncManager) {
-        this.installManager = installManager;
-        this.swManager = swManager;
-        this.syncManager = syncManager;
-        this.elements = {};
-        this.init();
-    }
-    
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.renderInstallButton();
-    }
-    
-    bindElements() {
-        this.elements = {
-            installBtn: document.getElementById('installAppBtn'),
-            closeInstallBtn: document.getElementById('closeInstallBtn'),
-            installPrompt: document.getElementById('pwaInstallPrompt'),
-            updateNotification: document.getElementById('updateNotification'),
-            offlineStatus: document.getElementById('offlineStatus'),
-            syncStatus: document.getElementById('syncStatus')
-        };
-    }
-    
-    bindEvents() {
-        if (this.elements.installBtn) {
-            this.elements.installBtn.addEventListener('click', () => {
-                this.installManager.manualInstall();
-                this.hideInstallPrompt();
-            });
-        }
-        
-        if (this.elements.closeInstallBtn) {
-            this.elements.closeInstallBtn.addEventListener('click', () => {
-                this.hideInstallPrompt();
-            });
-        }
-        
-        document.addEventListener('pwa:installAvailable', (e) => {
-            if (e.detail.canInstall) {
-                this.showInstallPrompt();
-            }
-        });
-        
-        document.addEventListener('pwa:updateAvailable', () => {
-            this.showUpdateNotification();
-        });
-        
-        document.addEventListener('pwa:installed', () => {
-            this.hideInstallPrompt();
-            this.showInstallSuccess();
-        });
-        
-        window.addEventListener('online', () => this.updateOfflineStatus());
-        window.addEventListener('offline', () => this.updateOfflineStatus());
-    }
-    
-    renderInstallButton() {
-        if (this.elements.installBtn && this.installManager.canInstall()) {
-            this.elements.installBtn.style.display = 'block';
-        }
-    }
-    
-    showInstallPrompt() {
-        if (this.elements.installPrompt) {
-            this.elements.installPrompt.style.display = 'block';
-        }
-    }
-    
-    hideInstallPrompt() {
-        if (this.elements.installPrompt) {
-            this.elements.installPrompt.style.display = 'none';
-        }
-    }
-    
-    showInstallSuccess() {
-        this.showToast('SpeakFlow installed successfully! 🎉', 'success');
-    }
-    
-    showUpdateNotification() {
-        if (this.elements.updateNotification) {
-            this.elements.updateNotification.style.display = 'block';
-            
-            const updateBtn = this.elements.updateNotification.querySelector('#updateNowBtn');
-            if (updateBtn) {
-                updateBtn.addEventListener('click', () => {
-                    this.swManager.applyUpdate();
-                });
-            }
-        }
-    }
-    
-    updateOfflineStatus() {
-        if (this.elements.offlineStatus) {
-            const isOnline = navigator.onLine;
-            this.elements.offlineStatus.innerHTML = isOnline ? 'Online' : 'Offline';
-            this.elements.offlineStatus.className = isOnline ? 'status-online' : 'status-offline';
-        }
-        
-        if (this.elements.syncStatus) {
-            const queueSize = this.syncManager.getQueueSize();
-            if (queueSize > 0) {
-                this.elements.syncStatus.innerHTML = `${queueSize} items pending sync`;
-                this.elements.syncStatus.style.display = 'block';
-            } else {
-                this.elements.syncStatus.style.display = 'none';
-            }
-        }
-    }
-    
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `pwa-toast toast-${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => toast.remove(), 3000);
-    }
-}
-
-// ============================================
-// EXPORTS
-// ============================================
-
-// Initialize PWA system
-const pwaInstallManager = new PWAInstallManager();
-const serviceWorkerManager = new ServiceWorkerManager();
-const offlineSyncManager = new OfflineSyncManager(serviceWorkerManager);
-const pwaUI = new PWAUIController(pwaInstallManager, serviceWorkerManager, offlineSyncManager);
-
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.PWA = {
-    install: pwaInstallManager,
-    sw: serviceWorkerManager,
-    sync: offlineSyncManager,
-    ui: pwaUI,
-    config: PWAConfig
 };
 
-// Module exports
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        PWAConfig,
-        PWAInstallManager,
-        ServiceWorkerManager,
-        OfflineSyncManager,
-        PWAUIController
-    };
+// ============================================
+// PWA Dashboard UI
+// ============================================
+
+/**
+ * Render PWA settings dashboard
+ */
+const renderPWADashboard = () => {
+    const container = document.getElementById('pwa-dashboard');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="pwa-settings">
+            <h3>Progressive Web App Settings</h3>
+            
+            <div class="settings-section">
+                <h4>Installation</h4>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">Install App</div>
+                        <div class="settings-description">Install SpeakFlow as a native app on your device</div>
+                    </div>
+                    <button class="btn btn-primary" id="install-pwa-btn" ${PWAState.isInstalled ? 'disabled' : ''}>
+                        ${PWAState.isInstalled ? 'Installed ✓' : 'Install App'}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h4>Notifications</h4>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">Push Notifications</div>
+                        <div class="settings-description">Receive learning reminders and updates</div>
+                    </div>
+                    <div>
+                        <label class="switch">
+                            <input type="checkbox" id="notifications-toggle" ${PWAState.subscription ? 'checked' : ''}>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <button class="btn btn-outline" id="test-notification-btn">Send Test Notification</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h4>Offline Storage</h4>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">Offline Mode</div>
+                        <div class="settings-description">Access lessons and practice offline</div>
+                    </div>
+                    <div>
+                        <span class="status-badge ${PWAState.isOfflineReady ? 'success' : 'warning'}">
+                            ${PWAState.isOfflineReady ? 'Ready' : 'Preparing...'}
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <button class="btn btn-outline" id="cache-lessons-btn">Download Lessons for Offline</button>
+                    <button class="btn btn-outline" id="clear-cache-btn">Clear Cache</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h4>App Info</h4>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">Version</div>
+                        <div class="settings-description">Current app version</div>
+                    </div>
+                    <div>1.0.0</div>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">Service Worker</div>
+                        <div class="settings-description">Status of service worker</div>
+                    </div>
+                    <div>
+                        <span class="status-badge ${PWAState.serviceWorker ? 'success' : 'error'}">
+                            ${PWAState.serviceWorker ? 'Active' : 'Not Registered'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Setup event listeners
+    const installBtn = document.getElementById('install-pwa-btn');
+    if (installBtn) {
+        installBtn.addEventListener('click', promptInstall);
+    }
+    
+    const notificationsToggle = document.getElementById('notifications-toggle');
+    if (notificationsToggle) {
+        notificationsToggle.addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                await requestNotificationPermission();
+            } else {
+                await unsubscribeFromPush();
+            }
+        });
+    }
+    
+    const testNotificationBtn = document.getElementById('test-notification-btn');
+    if (testNotificationBtn) {
+        testNotificationBtn.addEventListener('click', sendTestNotification);
+    }
+    
+    const cacheLessonsBtn = document.getElementById('cache-lessons-btn');
+    if (cacheLessonsBtn) {
+        cacheLessonsBtn.addEventListener('click', cacheLessonsForOffline);
+    }
+    
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', clearAppCache);
+    }
+};
+
+/**
+ * Cache lessons for offline use
+ */
+const cacheLessonsForOffline = async () => {
+    showToast('Downloading lessons for offline use...', 'info');
+    
+    try {
+        const response = await fetch('/api/lessons', {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && window.offline) {
+            for (const lesson of data.data) {
+                await window.offline.saveLessonOffline(lesson);
+            }
+            showToast('Lessons downloaded successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Cache lessons error:', error);
+        showToast('Failed to download lessons', 'error');
+    }
+};
+
+/**
+ * Clear app cache
+ */
+const clearAppCache = async () => {
+    if (confirm('Clear app cache? You may need to reload the page.')) {
+        if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map(name => caches.delete(name)));
+            showToast('Cache cleared! Reloading...', 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    }
+};
+
+// ============================================
+// Badge API (for unread count)
+// ============================================
+
+/**
+ * Set app badge count
+ */
+const setBadgeCount = async (count) => {
+    if ('setAppBadge' in navigator) {
+        if (count > 0) {
+            await navigator.setAppBadge(count);
+        } else {
+            await navigator.clearAppBadge();
+        }
+    }
+};
+
+/**
+ * Update badge from notification count
+ */
+const updateBadgeFromNotifications = () => {
+    const unreadCount = window.support?.unreadCount || 0;
+    setBadgeCount(unreadCount);
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize PWA module
+ */
+const initPWA = async () => {
+    if (PWAState.isInitialized) return;
+    
+    console.log('Initializing PWA module...');
+    
+    // Check installability
+    checkInstallability();
+    
+    // Register service worker
+    await registerServiceWorker();
+    
+    // Check offline readiness
+    await checkOfflineReadiness();
+    
+    // Setup event listeners
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', () => {
+        PWAState.isInstalled = true;
+        PWAState.deferredPrompt = null;
+        showToast('App installed successfully!', 'success');
+    });
+    
+    // Check for iOS
+    if (!localStorage.getItem('ios_instructions_shown')) {
+        showIOSInstructions();
+    }
+    
+    // Setup periodic badge update
+    setInterval(updateBadgeFromNotifications, 60000);
+    
+    PWAState.isInitialized = true;
+    
+    console.log('PWA module initialized');
+};
+
+// ============================================
+// Export PWA Module
+// ============================================
+
+const pwa = {
+    // State
+    get isInstallable() { return PWAState.isInstallable; },
+    get isInstalled() { return PWAState.isInstalled; },
+    get updateAvailable() { return PWAState.updateAvailable; },
+    get isOfflineReady() { return PWAState.isOfflineReady; },
+    
+    // Installation
+    promptInstall,
+    checkInstallability,
+    
+    // Updates
+    checkForUpdates,
+    applyUpdate,
+    
+    // Notifications
+    requestNotificationPermission,
+    subscribeToPush,
+    unsubscribeFromPush,
+    sendTestNotification,
+    
+    // Offline
+    checkOfflineReadiness,
+    cacheLessonsForOffline,
+    clearAppCache,
+    
+    // Badge
+    setBadgeCount,
+    
+    // UI
+    renderPWADashboard,
+    
+    // Initialize
+    init: initPWA
+};
+
+// Make pwa globally available
+window.pwa = pwa;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPWA);
+} else {
+    initPWA();
 }
 
-// ============================================
-// CSS STYLES
-// ============================================
-
-const style = document.createElement('style');
-style.textContent = `
-    .pwa-install-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-    }
-    
-    .pwa-install-modal .modal-content {
-        max-width: 500px;
-        width: 90%;
-    }
-    
-    .install-instructions {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        margin: 20px 0;
-    }
-    
-    .instruction {
-        display: flex;
-        gap: 16px;
-        padding: 16px;
-        background: var(--bg-secondary);
-        border-radius: 12px;
-    }
-    
-    .instruction-icon {
-        font-size: 32px;
-    }
-    
-    .instruction-text {
-        flex: 1;
-    }
-    
-    .instruction-text ol {
-        margin: 8px 0 0 20px;
-        padding: 0;
-    }
-    
-    .instruction-text li {
-        margin: 4px 0;
-    }
-    
-    .pwa-update-notification {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--color-primary);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 40px;
-        z-index: 10000;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        animation: slideUp 0.3s ease;
-    }
-    
-    .update-content {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .update-icon {
-        font-size: 20px;
-    }
-    
-    .update-text {
-        font-weight: 500;
-    }
-    
-    .update-btn {
-        background: white;
-        color: var(--color-primary);
-        border: none;
-        padding: 6px 16px;
-        border-radius: 20px;
-        cursor: pointer;
-        font-weight: 600;
-    }
-    
-    .close-btn {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 20px;
-        cursor: pointer;
-        padding: 0 4px;
-    }
-    
-    .pwa-toast {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        border-radius: 40px;
-        color: white;
-        font-weight: 600;
-        z-index: 10000;
-        animation: slideUp 0.3s ease;
-    }
-    
-    .toast-success {
-        background: #10b981;
-    }
-    
-    .toast-error {
-        background: #ef4444;
-    }
-    
-    .status-online {
-        color: #10b981;
-    }
-    
-    .status-offline {
-        color: #f59e0b;
-    }
-    
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    }
-`;
-
-document.head.appendChild(style);
-
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('PWA module initialized');
-    
-    // Debug mode
-    if (window.location.hostname === 'localhost') {
-        window.debugPWA = {
-            install: pwaInstallManager,
-            sw: serviceWorkerManager,
-            sync: offlineSyncManager
-        };
-        console.log('PWA debug mode enabled');
-    }
-});
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = pwa;
+}
