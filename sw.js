@@ -1,724 +1,615 @@
-// sw.js - SpeakFlow Service Worker
-// Version: 1.0.0
-// Cache nama dan versi
+// ============================================
+// SpeakFlow Service Worker v1.0.0
+// Progressive Web App dengan Offline Support
+// ============================================
 
 const CACHE_NAME = 'speakflow-v1.0.0';
 const OFFLINE_CACHE = 'speakflow-offline-v1';
 const DYNAMIC_CACHE = 'speakflow-dynamic-v1';
-const API_CACHE = 'speakflow-api-v1';
+const AUDIO_CACHE = 'speakflow-audio-v1';
 
-// Assets yang perlu di-cache saat install
+// Assets yang akan di-cache saat install
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/css/main.css',
-    '/css/dashboard.css',
-    '/js/app.js',
-    '/js/voice.js',
-    '/js/auth.js',
-    '/js/offline.js',
-    '/images/logo.svg',
-    '/images/icons/icon-72x72.png',
-    '/images/icons/icon-96x96.png',
-    '/images/icons/icon-128x128.png',
-    '/images/icons/icon-144x144.png',
-    '/images/icons/icon-152x152.png',
-    '/images/icons/icon-192x192.png',
-    '/images/icons/icon-384x384.png',
-    '/images/icons/icon-512x512.png',
-    '/audio/correct.mp3',
-    '/audio/incorrect.mp3',
-    '/audio/level-up.mp3',
-    '/audio/notification.mp3'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/offline.html',
+  
+  // CSS Files
+  '/css/main.css',
+  '/css/components.css',
+  '/css/dashboard.css',
+  '/css/admin.css',
+  '/css/mobile.css',
+  '/css/themes/light.css',
+  '/css/themes/dark.css',
+  
+  // JS Files
+  '/js/app.js',
+  '/js/auth.js',
+  '/js/voice.js',
+  '/js/ai-model.js',
+  '/js/analytics.js',
+  '/js/ab-testing.js',
+  '/js/marketing.js',
+  '/js/support.js',
+  '/js/srs.js',
+  '/js/gamification.js',
+  '/js/payment.js',
+  '/js/offline.js',
+  '/js/pwa.js',
+  '/js/onboarding.js',
+  '/js/utils.js',
+  
+  // Images
+  '/public/images/logo.svg',
+  '/public/images/favicon.ico',
+  '/public/images/hero-bg.jpg',
+  '/public/images/og-image.jpg',
+  
+  // Icons
+  '/public/images/icons/icon-72x72.png',
+  '/public/images/icons/icon-96x96.png',
+  '/public/images/icons/icon-128x128.png',
+  '/public/images/icons/icon-144x144.png',
+  '/public/images/icons/icon-152x152.png',
+  '/public/images/icons/icon-192x192.png',
+  '/public/images/icons/icon-384x384.png',
+  '/public/images/icons/icon-512x512.png',
+  
+  // Audio (basic)
+  '/public/audio/correct.mp3',
+  '/public/audio/incorrect.mp3',
+  '/public/audio/level-up.mp3',
+  '/public/audio/notification.mp3',
+  
+  // Fonts
+  '/public/fonts/inter.woff2',
+  '/public/fonts/inter.woff'
 ];
 
-// API endpoints yang perlu di-cache (GET requests)
-const API_ENDPOINTS = [
-    '/api/user/profile',
-    '/api/user/progress',
-    '/api/challenges/daily',
-    '/api/vocabulary/words',
-    '/api/analytics/stats'
+// API endpoints yang tidak perlu di-cache (dynamic)
+const EXCLUDED_API_PATTERNS = [
+  '/api/auth',
+  '/api/payments',
+  '/api/analytics',
+  '/api/sessions/practice',
+  '/api/voice/analyze'
 ];
 
-// ========== INSTALL EVENT ==========
+// File extensions yang tidak perlu di-cache
+const EXCLUDED_EXTENSIONS = ['.mp4', '.pth', '.h5', '.pb'];
+
+// ============================================
+// EVENT: INSTALL
+// ============================================
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing Service Worker...');
-    
-    event.waitUntil(
-        (async () => {
-            // Open cache dan tambahkan static assets
-            const cache = await caches.open(CACHE_NAME);
-            console.log('[SW] Caching static assets');
-            
-            try {
-                await cache.addAll(STATIC_ASSETS);
-                console.log('[SW] Static assets cached successfully');
-            } catch (error) {
-                console.error('[SW] Failed to cache assets:', error);
-            }
-            
-            // Skip waiting to activate immediately
-            await self.skipWaiting();
-        })()
-    );
+  console.log('[SW] Installing Service Worker...');
+  
+  event.waitUntil(
+    (async () => {
+      // Skip waiting to activate immediately
+      self.skipWaiting();
+      
+      // Open cache and add static assets
+      const cache = await caches.open(CACHE_NAME);
+      console.log('[SW] Caching static assets');
+      
+      // Add each asset individually to handle failures
+      const cachePromises = STATIC_ASSETS.map(async (asset) => {
+        try {
+          const response = await fetch(asset);
+          if (response.ok) {
+            await cache.put(asset, response);
+            console.log(`[SW] Cached: ${asset}`);
+          } else {
+            console.warn(`[SW] Failed to cache: ${asset} (${response.status})`);
+          }
+        } catch (error) {
+          console.error(`[SW] Error caching ${asset}:`, error);
+        }
+      });
+      
+      await Promise.allSettled(cachePromises);
+      console.log('[SW] Installation complete!');
+    })()
+  );
 });
 
-// ========== ACTIVATE EVENT ==========
+// ============================================
+// EVENT: ACTIVATE
+// ============================================
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating Service Worker...');
-    
-    event.waitUntil(
-        (async () => {
-            // Hapus cache lama yang tidak digunakan
-            const cacheNames = await caches.keys();
-            const oldCaches = cacheNames.filter(name => 
-                name !== CACHE_NAME && 
-                name !== OFFLINE_CACHE && 
-                name !== DYNAMIC_CACHE && 
-                name !== API_CACHE
-            );
-            
-            await Promise.all(
-                oldCaches.map(name => {
-                    console.log(`[SW] Deleting old cache: ${name}`);
-                    return caches.delete(name);
-                })
-            );
-            
-            // Claim clients to take control immediately
-            await self.clients.claim();
-            console.log('[SW] Service Worker activated and controlling clients');
-        })()
-    );
+  console.log('[SW] Activating Service Worker...');
+  
+  event.waitUntil(
+    (async () => {
+      // Claim clients to take control immediately
+      await self.clients.claim();
+      
+      // Delete old caches
+      const cacheNames = await caches.keys();
+      const oldCaches = cacheNames.filter(name => 
+        name !== CACHE_NAME && 
+        name !== OFFLINE_CACHE && 
+        name !== DYNAMIC_CACHE && 
+        name !== AUDIO_CACHE
+      );
+      
+      await Promise.all(
+        oldCaches.map(name => {
+          console.log(`[SW] Deleting old cache: ${name}`);
+          return caches.delete(name);
+        })
+      );
+      
+      console.log('[SW] Activation complete!');
+    })()
+  );
 });
 
-// ========== FETCH EVENT ==========
-self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
+// ============================================
+// HELPER: Should exclude from cache
+// ============================================
+function shouldExcludeFromCache(url) {
+  // Check excluded patterns
+  for (const pattern of EXCLUDED_API_PATTERNS) {
+    if (url.includes(pattern)) {
+      return true;
+    }
+  }
+  
+  // Check excluded extensions
+  for (const ext of EXCLUDED_EXTENSIONS) {
+    if (url.endsWith(ext)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// ============================================
+// HELPER: Get cache strategy
+// ============================================
+function getCacheStrategy(url) {
+  // Audio files - Cache First with network fallback
+  if (url.includes('/audio/') || url.includes('.mp3') || url.includes('.wav')) {
+    return 'CACHE_FIRST';
+  }
+  
+  // API endpoints - Network First with cache fallback
+  if (url.includes('/api/')) {
+    return 'NETWORK_FIRST';
+  }
+  
+  // Images - Stale While Revalidate
+  if (url.includes('/images/') || url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
+    return 'STALE_WHILE_REVALIDATE';
+  }
+  
+  // Static assets - Cache First
+  return 'CACHE_FIRST';
+}
+
+// ============================================
+// HELPER: Network First Strategy
+// ============================================
+async function networkFirst(request, cacheName) {
+  const cache = await caches.open(cacheName || DYNAMIC_CACHE);
+  
+  try {
+    // Try network first
+    const networkResponse = await fetch(request);
     
-    // Skip non-GET requests
-    if (request.method !== 'GET') {
-        return;
+    // Cache successful response
+    if (networkResponse && networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
     }
     
-    // API requests handling
-    if (url.pathname.startsWith('/api/')) {
-        event.respondWith(handleAPIRequest(request));
-        return;
+    return networkResponse;
+  } catch (error) {
+    // Network failed, try cache
+    console.log(`[SW] Network failed for ${request.url}, trying cache...`);
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
     }
     
-    // Static assets (CSS, JS, images)
-    if (STATIC_ASSETS.some(asset => url.pathname.includes(asset))) {
-        event.respondWith(handleStaticRequest(request));
-        return;
-    }
-    
-    // HTML pages (offline fallback)
+    // Return offline page for HTML requests
     if (request.headers.get('accept').includes('text/html')) {
-        event.respondWith(handleHTMLRequest(request));
-        return;
+      return caches.match('/offline.html');
     }
     
-    // Other requests (images, fonts, etc.)
-    event.respondWith(handleOtherRequest(request));
+    throw error;
+  }
+}
+
+// ============================================
+// HELPER: Cache First Strategy
+// ============================================
+async function cacheFirst(request, cacheName) {
+  const cache = await caches.open(cacheName || CACHE_NAME);
+  
+  // Try cache first
+  const cachedResponse = await cache.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  // Then network
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    console.log(`[SW] Network failed for ${request.url}`);
+    
+    // Return offline page for HTML
+    if (request.headers.get('accept').includes('text/html')) {
+      return caches.match('/offline.html');
+    }
+    
+    throw error;
+  }
+}
+
+// ============================================
+// HELPER: Stale While Revalidate
+// ============================================
+async function staleWhileRevalidate(request, cacheName) {
+  const cache = await caches.open(cacheName || DYNAMIC_CACHE);
+  
+  // Get cached response
+  const cachedResponse = await cache.match(request);
+  
+  // Fetch new response in background
+  const fetchPromise = fetch(request).then(async (networkResponse) => {
+    if (networkResponse && networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  }).catch(error => {
+    console.log(`[SW] Background revalidate failed for ${request.url}`);
+  });
+  
+  // Return cached response immediately if exists
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  // Otherwise wait for network
+  return fetchPromise;
+}
+
+// ============================================
+// HELPER: Background Sync for Offline Actions
+// ============================================
+async function handleBackgroundSync(tag) {
+  console.log(`[SW] Background sync triggered: ${tag}`);
+  
+  if (tag === 'sync-practice-sessions') {
+    const cache = await caches.open(OFFLINE_CACHE);
+    const requests = await cache.keys();
+    
+    for (const request of requests) {
+      if (request.url.includes('/api/sessions')) {
+        try {
+          const response = await fetch(request);
+          if (response.ok) {
+            await cache.delete(request);
+            console.log(`[SW] Synced offline session: ${request.url}`);
+          }
+        } catch (error) {
+          console.error(`[SW] Failed to sync: ${request.url}`, error);
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// EVENT: FETCH
+// ============================================
+self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+  const request = event.request;
+  
+  // Skip non-GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Skip excluded patterns
+  if (shouldExcludeFromCache(url)) {
+    console.log(`[SW] Skipping cache for: ${url}`);
+    return;
+  }
+  
+  // Get cache strategy
+  const strategy = getCacheStrategy(url);
+  
+  console.log(`[SW] ${strategy} for: ${url}`);
+  
+  switch (strategy) {
+    case 'NETWORK_FIRST':
+      event.respondWith(networkFirst(request, DYNAMIC_CACHE));
+      break;
+      
+    case 'STALE_WHILE_REVALIDATE':
+      event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE));
+      break;
+      
+    case 'CACHE_FIRST':
+    default:
+      event.respondWith(cacheFirst(request, CACHE_NAME));
+      break;
+  }
 });
 
-// ========== REQUEST HANDLERS ==========
-
-/**
- * Handle API requests - Network first with cache fallback
- */
-async function handleAPIRequest(request) {
-    try {
-        // Try network first
-        const networkResponse = await fetch(request);
-        
-        // Cache successful responses
-        if (networkResponse && networkResponse.status === 200) {
-            const cache = await caches.open(API_CACHE);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        console.log('[SW] Network failed, trying cache for API:', request.url);
-        
-        // Fallback to cache
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-        
-        // Return offline API response
-        return new Response(
-            JSON.stringify({
-                offline: true,
-                message: 'You are offline. Some features may be limited.',
-                timestamp: new Date().toISOString()
-            }),
-            {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' }
-            }
+// ============================================
+// EVENT: MESSAGE (from client)
+// ============================================
+self.addEventListener('message', (event) => {
+  const { type, data } = event.data;
+  
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+      
+    case 'CACHE_AUDIO':
+      // Cache audio lesson file
+      if (data && data.url) {
+        event.waitUntil(
+          (async () => {
+            const cache = await caches.open(AUDIO_CACHE);
+            const response = await fetch(data.url);
+            await cache.put(data.url, response);
+            console.log(`[SW] Cached audio: ${data.url}`);
+          })()
         );
-    }
-}
+      }
+      break;
+      
+    case 'CLEAR_CACHE':
+      event.waitUntil(
+        (async () => {
+          await caches.delete(CACHE_NAME);
+          await caches.delete(DYNAMIC_CACHE);
+          console.log('[SW] Cache cleared');
+        })()
+      );
+      break;
+      
+    case 'GET_CACHE_SIZE':
+      event.waitUntil(
+        (async () => {
+          const cache = await caches.open(CACHE_NAME);
+          const keys = await cache.keys();
+          event.source.postMessage({
+            type: 'CACHE_SIZE',
+            data: { size: keys.length }
+          });
+        })()
+      );
+      break;
+      
+    default:
+      console.log(`[SW] Unknown message type: ${type}`);
+  }
+});
 
-/**
- * Handle static assets - Cache first with network fallback
- */
-async function handleStaticRequest(request) {
+// ============================================
+// EVENT: SYNC (Background Sync)
+// ============================================
+self.addEventListener('sync', (event) => {
+  console.log(`[SW] Sync event: ${event.tag}`);
+  
+  if (event.tag === 'sync-practice-sessions') {
+    event.waitUntil(handleBackgroundSync(event.tag));
+  }
+});
+
+// ============================================
+// EVENT: PUSH NOTIFICATION
+// ============================================
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received');
+  
+  let data = {
+    title: 'SpeakFlow',
+    body: 'Time to practice your speaking!',
+    icon: '/public/images/icons/icon-192x192.png',
+    badge: '/public/images/icons/icon-96x96.png',
+    tag: 'speakflow-notification',
+    vibrate: [200, 100, 200],
+    actions: [
+      {
+        action: 'practice',
+        title: 'Start Practice 🎤'
+      },
+      {
+        action: 'later',
+        title: 'Later'
+      }
+    ]
+  };
+  
+  if (event.data) {
     try {
-        // Try cache first
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-        
-        // Fallback to network
-        const networkResponse = await fetch(request);
-        
-        // Cache the new response
-        if (networkResponse && networkResponse.status === 200) {
-            const cache = await caches.open(DYNAMIC_CACHE);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
+      data = { ...data, ...event.data.json() };
     } catch (error) {
-        console.error('[SW] Failed to load static asset:', request.url);
-        
-        // Return default icon for images
-        if (request.url.match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-            return caches.match('/images/icons/icon-192x192.png');
-        }
-        
-        return new Response('Resource not available offline', { status: 404 });
+      console.error('[SW] Failed to parse push data:', error);
     }
-}
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+      tag: data.tag,
+      vibrate: data.vibrate,
+      actions: data.actions,
+      data: {
+        url: data.url || '/'
+      }
+    })
+  );
+});
 
-/**
- * Handle HTML requests - Network first with offline fallback
- */
-async function handleHTMLRequest(request) {
-    try {
-        // Try network first
-        const networkResponse = await fetch(request);
-        
-        // Cache the HTML for offline use
-        if (networkResponse && networkResponse.status === 200) {
-            const cache = await caches.open(OFFLINE_CACHE);
-            cache.put(request, networkResponse.clone());
+// ============================================
+// EVENT: NOTIFICATION CLICK
+// ============================================
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked');
+  
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+      });
+      
+      // Check if there's already a window/tab open
+      for (const client of clients) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
-        
-        return networkResponse;
-    } catch (error) {
-        console.log('[SW] Offline mode - serving cached HTML');
-        
-        // Try to get from cache
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-        
-        // Return offline page
-        return getOfflinePage();
-    }
-}
+      }
+      
+      // Open new window
+      if (clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })()
+  );
+});
 
-/**
- * Handle other requests (images, fonts) - Cache first
- */
-async function handleOtherRequest(request) {
-    try {
-        // Try cache first
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
+// ============================================
+// EVENT: PERIODIC BACKGROUND SYNC (Optional)
+// ============================================
+self.addEventListener('periodicsync', (event) => {
+  console.log(`[SW] Periodic sync: ${event.tag}`);
+  
+  if (event.tag === 'update-content') {
+    event.waitUntil(
+      (async () => {
+        // Update cached content
+        const cache = await caches.open(DYNAMIC_CACHE);
+        
+        // Refresh dashboard data
+        try {
+          const response = await fetch('/api/dashboard/stats');
+          if (response.ok) {
+            await cache.put('/api/dashboard/stats', response);
+            console.log('[SW] Periodic sync: Dashboard stats updated');
+          }
+        } catch (error) {
+          console.error('[SW] Periodic sync failed:', error);
         }
-        
-        // Try network
-        const networkResponse = await fetch(request);
-        
-        // Cache for future
-        if (networkResponse && networkResponse.status === 200) {
-            const cache = await caches.open(DYNAMIC_CACHE);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        console.log('[SW] Failed to load resource:', request.url);
-        
-        // Return placeholder for images
-        if (request.url.match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-            return caches.match('/images/icons/icon-192x192.png');
-        }
-        
-        return new Response('', { status: 404 });
-    }
-}
+      })()
+    );
+  }
+});
 
-/**
- * Generate offline page HTML
- */
-async function getOfflinePage() {
-    const offlineHTML = `
-<!DOCTYPE html>
+// ============================================
+// UTILITY: Log cache status
+// ============================================
+self.addEventListener('activate', () => {
+  (async () => {
+    const cacheNames = await caches.keys();
+    console.log('[SW] Active caches:', cacheNames);
+    
+    // Send cache status to clients
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'CACHE_STATUS',
+        data: { caches: cacheNames }
+      });
+    });
+  })();
+});
+
+// ============================================
+// OFFLINE FALLBACK HTML
+// ============================================
+// You need to create an offline.html file
+const offlineHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeakFlow - Offline Mode</title>
+    <title>You're Offline - SpeakFlow</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             text-align: center;
+        }
+        .container {
             padding: 20px;
         }
-        .offline-container {
-            max-width: 400px;
-        }
-        .offline-icon {
-            font-size: 5rem;
+        .emoji {
+            font-size: 64px;
             margin-bottom: 20px;
         }
         h1 {
-            font-size: 1.8rem;
-            margin-bottom: 16px;
+            font-size: 32px;
+            margin-bottom: 10px;
         }
         p {
-            color: #94a3b8;
-            margin-bottom: 24px;
-            line-height: 1.6;
+            font-size: 18px;
+            opacity: 0.9;
         }
-        .retry-btn {
-            background: #3b82f6;
-            color: white;
+        button {
+            background: white;
             border: none;
-            padding: 12px 32px;
-            border-radius: 40px;
-            font-size: 1rem;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
             cursor: pointer;
             margin-top: 20px;
-        }
-        .saved-content {
-            margin-top: 32px;
-            padding: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 20px;
-        }
-        .feature {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 12px 0;
-            font-size: 0.9rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="offline-container">
-        <div class="offline-icon">📡</div>
+    <div class="container">
+        <div class="emoji">📡</div>
         <h1>You're Offline</h1>
-        <p>Don't worry! You can still practice with downloaded lessons and review your vocabulary.</p>
-        <button class="retry-btn" onclick="location.reload()">Try Again</button>
-        
-        <div class="saved-content">
-            <h3 style="margin-bottom: 16px;">✅ Available Offline</h3>
-            <div class="feature">📚 Downloaded vocabulary lessons</div>
-            <div class="feature">📊 Your saved progress</div>
-            <div class="feature">🏆 Achievements & badges</div>
-            <div class="feature">📝 Practice history</div>
-        </div>
-        
-        <p style="margin-top: 32px; font-size: 0.8rem;">
-            Progress will sync automatically when you're back online.
-        </p>
+        <p>Please check your internet connection<br>and try again.</p>
+        <button onclick="location.reload()">Retry Connection</button>
     </div>
-    
-    <script>
-        // Check online status periodically
-        setInterval(() => {
-            if (navigator.onLine) {
-                location.reload();
-            }
-        }, 30000);
-    </script>
 </body>
-</html>
-    `;
-    
-    return new Response(offlineHTML, {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' }
-    });
-}
+</html>`;
 
-// ========== BACKGROUND SYNC ==========
-self.addEventListener('sync', (event) => {
-    console.log('[SW] Background sync triggered:', event.tag);
-    
-    if (event.tag === 'sync-practices') {
-        event.waitUntil(syncOfflinePractices());
-    } else if (event.tag === 'sync-progress') {
-        event.waitUntil(syncUserProgress());
-    }
+// Cache offline page if needed
+self.addEventListener('install', () => {
+  const offlineResponse = new Response(offlineHTML, {
+    headers: { 'Content-Type': 'text/html' }
+  });
+  caches.open(CACHE_NAME).then(cache => {
+    cache.put('/offline.html', offlineResponse);
+  });
 });
 
-/**
- * Sync offline practice sessions to server
- */
-async function syncOfflinePractices() {
-    console.log('[SW] Syncing offline practices...');
-    
-    try {
-        const cache = await caches.open('offline-practices');
-        const requests = await cache.keys();
-        
-        const syncResults = await Promise.allSettled(
-            requests.map(async (request) => {
-                const response = await cache.match(request);
-                const practiceData = await response.json();
-                
-                // Send to server
-                const syncResponse = await fetch('/api/sessions/sync', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(practiceData)
-                });
-                
-                if (syncResponse.ok) {
-                    // Delete from cache after successful sync
-                    await cache.delete(request);
-                    return { success: true, id: practiceData.id };
-                }
-                
-                return { success: false, id: practiceData.id };
-            })
-        );
-        
-        const synced = syncResults.filter(r => r.value?.success).length;
-        console.log(`[SW] Synced ${synced} offline practices`);
-        
-        // Notify all clients about sync completion
-        const clients = await self.clients.matchAll();
-        clients.forEach(client => {
-            client.postMessage({
-                type: 'SYNC_COMPLETE',
-                syncedCount: synced
-            });
-        });
-        
-    } catch (error) {
-        console.error('[SW] Failed to sync practices:', error);
-    }
-}
-
-/**
- * Sync user progress to server
- */
-async function syncUserProgress() {
-    console.log('[SW] Syncing user progress...');
-    
-    try {
-        const cache = await caches.open('offline-progress');
-        const requests = await cache.keys();
-        
-        for (const request of requests) {
-            const response = await cache.match(request);
-            const progressData = await response.json();
-            
-            const syncResponse = await fetch('/api/user/progress/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(progressData)
-            });
-            
-            if (syncResponse.ok) {
-                await cache.delete(request);
-            }
-        }
-        
-        console.log(`[SW] Progress synced successfully`);
-    } catch (error) {
-        console.error('[SW] Failed to sync progress:', error);
-    }
-}
-
-// ========== PUSH NOTIFICATIONS ==========
-self.addEventListener('push', (event) => {
-    console.log('[SW] Push notification received');
-    
-    let data = {
-        title: 'SpeakFlow',
-        body: 'Time to practice your English!',
-        icon: '/images/icons/icon-192x192.png',
-        badge: '/images/icons/badge-72x72.png',
-        tag: 'practice-reminder',
-        data: {
-            url: '/'
-        }
-    };
-    
-    if (event.data) {
-        try {
-            data = Object.assign(data, event.data.json());
-        } catch (e) {
-            data.body = event.data.text();
-        }
-    }
-    
-    event.waitUntil(
-        self.registration.showNotification(data.title, {
-            body: data.body,
-            icon: data.icon,
-            badge: data.badge,
-            tag: data.tag,
-            data: data.data,
-            actions: [
-                {
-                    action: 'practice',
-                    title: '🎤 Start Practice',
-                    icon: '/images/icons/action-practice.png'
-                },
-                {
-                    action: 'later',
-                    title: '⏰ Remind Later',
-                    icon: '/images/icons/action-later.png'
-                }
-            ],
-            vibrate: [200, 100, 200],
-            requireInteraction: true,
-            silent: false
-        })
-    );
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    
-    const action = event.action;
-    const notificationData = event.notification.data;
-    
-    if (action === 'practice') {
-        // Open the app and start practice
-        event.waitUntil(
-            clients.openWindow(notificationData.url || '/?action=practice')
-        );
-    } else if (action === 'later') {
-        // Schedule reminder for later (15 minutes)
-        event.waitUntil(
-            scheduleReminder(15)
-        );
-    } else {
-        // Default: open the app
-        event.waitUntil(
-            clients.openWindow(notificationData.url || '/')
-        );
-    }
-});
-
-/**
- * Schedule a reminder for later
- */
-async function scheduleReminder(minutes) {
-    // Store in IndexedDB for later
-    const reminder = {
-        id: Date.now(),
-        scheduledTime: Date.now() + (minutes * 60 * 1000),
-        type: 'practice_reminder'
-    };
-    
-    // Use periodic sync if available
-    if ('periodicSync' in self.registration) {
-        try {
-            await self.registration.periodicSync.register('reminder-sync', {
-                minInterval: minutes * 60 * 1000
-            });
-        } catch (error) {
-            console.log('Periodic sync not supported');
-        }
-    }
-    
-    // Store in cache for fallback
-    const cache = await caches.open('reminders');
-    await cache.put(`/reminders/${reminder.id}`, new Response(JSON.stringify(reminder)));
-}
-
-// ========== PERIODIC BACKGROUND SYNC ==========
-if ('periodicSync' in self.registration) {
-    self.addEventListener('periodicsync', (event) => {
-        if (event.tag === 'daily-stats') {
-            event.waitUntil(updateDailyStats());
-        } else if (event.tag === 'reminder-sync') {
-            event.waitUntil(checkReminders());
-        }
-    });
-}
-
-/**
- * Update daily statistics in background
- */
-async function updateDailyStats() {
-    console.log('[SW] Updating daily stats...');
-    
-    try {
-        const response = await fetch('/api/analytics/daily', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                timestamp: new Date().toISOString(),
-                source: 'background_sync'
-            })
-        });
-        
-        if (response.ok) {
-            console.log('[SW] Daily stats updated');
-        }
-    } catch (error) {
-        console.error('[SW] Failed to update stats:', error);
-    }
-}
-
-/**
- * Check and send pending reminders
- */
-async function checkReminders() {
-    const cache = await caches.open('reminders');
-    const requests = await cache.keys();
-    const now = Date.now();
-    
-    for (const request of requests) {
-        const response = await cache.match(request);
-        const reminder = await response.json();
-        
-        if (reminder.scheduledTime <= now) {
-            // Send notification
-            await self.registration.showNotification('SpeakFlow Reminder', {
-                body: 'Time to practice your English! 🎤',
-                icon: '/images/icons/icon-192x192.png',
-                tag: `reminder-${reminder.id}`
-            });
-            
-            // Remove from cache
-            await cache.delete(request);
-        }
-    }
-}
-
-// ========== MESSAGE HANDLING ==========
-self.addEventListener('message', (event) => {
-    const { type, data } = event.data;
-    
-    switch (type) {
-        case 'SKIP_WAITING':
-            self.skipWaiting();
-            break;
-            
-        case 'CACHE_PRACTICE':
-            cacheOfflinePractice(data);
-            break;
-            
-        case 'GET_CACHE_STATUS':
-            getCacheStatus(event);
-            break;
-            
-        case 'CLEAR_CACHE':
-            clearOldCache();
-            break;
-            
-        default:
-            console.log('[SW] Unknown message type:', type);
-    }
-});
-
-/**
- * Cache offline practice for later sync
- */
-async function cacheOfflinePractice(practiceData) {
-    const cache = await caches.open('offline-practices');
-    const id = Date.now();
-    const request = new Request(`/offline/practice/${id}`);
-    await cache.put(request, new Response(JSON.stringify({
-        id,
-        ...practiceData,
-        timestamp: new Date().toISOString()
-    })));
-    
-    // Request background sync
-    if ('sync' in self.registration) {
-        await self.registration.sync.register('sync-practices');
-    }
-}
-
-/**
- * Get cache status for debugging
- */
-async function getCacheStatus(event) {
-    const caches_list = await caches.keys();
-    const status = {};
-    
-    for (const cacheName of caches_list) {
-        const cache = await caches.open(cacheName);
-        const keys = await cache.keys();
-        status[cacheName] = keys.length;
-    }
-    
-    event.source.postMessage({
-        type: 'CACHE_STATUS',
-        data: status
-    });
-}
-
-/**
- * Clear old cache data
- */
-async function clearOldCache() {
-    const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const cache = await caches.open(DYNAMIC_CACHE);
-    const requests = await cache.keys();
-    
-    for (const request of requests) {
-        const response = await cache.match(request);
-        const cachedTime = new Date(response.headers.get('date')).getTime();
-        
-        if (cachedTime < oneWeekAgo) {
-            await cache.delete(request);
-        }
-    }
-    
-    console.log(`[SW] Cleared ${requests.length} old cache entries`);
-}
-
-// ========== VERSION CHECK ==========
-self.addEventListener('message', (event) => {
-    if (event.data.type === 'CHECK_VERSION') {
-        event.source.postMessage({
-            type: 'VERSION_INFO',
-            version: CACHE_NAME,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Log service worker activation
+// ============================================
+// EXPORT FOR DEBUGGING
+// ============================================
 console.log('[SW] Service Worker loaded successfully');
-console.log(`[SW] Cache name: ${CACHE_NAME}`);
