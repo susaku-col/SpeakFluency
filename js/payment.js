@@ -1,1119 +1,1195 @@
-/* ============================================
-   SPEAKFLOW - PAYMENT MODULE
-   Version: 1.0.0
-   Handles payment processing, subscriptions, and invoices
-   ============================================ */
-
 // ============================================
-// PAYMENT CONFIGURATION
+// SpeakFlow Payment Module
+// Subscription & Payment Management
 // ============================================
 
-const PaymentConfig = {
-    // API Endpoints
-    api: {
-        createPayment: '/api/payments/create',
-        verifyPayment: '/api/payments/verify',
-        subscription: '/api/payments/subscription',
-        cancelSubscription: '/api/payments/cancel',
-        invoices: '/api/payments/invoices',
-        webhook: '/api/payments/webhook'
-    },
-    
-    // Payment Methods
-    methods: {
-        stripe: {
-            name: 'Credit Card',
-            icon: '💳',
-            enabled: true,
-            processor: 'stripe'
-        },
-        paypal: {
-            name: 'PayPal',
-            icon: '💰',
-            enabled: true,
-            processor: 'paypal'
-        },
-        crypto: {
-            name: 'Cryptocurrency',
-            icon: '₿',
-            enabled: false,
-            processor: 'coinbase'
+// ============================================
+// Payment State Management
+// ============================================
+
+const PaymentState = {
+    isInitialized: false,
+    userId: null,
+    currentSubscription: null,
+    plans: [],
+    paymentMethods: [],
+    invoices: [],
+    selectedPlan: null,
+    coupon: null,
+    isProcessing: false,
+    stripe: null,
+    cardElement: null
+};
+
+// ============================================
+// Configuration
+// ============================================
+
+const PAYMENT_CONFIG = {
+    API_ENDPOINT: '/api/payments',
+    STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY || '',
+    CURRENCY: 'usd',
+    SUPPORTED_CURRENCIES: ['usd', 'eur', 'gbp'],
+    TAX_RATE: 0.0
+};
+
+// ============================================
+// Subscription Plans
+// ============================================
+
+const SUBSCRIPTION_PLANS = {
+    free: {
+        id: 'free',
+        name: 'Free',
+        price: 0,
+        interval: 'forever',
+        features: [
+            '3 lessons per day',
+            'Basic pronunciation feedback',
+            '500+ vocabulary words',
+            'Community access'
+        ],
+        limits: {
+            dailyLessons: 3,
+            vocabularyWords: 500
         }
     },
-    
-    // Plans
-    plans: {
-        free: {
-            id: 'free',
-            name: 'Free',
-            price: 0,
-            currency: 'USD',
-            interval: 'month',
-            features: [
-                '10 practice sentences/day',
-                'Basic AI feedback',
-                'Daily streak & XP',
-                'Basic achievements'
-            ]
-        },
-        monthly: {
-            id: 'premium_monthly',
-            name: 'Premium Monthly',
-            price: 9.99,
-            currency: 'USD',
-            interval: 'month',
-            features: [
-                'Unlimited practice sessions',
-                'Advanced pronunciation feedback',
-                'All tutor personalities',
-                'Priority AI response',
-                'Custom daily challenges',
-                'Download practice sessions'
-            ]
-        },
-        yearly: {
-            id: 'premium_yearly',
-            name: 'Premium Yearly',
-            price: 79.99,
-            currency: 'USD',
-            interval: 'year',
-            features: [
-                'All Monthly features',
-                'Save 33% compared to monthly',
-                '1 month free',
-                'Early access to new features',
-                'Premium support'
-            ]
-        },
-        lifetime: {
-            id: 'premium_lifetime',
-            name: 'Lifetime Premium',
-            price: 299.99,
-            currency: 'USD',
-            interval: 'lifetime',
-            features: [
-                'All Premium features forever',
-                'Lifetime updates',
-                'Priority support',
-                'Exclusive content access'
-            ]
-        }
+    pro_monthly: {
+        id: 'pro_monthly',
+        name: 'Pro Monthly',
+        price: 12.99,
+        interval: 'month',
+        stripePriceId: 'price_pro_monthly',
+        features: [
+            'Unlimited lessons',
+            'Advanced pronunciation AI',
+            '5000+ vocabulary words',
+            'AI conversation partner',
+            'Offline mode',
+            'Priority support'
+        ],
+        trialDays: 7
     },
-    
-    // Discount Codes
-    discounts: {
-        'WELCOME20': { type: 'percentage', value: 20, validFor: ['monthly', 'yearly'] },
-        'ANNUAL30': { type: 'percentage', value: 30, validFor: ['yearly'] },
-        'STUDENT50': { type: 'percentage', value: 50, validFor: ['monthly', 'yearly'], requiresVerification: true }
+    pro_yearly: {
+        id: 'pro_yearly',
+        name: 'Pro Yearly',
+        price: 99.99,
+        interval: 'year',
+        stripePriceId: 'price_pro_yearly',
+        features: [
+            'All Pro features',
+            'Save 36% compared to monthly',
+            '2 months free'
+        ],
+        trialDays: 7,
+        savings: 36
     },
-    
-    // Currency Settings
-    currency: {
-        code: 'USD',
-        symbol: '$',
-        decimalPlaces: 2
+    family_monthly: {
+        id: 'family_monthly',
+        name: 'Family Monthly',
+        price: 24.99,
+        interval: 'month',
+        stripePriceId: 'price_family_monthly',
+        features: [
+            'Up to 5 family members',
+            'All Pro features',
+            'Family progress tracking',
+            'Group practice sessions'
+        ],
+        trialDays: 7
     },
-    
-    // Storage Keys
-    storage: {
-        subscription: 'payment_subscription',
-        paymentHistory: 'payment_history',
-        promoCode: 'payment_promo'
+    family_yearly: {
+        id: 'family_yearly',
+        name: 'Family Yearly',
+        price: 199.99,
+        interval: 'year',
+        stripePriceId: 'price_family_yearly',
+        features: [
+            'All Family features',
+            'Save 33% compared to monthly',
+            '3 months free'
+        ],
+        trialDays: 7,
+        savings: 33
     }
 };
 
 // ============================================
-// SUBSCRIPTION MANAGER
+// Helper Functions
 // ============================================
 
-class SubscriptionManager {
-    constructor() {
-        this.subscription = this.loadSubscription();
-        this.paymentHistory = this.loadPaymentHistory();
-        this.init();
+/**
+ * Get user ID from auth
+ */
+const getUserId = () => {
+    return auth?.user?.id || localStorage.getItem('user_id') || null;
+};
+
+/**
+ * Show toast notification
+ */
+const showToast = (message, type = 'info', title = null) => {
+    if (window.showToast) {
+        window.showToast(message, type, title);
+    } else {
+        console.log(`[Payment] ${type}: ${message}`);
     }
-    
-    init() {
-        this.checkSubscriptionStatus();
-        this.startExpiryCheck();
-    }
-    
-    loadSubscription() {
-        const saved = localStorage.getItem(PaymentConfig.storage.subscription);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load subscription:', e);
-            }
-        }
+};
+
+/**
+ * Format currency
+ */
+const formatCurrency = (amount, currency = PAYMENT_CONFIG.CURRENCY) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase()
+    }).format(amount);
+};
+
+/**
+ * Format date
+ */
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
+
+// ============================================
+// API Calls
+// ============================================
+
+/**
+ * Fetch subscription plans
+ */
+const fetchPlans = async () => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/plans`);
+        const data = await response.json();
         
-        return {
-            planId: 'free',
-            status: 'active',
-            startDate: new Date().toISOString(),
-            endDate: null,
-            autoRenew: false,
-            isPremium: false
-        };
-    }
-    
-    loadPaymentHistory() {
-        const saved = localStorage.getItem(PaymentConfig.storage.paymentHistory);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load payment history:', e);
-            }
+        if (data.success) {
+            PaymentState.plans = data.data.plans;
+            return PaymentState.plans;
         }
         return [];
+    } catch (error) {
+        console.error('Fetch plans error:', error);
+        // Fallback to local plans
+        PaymentState.plans = Object.values(SUBSCRIPTION_PLANS);
+        return PaymentState.plans;
     }
-    
-    saveSubscription() {
-        localStorage.setItem(PaymentConfig.storage.subscription, JSON.stringify(this.subscription));
-    }
-    
-    savePaymentHistory() {
-        localStorage.setItem(PaymentConfig.storage.paymentHistory, JSON.stringify(this.paymentHistory));
-    }
-    
-    checkSubscriptionStatus() {
-        if (this.subscription.endDate) {
-            const now = new Date();
-            const end = new Date(this.subscription.endDate);
-            
-            if (now > end && this.subscription.status === 'active') {
-                this.expireSubscription();
-            }
-        }
-    }
-    
-    startExpiryCheck() {
-        setInterval(() => {
-            this.checkSubscriptionStatus();
-        }, 3600000); // Check every hour
-    }
-    
-    async createSubscription(planId, paymentMethod, promoCode = null) {
-        const plan = PaymentConfig.plans[planId];
-        if (!plan) {
-            return { success: false, error: 'Invalid plan' };
-        }
-        
-        let amount = plan.price;
-        let discount = null;
-        
-        if (promoCode) {
-            discount = await this.validatePromoCode(promoCode, planId);
-            if (discount) {
-                amount = this.applyDiscount(amount, discount);
-            }
-        }
-        
-        // Create payment intent
-        const paymentIntent = await this.createPaymentIntent({
-            amount,
-            currency: PaymentConfig.currency.code,
-            planId,
-            paymentMethod,
-            promoCode
-        });
-        
-        if (!paymentIntent.success) {
-            return paymentIntent;
-        }
-        
-        // Process payment
-        const paymentResult = await this.processPayment(paymentIntent);
-        
-        if (paymentResult.success) {
-            // Activate subscription
-            this.activateSubscription(planId, amount, promoCode);
-            
-            // Record payment
-            this.recordPayment({
-                id: paymentResult.transactionId,
-                planId,
-                amount,
-                currency: PaymentConfig.currency.code,
-                paymentMethod,
-                status: 'completed',
-                timestamp: new Date().toISOString()
-            });
-            
-            return {
-                success: true,
-                subscription: this.subscription,
-                transactionId: paymentResult.transactionId
-            };
-        }
-        
-        return paymentResult;
-    }
-    
-    async createPaymentIntent(data) {
-        // In production, call backend API
-        // For demo, simulate payment intent creation
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    success: true,
-                    clientSecret: `pi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    amount: data.amount
-                });
-            }, 1000);
-        });
-        
-        // Actual implementation:
-        /*
-        try {
-            const response = await fetch(PaymentConfig.api.createPayment, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-        */
-    }
-    
-    async processPayment(paymentIntent) {
-        // In production, confirm payment with Stripe/PayPal
-        // For demo, simulate payment processing
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    success: true,
-                    transactionId: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-                });
-            }, 1500);
-        });
-    }
-    
-    activateSubscription(planId, amount, promoCode = null) {
-        const plan = PaymentConfig.plans[planId];
-        const now = new Date();
-        let endDate = null;
-        
-        if (plan.interval === 'month') {
-            endDate = new Date(now.setMonth(now.getMonth() + 1));
-        } else if (plan.interval === 'year') {
-            endDate = new Date(now.setFullYear(now.getFullYear() + 1));
-        } else if (plan.interval === 'lifetime') {
-            endDate = null;
-        }
-        
-        this.subscription = {
-            planId,
-            status: 'active',
-            startDate: new Date().toISOString(),
-            endDate: endDate ? endDate.toISOString() : null,
-            autoRenew: true,
-            isPremium: planId !== 'free',
-            amount,
-            promoCode,
-            lastPaymentDate: new Date().toISOString()
-        };
-        
-        this.saveSubscription();
-        
-        // Dispatch event
-        const event = new CustomEvent('payment:subscriptionActivated', {
-            detail: { subscription: this.subscription }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    expireSubscription() {
-        this.subscription.status = 'expired';
-        this.subscription.isPremium = false;
-        this.subscription.planId = 'free';
-        this.saveSubscription();
-        
-        const event = new CustomEvent('payment:subscriptionExpired', {
-            detail: { subscription: this.subscription }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    cancelSubscription() {
-        if (this.subscription.status === 'active') {
-            this.subscription.status = 'cancelled';
-            this.subscription.autoRenew = false;
-            this.saveSubscription();
-            
-            const event = new CustomEvent('payment:subscriptionCancelled', {
-                detail: { subscription: this.subscription }
-            });
-            document.dispatchEvent(event);
-            
-            return { success: true };
-        }
-        
-        return { success: false, error: 'No active subscription' };
-    }
-    
-    async validatePromoCode(code, planId) {
-        const discount = PaymentConfig.discounts[code.toUpperCase()];
-        
-        if (!discount) {
-            return null;
-        }
-        
-        if (discount.validFor && !discount.validFor.includes(planId)) {
-            return null;
-        }
-        
-        // In production, check with backend
-        return discount;
-    }
-    
-    applyDiscount(amount, discount) {
-        if (discount.type === 'percentage') {
-            return amount * (1 - discount.value / 100);
-        }
-        return amount - discount.value;
-    }
-    
-    recordPayment(payment) {
-        this.paymentHistory.unshift(payment);
-        
-        // Keep only last 100 payments
-        if (this.paymentHistory.length > 100) {
-            this.paymentHistory.pop();
-        }
-        
-        this.savePaymentHistory();
-    }
-    
-    getSubscription() {
-        return { ...this.subscription };
-    }
-    
-    getPaymentHistory() {
-        return [...this.paymentHistory];
-    }
-    
-    getInvoice(paymentId) {
-        const payment = this.paymentHistory.find(p => p.id === paymentId);
-        if (!payment) return null;
-        
-        return {
-            invoiceNumber: `INV-${payment.id.slice(-8)}`,
-            date: payment.timestamp,
-            ...payment,
-            plan: PaymentConfig.plans[payment.planId]
-        };
-    }
-    
-    getUpcomingInvoice() {
-        if (!this.subscription.isPremium || this.subscription.status !== 'active') {
-            return null;
-        }
-        
-        const plan = PaymentConfig.plans[this.subscription.planId];
-        const nextBillingDate = new Date(this.subscription.endDate);
-        
-        return {
-            amount: this.subscription.amount || plan.price,
-            currency: PaymentConfig.currency.code,
-            date: nextBillingDate.toISOString(),
-            plan: plan.name,
-            items: [
-                {
-                    description: `${plan.name} Subscription`,
-                    amount: this.subscription.amount || plan.price
-                }
-            ]
-        };
-    }
-}
-
-// ============================================
-// PAYMENT UI CONTROLLER
-// ============================================
-
-class PaymentUIController {
-    constructor(subscriptionManager) {
-        this.subscriptionManager = subscriptionManager;
-        this.elements = {};
-        this.init();
-    }
-    
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.renderPricing();
-        this.renderSubscriptionStatus();
-    }
-    
-    bindElements() {
-        this.elements = {
-            pricingContainer: document.getElementById('pricingContainer'),
-            subscriptionStatus: document.getElementById('subscriptionStatus'),
-            paymentModal: document.getElementById('paymentModal'),
-            paymentForm: document.getElementById('paymentForm'),
-            cardNumber: document.getElementById('cardNumber'),
-            cardExpiry: document.getElementById('cardExpiry'),
-            cardCvc: document.getElementById('cardCvc'),
-            cardName: document.getElementById('cardName'),
-            processPaymentBtn: document.getElementById('processPaymentBtn'),
-            cancelSubscriptionBtn: document.getElementById('cancelSubscriptionBtn'),
-            promoCodeInput: document.getElementById('promoCode'),
-            applyPromoBtn: document.getElementById('applyPromoBtn'),
-            paymentHistory: document.getElementById('paymentHistory')
-        };
-    }
-    
-    bindEvents() {
-        if (this.elements.processPaymentBtn) {
-            this.elements.processPaymentBtn.addEventListener('click', () => this.processPayment());
-        }
-        
-        if (this.elements.cancelSubscriptionBtn) {
-            this.elements.cancelSubscriptionBtn.addEventListener('click', () => this.cancelSubscription());
-        }
-        
-        if (this.elements.applyPromoBtn) {
-            this.elements.applyPromoBtn.addEventListener('click', () => this.applyPromoCode());
-        }
-        
-        // Card input formatting
-        if (this.elements.cardNumber) {
-            this.elements.cardNumber.addEventListener('input', (e) => this.formatCardNumber(e));
-        }
-        
-        if (this.elements.cardExpiry) {
-            this.elements.cardExpiry.addEventListener('input', (e) => this.formatCardExpiry(e));
-        }
-        
-        document.addEventListener('payment:subscriptionActivated', () => {
-            this.renderSubscriptionStatus();
-            this.showToast('Subscription activated! Welcome to Premium! 🎉', 'success');
-        });
-        
-        document.addEventListener('payment:subscriptionCancelled', () => {
-            this.renderSubscriptionStatus();
-            this.showToast('Subscription cancelled. You will lose premium access at end of period.', 'info');
-        });
-        
-        document.addEventListener('payment:subscriptionExpired', () => {
-            this.renderSubscriptionStatus();
-            this.showToast('Your premium subscription has expired. Upgrade to continue enjoying premium features.', 'warning');
-        });
-    }
-    
-    renderPricing() {
-        if (!this.elements.pricingContainer) return;
-        
-        const plans = Object.values(PaymentConfig.plans).filter(p => p.id !== 'free');
-        
-        this.elements.pricingContainer.innerHTML = plans.map(plan => `
-            <div class="pricing-card ${plan.id === 'yearly' ? 'popular' : ''}" data-plan="${plan.id}">
-                ${plan.id === 'yearly' ? '<div class="popular-badge">🔥 BEST VALUE</div>' : ''}
-                <h3>${plan.name}</h3>
-                <div class="price">
-                    ${PaymentConfig.currency.symbol}${plan.price}
-                    <small>/${plan.interval === 'month' ? 'month' : plan.interval === 'year' ? 'year' : 'one-time'}</small>
-                </div>
-                <ul class="feature-list">
-                    ${plan.features.map(f => `<li>✅ ${f}</li>`).join('')}
-                </ul>
-                <button class="btn btn-primary select-plan-btn" data-plan="${plan.id}">
-                    ${plan.id === 'free' ? 'Current Plan' : 'Upgrade Now'}
-                </button>
-            </div>
-        `).join('');
-        
-        // Attach click handlers
-        document.querySelectorAll('.select-plan-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const planId = btn.dataset.plan;
-                this.showPaymentModal(planId);
-            });
-        });
-    }
-    
-    renderSubscriptionStatus() {
-        const subscription = this.subscriptionManager.getSubscription();
-        
-        if (this.elements.subscriptionStatus) {
-            if (subscription.isPremium) {
-                const plan = PaymentConfig.plans[subscription.planId];
-                const endDate = subscription.endDate ? new Date(subscription.endDate).toLocaleDateString() : 'Never';
-                
-                this.elements.subscriptionStatus.innerHTML = `
-                    <div class="subscription-active">
-                        <div class="subscription-badge premium">⭐ PREMIUM ACTIVE</div>
-                        <div class="subscription-details">
-                            <p><strong>Plan:</strong> ${plan.name}</p>
-                            <p><strong>Status:</strong> ${subscription.status}</p>
-                            <p><strong>Renews:</strong> ${subscription.autoRenew ? `on ${endDate}` : 'Cancelled'}</p>
-                            ${subscription.autoRenew ? `
-                                <button id="cancelSubscriptionBtn" class="btn btn-outline">Cancel Subscription</button>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                
-                // Re-bind cancel button
-                const cancelBtn = document.getElementById('cancelSubscriptionBtn');
-                if (cancelBtn) {
-                    cancelBtn.addEventListener('click', () => this.cancelSubscription());
-                }
-            } else {
-                this.elements.subscriptionStatus.innerHTML = `
-                    <div class="subscription-free">
-                        <div class="subscription-badge free">FREE ACCOUNT</div>
-                        <div class="subscription-details">
-                            <p>Upgrade to Premium for unlimited practice and advanced features!</p>
-                            <button class="btn btn-primary" id="upgradeFromStatus">Upgrade Now</button>
-                        </div>
-                    </div>
-                `;
-                
-                const upgradeBtn = document.getElementById('upgradeFromStatus');
-                if (upgradeBtn) {
-                    upgradeBtn.addEventListener('click', () => this.showPaymentModal('monthly'));
-                }
-            }
-        }
-        
-        this.renderPaymentHistory();
-    }
-    
-    renderPaymentHistory() {
-        if (!this.elements.paymentHistory) return;
-        
-        const history = this.subscriptionManager.getPaymentHistory();
-        
-        if (history.length === 0) {
-            this.elements.paymentHistory.innerHTML = '<p class="no-history">No payment history yet.</p>';
-            return;
-        }
-        
-        this.elements.paymentHistory.innerHTML = `
-            <h3>Payment History</h3>
-            <div class="history-list">
-                ${history.map(payment => `
-                    <div class="history-item">
-                        <div class="history-date">${new Date(payment.timestamp).toLocaleDateString()}</div>
-                        <div class="history-plan">${PaymentConfig.plans[payment.planId]?.name || payment.planId}</div>
-                        <div class="history-amount">${PaymentConfig.currency.symbol}${payment.amount}</div>
-                        <div class="history-status ${payment.status}">${payment.status}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    showPaymentModal(planId) {
-        const plan = PaymentConfig.plans[planId];
-        if (!plan) return;
-        
-        const modal = this.elements.paymentModal;
-        if (!modal) return;
-        
-        // Update modal content
-        const modalContent = modal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.innerHTML = `
-                <div class="modal-header">
-                    <h2>Complete Your Purchase</h2>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="order-summary">
-                        <h3>Order Summary</h3>
-                        <div class="summary-item">
-                            <span>${plan.name}</span>
-                            <span>${PaymentConfig.currency.symbol}${plan.price}</span>
-                        </div>
-                        <div class="summary-item discount-row" style="display: none;">
-                            <span>Discount</span>
-                            <span class="discount-amount">-${PaymentConfig.currency.symbol}0</span>
-                        </div>
-                        <div class="summary-item total">
-                            <strong>Total</strong>
-                            <strong class="total-amount">${PaymentConfig.currency.symbol}${plan.price}</strong>
-                        </div>
-                    </div>
-                    
-                    <div class="payment-methods">
-                        <h3>Payment Method</h3>
-                        <div class="method-selector">
-                            ${Object.entries(PaymentConfig.methods).filter(([_, m]) => m.enabled).map(([key, method]) => `
-                                <div class="method-option ${key === 'stripe' ? 'active' : ''}" data-method="${key}">
-                                    ${method.icon} ${method.name}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    
-                    <div class="card-details">
-                        <div class="form-group">
-                            <label class="form-label">Card Number</label>
-                            <input type="text" id="cardNumber" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Expiry Date</label>
-                                <input type="text" id="cardExpiry" class="form-control" placeholder="MM/YY" maxlength="5">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">CVC</label>
-                                <input type="text" id="cardCvc" class="form-control" placeholder="123" maxlength="4">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Cardholder Name</label>
-                            <input type="text" id="cardName" class="form-control" placeholder="John Doe">
-                        </div>
-                    </div>
-                    
-                    <div class="promo-section">
-                        <div class="form-group">
-                            <label class="form-label">Promo Code</label>
-                            <div class="promo-input-group">
-                                <input type="text" id="promoCode" class="form-control" placeholder="Enter code">
-                                <button id="applyPromoBtn" class="btn btn-outline">Apply</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="processPaymentBtn" class="btn btn-primary btn-premium" data-plan="${planId}">
-                        Pay ${PaymentConfig.currency.symbol}${plan.price}
-                    </button>
-                    <button class="btn btn-outline modal-close">Cancel</button>
-                </div>
-            `;
-        }
-        
-        modal.classList.add('active');
-        
-        // Re-bind elements
-        this.elements.cardNumber = document.getElementById('cardNumber');
-        this.elements.cardExpiry = document.getElementById('cardExpiry');
-        this.elements.cardCvc = document.getElementById('cardCvc');
-        this.elements.cardName = document.getElementById('cardName');
-        this.elements.processPaymentBtn = document.getElementById('processPaymentBtn');
-        this.elements.promoCodeInput = document.getElementById('promoCode');
-        this.elements.applyPromoBtn = document.getElementById('applyPromoBtn');
-        
-        // Re-bind events
-        if (this.elements.cardNumber) {
-            this.elements.cardNumber.addEventListener('input', (e) => this.formatCardNumber(e));
-        }
-        if (this.elements.cardExpiry) {
-            this.elements.cardExpiry.addEventListener('input', (e) => this.formatCardExpiry(e));
-        }
-        if (this.elements.processPaymentBtn) {
-            this.elements.processPaymentBtn.addEventListener('click', () => this.processPayment());
-        }
-        if (this.elements.applyPromoBtn) {
-            this.elements.applyPromoBtn.addEventListener('click', () => this.applyPromoCode());
-        }
-        
-        // Method selector
-        document.querySelectorAll('.method-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                document.querySelectorAll('.method-option').forEach(o => o.classList.remove('active'));
-                opt.classList.add('active');
-                this.selectedMethod = opt.dataset.method;
-                
-                // Show/hide card details
-                const cardDetails = document.querySelector('.card-details');
-                if (cardDetails) {
-                    cardDetails.style.display = opt.dataset.method === 'stripe' ? 'block' : 'none';
-                }
-            });
-        });
-        
-        // Close modal
-        modal.querySelectorAll('.modal-close').forEach(btn => {
-            btn.addEventListener('click', () => modal.classList.remove('active'));
-        });
-    }
-    
-    async processPayment() {
-        const planId = this.elements.processPaymentBtn?.dataset.plan;
-        if (!planId) return;
-        
-        const paymentMethod = this.selectedMethod || 'stripe';
-        const promoCode = this.elements.promoCodeInput?.value;
-        
-        // Validate card details if using card
-        if (paymentMethod === 'stripe') {
-            if (!this.validateCardDetails()) {
-                this.showToast('Please enter valid card details', 'error');
-                return;
-            }
-        }
-        
-        // Disable button and show loading
-        const btn = this.elements.processPaymentBtn;
-        const originalText = btn.textContent;
-        btn.textContent = 'Processing...';
-        btn.disabled = true;
-        
-        // Process payment
-        const result = await this.subscriptionManager.createSubscription(planId, paymentMethod, promoCode);
-        
-        btn.textContent = originalText;
-        btn.disabled = false;
-        
-        if (result.success) {
-            // Close modal
-            const modal = this.elements.paymentModal;
-            if (modal) modal.classList.remove('active');
-            
-            // Show success
-            this.showToast('Payment successful! Welcome to Premium! 🎉', 'success');
-            
-            // Refresh UI
-            this.renderSubscriptionStatus();
-            this.renderPricing();
-        } else {
-            this.showToast(result.error || 'Payment failed. Please try again.', 'error');
-        }
-    }
-    
-    async applyPromoCode() {
-        const code = this.elements.promoCodeInput?.value;
-        if (!code) return;
-        
-        const planId = this.elements.processPaymentBtn?.dataset.plan;
-        if (!planId) return;
-        
-        const discount = await this.subscriptionManager.validatePromoCode(code, planId);
-        
-        if (discount) {
-            const plan = PaymentConfig.plans[planId];
-            const originalPrice = plan.price;
-            const newPrice = this.subscriptionManager.applyDiscount(originalPrice, discount);
-            const savings = originalPrice - newPrice;
-            
-            // Update UI
-            const discountRow = document.querySelector('.discount-row');
-            const discountAmount = document.querySelector('.discount-amount');
-            const totalAmount = document.querySelector('.total-amount');
-            
-            if (discountRow && discountAmount && totalAmount) {
-                discountRow.style.display = 'flex';
-                discountAmount.textContent = `-${PaymentConfig.currency.symbol}${savings.toFixed(2)}`;
-                totalAmount.textContent = `${PaymentConfig.currency.symbol}${newPrice.toFixed(2)}`;
-                
-                if (this.elements.processPaymentBtn) {
-                    this.elements.processPaymentBtn.textContent = `Pay ${PaymentConfig.currency.symbol}${newPrice.toFixed(2)}`;
-                }
-            }
-            
-            this.showToast(`Promo code applied! You saved ${PaymentConfig.currency.symbol}${savings.toFixed(2)}`, 'success');
-        } else {
-            this.showToast('Invalid or expired promo code', 'error');
-        }
-    }
-    
-    async cancelSubscription() {
-        if (confirm('Are you sure you want to cancel your subscription? You will lose premium access at the end of your billing period.')) {
-            const result = await this.subscriptionManager.cancelSubscription();
-            
-            if (result.success) {
-                this.showToast('Subscription cancelled. You will keep premium access until the end of your billing period.', 'info');
-                this.renderSubscriptionStatus();
-            }
-        }
-    }
-    
-    validateCardDetails() {
-        const cardNumber = this.elements.cardNumber?.value.replace(/\s/g, '');
-        const cardExpiry = this.elements.cardExpiry?.value;
-        const cardCvc = this.elements.cardCvc?.value;
-        const cardName = this.elements.cardName?.value;
-        
-        if (!cardNumber || cardNumber.length < 15 || cardNumber.length > 16) return false;
-        if (!cardExpiry || !cardExpiry.match(/^\d{2}\/\d{2}$/)) return false;
-        if (!cardCvc || cardCvc.length < 3) return false;
-        if (!cardName || cardName.length < 2) return false;
-        
-        return true;
-    }
-    
-    formatCardNumber(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        value = value.replace(/(\d{4})(?=\d)/g, '$1 ');
-        e.target.value = value.slice(0, 19);
-    }
-    
-    formatCardExpiry(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length >= 2) {
-            value = value.slice(0, 2) + '/' + value.slice(2, 4);
-        }
-        e.target.value = value.slice(0, 5);
-    }
-    
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `payment-toast toast-${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        setTimeout(() => toast.remove(), 3000);
-    }
-}
-
-// ============================================
-// EXPORTS
-// ============================================
-
-// Initialize payment system
-const subscriptionManager = new SubscriptionManager();
-const paymentUI = new PaymentUIController(subscriptionManager);
-
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.Payment = {
-    subscription: subscriptionManager,
-    ui: paymentUI,
-    config: PaymentConfig,
-    plans: PaymentConfig.plans
 };
 
-// Module exports
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        PaymentConfig,
-        SubscriptionManager,
-        PaymentUIController
+/**
+ * Fetch current subscription
+ */
+const fetchCurrentSubscription = async () => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/current-subscription`, {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.currentSubscription = data.data;
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Fetch subscription error:', error);
+        return null;
+    }
+};
+
+/**
+ * Create subscription
+ */
+const createSubscription = async (planId, paymentMethodId, couponCode = null) => {
+    PaymentState.isProcessing = true;
+    showLoading();
+    
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/create-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({
+                planId,
+                paymentMethodId,
+                couponCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.currentSubscription = data.data.subscription;
+            showToast('Subscription created successfully!', 'success', 'Welcome to Pro! 🎉');
+            
+            // Refresh subscription display
+            renderSubscriptionDetails();
+            
+            return data.data;
+        } else {
+            showToast(data.error || 'Failed to create subscription', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Create subscription error:', error);
+        showToast('Failed to create subscription', 'error');
+        return null;
+    } finally {
+        PaymentState.isProcessing = false;
+        hideLoading();
+    }
+};
+
+/**
+ * Cancel subscription
+ */
+const cancelSubscription = async (cancelImmediately = false, reason = '') => {
+    PaymentState.isProcessing = true;
+    showLoading();
+    
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/cancel-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({
+                cancelImmediately,
+                reason
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.currentSubscription = data.data;
+            showToast('Subscription cancelled successfully', 'info');
+            renderSubscriptionDetails();
+            return data.data;
+        } else {
+            showToast(data.error || 'Failed to cancel subscription', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Cancel subscription error:', error);
+        showToast('Failed to cancel subscription', 'error');
+        return null;
+    } finally {
+        PaymentState.isProcessing = false;
+        hideLoading();
+    }
+};
+
+/**
+ * Resume subscription
+ */
+const resumeSubscription = async () => {
+    PaymentState.isProcessing = true;
+    showLoading();
+    
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/resume-subscription`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.currentSubscription = data.data;
+            showToast('Subscription resumed!', 'success');
+            renderSubscriptionDetails();
+            return data.data;
+        } else {
+            showToast(data.error || 'Failed to resume subscription', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Resume subscription error:', error);
+        showToast('Failed to resume subscription', 'error');
+        return null;
+    } finally {
+        PaymentState.isProcessing = false;
+        hideLoading();
+    }
+};
+
+/**
+ * Fetch payment methods
+ */
+const fetchPaymentMethods = async () => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/payment-methods`, {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.paymentMethods = data.data;
+            return data.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Fetch payment methods error:', error);
+        return [];
+    }
+};
+
+/**
+ * Fetch invoices
+ */
+const fetchInvoices = async () => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/invoices`, {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.invoices = data.data;
+            return data.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Fetch invoices error:', error);
+        return [];
+    }
+};
+
+/**
+ * Validate coupon
+ */
+const validateCoupon = async (couponCode, planId) => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/validate-coupon`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ couponCode, planId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            PaymentState.coupon = data.data;
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Validate coupon error:', error);
+        return null;
+    }
+};
+
+// ============================================
+// Stripe Integration
+// ============================================
+
+/**
+ * Initialize Stripe
+ */
+const initStripe = async () => {
+    if (!window.Stripe) {
+        console.error('Stripe.js not loaded');
+        return false;
+    }
+    
+    try {
+        PaymentState.stripe = Stripe(PAYMENT_CONFIG.STRIPE_PUBLIC_KEY);
+        
+        // Create card element
+        const elements = PaymentState.stripe.elements();
+        PaymentState.cardElement = elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#32325d',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    '::placeholder': {
+                        color: '#aab7c4'
+                    }
+                },
+                invalid: {
+                    color: '#fa755a',
+                    iconColor: '#fa755a'
+                }
+            }
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Stripe initialization error:', error);
+        return false;
+    }
+};
+
+/**
+ * Mount card element
+ */
+const mountCardElement = (elementId) => {
+    if (PaymentState.cardElement && document.getElementById(elementId)) {
+        PaymentState.cardElement.mount(`#${elementId}`);
+        
+        // Handle validation errors
+        PaymentState.cardElement.on('change', (event) => {
+            const displayError = document.getElementById('card-errors');
+            if (displayError) {
+                displayError.textContent = event.error ? event.error.message : '';
+            }
+        });
+    }
+};
+
+/**
+ * Create payment method from card
+ */
+const createPaymentMethod = async () => {
+    if (!PaymentState.stripe || !PaymentState.cardElement) {
+        showToast('Payment system not ready', 'error');
+        return null;
+    }
+    
+    try {
+        const { paymentMethod, error } = await PaymentState.stripe.createPaymentMethod({
+            type: 'card',
+            card: PaymentState.cardElement
+        });
+        
+        if (error) {
+            showToast(error.message, 'error');
+            return null;
+        }
+        
+        return paymentMethod;
+    } catch (error) {
+        console.error('Create payment method error:', error);
+        return null;
+    }
+};
+
+// ============================================
+// UI Rendering
+// ============================================
+
+/**
+ * Render pricing plans
+ */
+const renderPricingPlans = () => {
+    const container = document.getElementById('pricing-plans');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="pricing-grid">
+            ${PaymentState.plans.map(plan => `
+                <div class="pricing-card ${plan.id === 'pro_monthly' ? 'popular' : ''}">
+                    ${plan.id === 'pro_monthly' ? '<div class="popular-badge">Most Popular</div>' : ''}
+                    <div class="pricing-header">
+                        <h3>${plan.name}</h3>
+                        <div class="pricing-price">
+                            <span class="currency">$</span>
+                            <span class="amount">${plan.price}</span>
+                            <span class="period">/${plan.interval}</span>
+                        </div>
+                        ${plan.savings ? `<div class="savings-badge">Save ${plan.savings}%</div>` : ''}
+                    </div>
+                    <ul class="pricing-features">
+                        ${plan.features.map(feature => `<li>✓ ${feature}</li>`).join('')}
+                    </ul>
+                    <button class="btn ${plan.price === 0 ? 'btn-outline' : 'btn-primary'} btn-block" 
+                            onclick="payment.selectPlan('${plan.id}')">
+                        ${plan.price === 0 ? 'Current Plan' : 'Get Started'}
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
+
+/**
+ * Render subscription details
+ */
+const renderSubscriptionDetails = () => {
+    const container = document.getElementById('subscription-details');
+    if (!container || !PaymentState.currentSubscription) return;
+    
+    const sub = PaymentState.currentSubscription;
+    const plan = SUBSCRIPTION_PLANS[sub.plan] || { name: sub.plan };
+    
+    container.innerHTML = `
+        <div class="subscription-card">
+            <div class="subscription-header">
+                <h3>${plan.name} Plan</h3>
+                <span class="subscription-status status-${sub.status}">${sub.status}</span>
+            </div>
+            <div class="subscription-details">
+                <div class="detail-row">
+                    <span>Started:</span>
+                    <span>${formatDate(sub.startDate)}</span>
+                </div>
+                ${sub.endDate ? `
+                    <div class="detail-row">
+                        <span>Next Billing:</span>
+                        <span>${formatDate(sub.endDate)}</span>
+                    </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span>Auto-renew:</span>
+                    <span>${sub.autoRenew ? 'Yes' : 'No'}</span>
+                </div>
+            </div>
+            <div class="subscription-actions">
+                ${sub.plan !== 'free' ? `
+                    ${sub.cancelAtPeriodEnd ? 
+                        `<button class="btn btn-success" onclick="payment.resumeSubscription()">Resume Subscription</button>` :
+                        `<button class="btn btn-danger" onclick="payment.showCancelModal()">Cancel Subscription</button>`
+                    }
+                ` : ''}
+            </div>
+        </div>
+    `;
+};
+
+/**
+ * Render payment methods
+ */
+const renderPaymentMethods = () => {
+    const container = document.getElementById('payment-methods');
+    if (!container) return;
+    
+    if (PaymentState.paymentMethods.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No payment methods added.</p>
+                <button class="btn btn-primary" onclick="payment.showAddPaymentMethodModal()">Add Payment Method</button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="payment-methods-list">
+            ${PaymentState.paymentMethods.map(method => `
+                <div class="payment-method-item">
+                    <div class="method-info">
+                        <span class="method-icon">${getCardIcon(method.brand)}</span>
+                        <span class="method-details">
+                            ${method.brand} •••• ${method.last4}
+                        </span>
+                        <span class="method-expiry">Expires ${method.expMonth}/${method.expYear}</span>
+                        ${method.isDefault ? '<span class="default-badge">Default</span>' : ''}
+                    </div>
+                    <div class="method-actions">
+                        <button class="btn-icon" onclick="payment.setDefaultPaymentMethod('${method.id}')">⭐</button>
+                        <button class="btn-icon delete" onclick="payment.deletePaymentMethod('${method.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        <button class="btn btn-outline" onclick="payment.showAddPaymentMethodModal()">+ Add New Card</button>
+    `;
+};
+
+/**
+ * Get card icon
+ */
+const getCardIcon = (brand) => {
+    const icons = {
+        visa: '💳',
+        mastercard: '💳',
+        amex: '💳',
+        discover: '💳',
+        default: '💳'
     };
+    return icons[brand] || icons.default;
+};
+
+/**
+ * Render invoices
+ */
+const renderInvoices = () => {
+    const container = document.getElementById('invoices-list');
+    if (!container) return;
+    
+    if (PaymentState.invoices.length === 0) {
+        container.innerHTML = '<p class="empty-state">No invoices yet.</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <table class="invoices-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${PaymentState.invoices.map(invoice => `
+                    <tr>
+                        <td>${formatDate(invoice.createdAt)}</td>
+                        <td>${invoice.description}</td>
+                        <td>${formatCurrency(invoice.amount)}</td>
+                        <td><span class="status-badge status-${invoice.status}">${invoice.status}</span></td>
+                        <td><a href="${invoice.url}" target="_blank" class="btn-link">View</a></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+};
+
+/**
+ * Show checkout modal
+ */
+const showCheckoutModal = (planId) => {
+    const plan = SUBSCRIPTION_PLANS[planId];
+    PaymentState.selectedPlan = plan;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Subscribe to ${plan.name}</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="checkout-summary">
+                    <div class="plan-details">
+                        <span class="plan-name">${plan.name}</span>
+                        <span class="plan-price">${formatCurrency(plan.price)}/${plan.interval}</span>
+                    </div>
+                    ${plan.trialDays ? `<div class="trial-info">✨ ${plan.trialDays}-day free trial included</div>` : ''}
+                </div>
+                
+                <div class="payment-section">
+                    <h4>Payment Method</h4>
+                    <div id="card-element" class="card-element"></div>
+                    <div id="card-errors" class="card-errors" role="alert"></div>
+                </div>
+                
+                <div class="coupon-section">
+                    <div class="coupon-input">
+                        <input type="text" id="coupon-code" class="form-input" placeholder="Coupon code">
+                        <button class="btn btn-outline" onclick="payment.applyCoupon()">Apply</button>
+                    </div>
+                    <div id="coupon-feedback" class="coupon-feedback"></div>
+                </div>
+                
+                <div class="payment-summary">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">${formatCurrency(plan.price)}</span>
+                    </div>
+                    <div class="summary-row discount" id="discount-row" style="display: none;">
+                        <span>Discount:</span>
+                        <span id="discount-amount">-${formatCurrency(0)}</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="total-amount">${formatCurrency(plan.price)}</span>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary btn-block" id="confirm-payment" onclick="payment.confirmPayment()">
+                    ${plan.price === 0 ? 'Subscribe Free' : `Pay ${formatCurrency(plan.price)}`}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Mount Stripe card element
+    mountCardElement('card-element');
+    
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+};
+
+/**
+ * Show cancel subscription modal
+ */
+const showCancelModal = () => {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Cancel Subscription</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel your subscription?</p>
+                <p>You will lose access to premium features at the end of your billing period.</p>
+                <div class="form-group">
+                    <label class="form-label">Reason (optional)</label>
+                    <select id="cancel-reason" class="form-select">
+                        <option value="">Select a reason...</option>
+                        <option value="too_expensive">Too expensive</option>
+                        <option value="not_using">Not using enough</option>
+                        <option value="technical_issues">Technical issues</option>
+                        <option value="found_alternative">Found alternative</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-checkbox-label">
+                        <input type="checkbox" id="cancel-immediately"> Cancel immediately (no refund)
+                    </label>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-outline" onclick="this.closest('.modal').remove()">Keep Subscription</button>
+                    <button class="btn btn-danger" onclick="payment.confirmCancel()">Yes, Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    window.pendingCancelModal = modal;
+    
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+};
+
+/**
+ * Show add payment method modal
+ */
+const showAddPaymentMethodModal = () => {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Payment Method</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="new-card-element" class="card-element"></div>
+                <div id="new-card-errors" class="card-errors"></div>
+                <button class="btn btn-primary btn-block" onclick="payment.savePaymentMethod()">Add Card</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Create new card element for this modal
+    const elements = PaymentState.stripe.elements();
+    const newCardElement = elements.create('card', {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#32325d',
+                '::placeholder': { color: '#aab7c4' }
+            }
+        }
+    });
+    newCardElement.mount('#new-card-element');
+    
+    window.tempCardElement = newCardElement;
+    
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+        if (window.tempCardElement) {
+            window.tempCardElement.unmount();
+            window.tempCardElement = null;
+        }
+    };
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+};
+
+// ============================================
+// Payment Actions
+// ============================================
+
+/**
+ * Select subscription plan
+ */
+const selectPlan = (planId) => {
+    if (planId === 'free') {
+        createSubscription('free', null);
+    } else {
+        showCheckoutModal(planId);
+    }
+};
+
+/**
+ * Apply coupon code
+ */
+const applyCoupon = async () => {
+    const couponInput = document.getElementById('coupon-code');
+    const couponCode = couponInput?.value;
+    
+    if (!couponCode) {
+        showToast('Please enter a coupon code', 'warning');
+        return;
+    }
+    
+    const result = await validateCoupon(couponCode, PaymentState.selectedPlan?.id);
+    
+    if (result) {
+        const discountRow = document.getElementById('discount-row');
+        const discountAmount = document.getElementById('discount-amount');
+        const totalAmount = document.getElementById('total-amount');
+        
+        if (discountRow && discountAmount && totalAmount) {
+            discountRow.style.display = 'flex';
+            discountAmount.textContent = `-${formatCurrency(result.discountAmount)}`;
+            totalAmount.textContent = formatCurrency(result.amount);
+        }
+        
+        const feedback = document.getElementById('coupon-feedback');
+        if (feedback) {
+            feedback.innerHTML = `<span class="success">✓ Coupon applied! ${result.description}</span>`;
+        }
+        
+        showToast('Coupon applied successfully!', 'success');
+    } else {
+        const feedback = document.getElementById('coupon-feedback');
+        if (feedback) {
+            feedback.innerHTML = '<span class="error">✗ Invalid or expired coupon code</span>';
+        }
+    }
+};
+
+/**
+ * Confirm payment
+ */
+const confirmPayment = async () => {
+    const plan = PaymentState.selectedPlan;
+    if (!plan) return;
+    
+    const paymentMethod = await createPaymentMethod();
+    if (!paymentMethod) return;
+    
+    const couponInput = document.getElementById('coupon-code');
+    const couponCode = couponInput?.value;
+    
+    await createSubscription(plan.id, paymentMethod.id, couponCode);
+    
+    // Close modal
+    const modal = document.querySelector('.modal.active');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    }
+};
+
+/**
+ * Confirm cancellation
+ */
+const confirmCancel = async () => {
+    const cancelImmediately = document.getElementById('cancel-immediately')?.checked || false;
+    const reasonSelect = document.getElementById('cancel-reason');
+    const reason = reasonSelect?.value || '';
+    
+    await cancelSubscription(cancelImmediately, reason);
+    
+    if (window.pendingCancelModal) {
+        window.pendingCancelModal.classList.remove('active');
+        setTimeout(() => window.pendingCancelModal.remove(), 300);
+        window.pendingCancelModal = null;
+    }
+};
+
+/**
+ * Save payment method
+ */
+const savePaymentMethod = async () => {
+    if (!window.tempCardElement) return;
+    
+    const { paymentMethod, error } = await PaymentState.stripe.createPaymentMethod({
+        type: 'card',
+        card: window.tempCardElement
+    });
+    
+    if (error) {
+        showToast(error.message, 'error');
+        return;
+    }
+    
+    // Save to backend
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/update-payment-method`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({ paymentMethodId: paymentMethod.id })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Payment method added successfully!', 'success');
+            await fetchPaymentMethods();
+            renderPaymentMethods();
+            
+            // Close modal
+            const modal = document.querySelector('.modal.active');
+            if (modal) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 300);
+            }
+        }
+    } catch (error) {
+        console.error('Save payment method error:', error);
+        showToast('Failed to save payment method', 'error');
+    }
+};
+
+/**
+ * Set default payment method
+ */
+const setDefaultPaymentMethod = async (paymentMethodId) => {
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/set-default-payment-method`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({ paymentMethodId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Default payment method updated', 'success');
+            await fetchPaymentMethods();
+            renderPaymentMethods();
+        }
+    } catch (error) {
+        console.error('Set default payment method error:', error);
+        showToast('Failed to update default payment method', 'error');
+    }
+};
+
+/**
+ * Delete payment method
+ */
+const deletePaymentMethod = async (paymentMethodId) => {
+    if (!confirm('Are you sure you want to remove this payment method?')) return;
+    
+    try {
+        const response = await fetch(`${PAYMENT_CONFIG.API_ENDPOINT}/payment-methods/${paymentMethodId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Payment method removed', 'info');
+            await fetchPaymentMethods();
+            renderPaymentMethods();
+        }
+    } catch (error) {
+        console.error('Delete payment method error:', error);
+        showToast('Failed to remove payment method', 'error');
+    }
+};
+
+// ============================================
+// Loading Helpers
+// ============================================
+
+let loadingOverlay = null;
+
+/**
+ * Show loading overlay
+ */
+const showLoading = () => {
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = '<div class="loading-spinner"></div><p>Processing...</p>';
+        document.body.appendChild(loadingOverlay);
+    }
+    loadingOverlay.classList.add('active');
+};
+
+/**
+ * Hide loading overlay
+ */
+const hideLoading = () => {
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('active');
+    }
+};
+
+// ============================================
+// Billing Dashboard
+// ============================================
+
+/**
+ * Render billing dashboard
+ */
+const renderBillingDashboard = () => {
+    const container = document.getElementById('billing-dashboard');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="billing-container">
+            <div class="billing-header">
+                <h2>Billing & Subscription</h2>
+                <p>Manage your subscription and payment methods</p>
+            </div>
+            
+            <div class="subscription-section">
+                <h3>Current Plan</h3>
+                <div id="subscription-details"></div>
+            </div>
+            
+            <div class="payment-methods-section">
+                <h3>Payment Methods</h3>
+                <div id="payment-methods"></div>
+            </div>
+            
+            <div class="billing-history-section">
+                <h3>Billing History</h3>
+                <div id="invoices-list"></div>
+            </div>
+        </div>
+    `;
+    
+    renderSubscriptionDetails();
+    renderPaymentMethods();
+    renderInvoices();
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize payment module
+ */
+const initPayment = async () => {
+    if (PaymentState.isInitialized) return;
+    
+    console.log('Initializing payment module...');
+    
+    PaymentState.userId = getUserId();
+    
+    // Fetch data
+    await fetchPlans();
+    
+    if (auth?.isAuthenticated) {
+        await fetchCurrentSubscription();
+        await fetchPaymentMethods();
+        await fetchInvoices();
+    }
+    
+    // Initialize Stripe
+    if (PAYMENT_CONFIG.STRIPE_PUBLIC_KEY) {
+        await initStripe();
+    }
+    
+    // Render pricing plans if on pricing page
+    if (document.getElementById('pricing-plans')) {
+        renderPricingPlans();
+    }
+    
+    // Render billing dashboard if on billing page
+    if (document.getElementById('billing-dashboard')) {
+        renderBillingDashboard();
+    }
+    
+    PaymentState.isInitialized = true;
+    
+    console.log('Payment module initialized');
+};
+
+// ============================================
+// Export Payment Module
+// ============================================
+
+const payment = {
+    // State
+    get isInitialized() { return PaymentState.isInitialized; },
+    get currentSubscription() { return PaymentState.currentSubscription; },
+    get plans() { return PaymentState.plans; },
+    
+    // Subscription methods
+    selectPlan,
+    createSubscription,
+    cancelSubscription,
+    resumeSubscription,
+    
+    // Payment methods
+    fetchPaymentMethods,
+    setDefaultPaymentMethod,
+    deletePaymentMethod,
+    showAddPaymentMethodModal,
+    savePaymentMethod,
+    
+    // Checkout
+    showCheckoutModal,
+    applyCoupon,
+    confirmPayment,
+    showCancelModal,
+    confirmCancel,
+    
+    // UI
+    renderPricingPlans,
+    renderBillingDashboard,
+    
+    // Initialize
+    init: initPayment
+};
+
+// Make payment globally available
+window.payment = payment;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPayment);
+} else {
+    initPayment();
 }
 
-// ============================================
-// CSS STYLES
-// ============================================
-
-const style = document.createElement('style');
-style.textContent = `
-    .pricing-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 24px;
-        margin: 32px 0;
-    }
-    
-    .pricing-card {
-        background: var(--bg-primary);
-        border-radius: 24px;
-        padding: 32px;
-        text-align: center;
-        position: relative;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    }
-    
-    .pricing-card:hover {
-        transform: translateY(-4px);
-    }
-    
-    .pricing-card.popular {
-        border: 2px solid var(--color-warning);
-        transform: scale(1.02);
-    }
-    
-    .popular-badge {
-        position: absolute;
-        top: -12px;
-        right: 20px;
-        background: var(--color-warning);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-    
-    .price {
-        font-size: 48px;
-        font-weight: bold;
-        margin: 20px 0;
-    }
-    
-    .price small {
-        font-size: 14px;
-        font-weight: normal;
-    }
-    
-    .feature-list {
-        list-style: none;
-        margin: 24px 0;
-        text-align: left;
-    }
-    
-    .feature-list li {
-        padding: 8px 0;
-        border-bottom: 1px solid var(--border-light);
-    }
-    
-    .method-selector {
-        display: flex;
-        gap: 12px;
-        margin: 16px 0;
-    }
-    
-    .method-option {
-        flex: 1;
-        padding: 12px;
-        text-align: center;
-        border: 2px solid var(--border-light);
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .method-option.active {
-        border-color: var(--color-primary);
-        background: var(--primary-50);
-    }
-    
-    .promo-input-group {
-        display: flex;
-        gap: 8px;
-    }
-    
-    .promo-input-group .form-control {
-        flex: 1;
-    }
-    
-    .order-summary {
-        background: var(--bg-secondary);
-        padding: 16px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-    }
-    
-    .summary-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 0;
-    }
-    
-    .summary-item.total {
-        border-top: 1px solid var(--border-light);
-        margin-top: 8px;
-        padding-top: 12px;
-        font-size: 18px;
-    }
-    
-    .subscription-active, .subscription-free {
-        background: var(--bg-secondary);
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 24px;
-    }
-    
-    .subscription-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-        margin-bottom: 12px;
-    }
-    
-    .subscription-badge.premium {
-        background: linear-gradient(135deg, var(--color-warning), var(--color-danger));
-        color: white;
-    }
-    
-    .subscription-badge.free {
-        background: var(--gray-500);
-        color: white;
-    }
-    
-    .history-list {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .history-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 12px;
-        border-bottom: 1px solid var(--border-light);
-    }
-    
-    .payment-toast {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        border-radius: 40px;
-        color: white;
-        font-weight: 600;
-        z-index: 1000;
-        animation: slideUp 0.3s ease;
-    }
-    
-    .toast-success {
-        background: #10b981;
-    }
-    
-    .toast-error {
-        background: #ef4444;
-    }
-    
-    .toast-info {
-        background: #3b82f6;
-    }
-    
-    .toast-warning {
-        background: #f59e0b;
-    }
-    
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    }
-`;
-
-document.head.appendChild(style);
-
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Payment module initialized');
-    
-    // Check URL for payment success/cancel
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get('payment_status');
-    
-    if (paymentStatus === 'success') {
-        paymentUI.showToast('Payment successful! Welcome to Premium! 🎉', 'success');
-        paymentUI.renderSubscriptionStatus();
-    } else if (paymentStatus === 'cancel') {
-        paymentUI.showToast('Payment cancelled.', 'info');
-    }
-    
-    // Debug mode
-    if (window.location.hostname === 'localhost') {
-        window.debugPayment = {
-            subscription: subscriptionManager,
-            config: PaymentConfig
-        };
-        console.log('Payment debug mode enabled');
-    }
-});
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = payment;
+}
