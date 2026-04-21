@@ -1,978 +1,948 @@
-/* ============================================
-   SPEAKFLOW - AI MODEL MODULE
-   Version: 1.0.0
-   Handles AI model fine-tuning, pronunciation analysis, and adaptive learning
-   ============================================ */
-
 // ============================================
-// AI MODEL CONFIGURATION
+// SpeakFlow AI Model Module
+// AI-Powered Language Learning Features
 // ============================================
 
-const AIModelConfig = {
-    // Model Settings
-    model: {
-        name: 'SpeakFlow-Pronunciation-v2',
-        version: '2.1.0',
-        type: 'transformer',
-        architecture: 'whisper-tiny'
-    },
-    
-    // Inference Settings
-    inference: {
-        maxLength: 448,
+// ============================================
+// AI State Management
+// ============================================
+
+const AIState = {
+    isInitialized: false,
+    isProcessing: false,
+    currentModel: 'gpt-3.5-turbo',
+    availableModels: ['gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+    settings: {
         temperature: 0.7,
-        topK: 50,
-        topP: 0.95,
-        beamSize: 5
+        maxTokens: 150,
+        language: 'en',
+        level: 'intermediate'
     },
+    cache: new Map(),
+    conversationHistory: [],
+    sessionId: null
+};
+
+// ============================================
+// DOM Elements
+// ============================================
+
+const AIDOM = {
+    chatContainer: document.getElementById('ai-chat-container'),
+    chatInput: document.getElementById('ai-chat-input'),
+    chatSendBtn: document.getElementById('ai-chat-send'),
+    modelSelect: document.getElementById('ai-model-select'),
+    temperatureSlider: document.getElementById('ai-temperature'),
+    languageSelect: document.getElementById('ai-language'),
+    levelSelect: document.getElementById('ai-level'),
+    loadingIndicator: document.getElementById('ai-loading'),
+    suggestionsContainer: document.getElementById('ai-suggestions')
+};
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Generate unique session ID
+ */
+const generateSessionId = () => {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
+ * Show AI loading state
+ */
+const showAILoading = () => {
+    AIState.isProcessing = true;
+    if (AIDOM.loadingIndicator) {
+        AIDOM.loadingIndicator.classList.add('active');
+    }
+};
+
+/**
+ * Hide AI loading state
+ */
+const hideAILoading = () => {
+    AIState.isProcessing = false;
+    if (AIDOM.loadingIndicator) {
+        AIDOM.loadingIndicator.classList.remove('active');
+    }
+};
+
+/**
+ * Add message to chat
+ */
+const addChatMessage = (message, isUser = false) => {
+    const chatContainer = AIDOM.chatContainer;
+    if (!chatContainer) return;
     
-    // Training Settings
-    training: {
-        batchSize: 32,
-        learningRate: 3e-4,
-        epochs: 10,
-        warmupSteps: 500,
-        weightDecay: 0.01
-    },
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isUser ? 'user-message' : 'ai-message'}`;
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+        <div class="message-content">
+            <div class="message-text">${escapeHtml(message)}</div>
+            <div class="message-time">${new Date().toLocaleTimeString()}</div>
+        </div>
+    `;
     
-    // Feature Weights
-    weights: {
-        pronunciation: 0.35,
-        fluency: 0.25,
-        grammar: 0.20,
-        vocabulary: 0.15,
-        confidence: 0.05
-    },
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+};
+
+/**
+ * Escape HTML to prevent XSS
+ */
+const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+};
+
+/**
+ * Show typing indicator
+ */
+const showTypingIndicator = () => {
+    const chatContainer = AIDOM.chatContainer;
+    if (!chatContainer) return;
     
-    // Thresholds
-    thresholds: {
-        excellent: 85,
-        good: 70,
-        fair: 50,
-        poor: 30
-    },
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'chat-message ai-message typing-indicator';
+    typingDiv.id = 'typing-indicator';
+    typingDiv.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-content">
+            <div class="typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
     
-    // API Endpoints
-    api: {
-        analyze: '/api/ai/analyze',
-        feedback: '/api/ai/feedback',
-        train: '/api/ai/train',
-        metrics: '/api/ai/metrics'
+    chatContainer.appendChild(typingDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+};
+
+/**
+ * Hide typing indicator
+ */
+const hideTypingIndicator = () => {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
     }
 };
 
 // ============================================
-// NEURAL NETWORK SIMULATION
+// AI Chat Functions
 // ============================================
 
-class NeuralNetwork {
-    constructor() {
-        this.weights = this.initializeWeights();
-        this.biases = this.initializeBiases();
-        this.activation = 'relu';
-    }
+/**
+ * Initialize AI chat session
+ */
+const initAIChat = async () => {
+    AIState.sessionId = generateSessionId();
+    AIState.conversationHistory = [];
     
-    initializeWeights() {
-        // Initialize with random weights
-        return {
-            input_hidden: this.randomMatrix(256, 512),
-            hidden_hidden: this.randomMatrix(512, 512),
-            hidden_output: this.randomMatrix(512, 128)
-        };
-    }
-    
-    initializeBiases() {
-        return {
-            hidden: new Array(512).fill(0),
-            output: new Array(128).fill(0)
-        };
-    }
-    
-    randomMatrix(rows, cols) {
-        const matrix = [];
-        for (let i = 0; i < rows; i++) {
-            matrix[i] = [];
-            for (let j = 0; j < cols; j++) {
-                matrix[i][j] = (Math.random() - 0.5) * 0.1;
+    // Load conversation history from localStorage
+    const savedHistory = localStorage.getItem('ai_chat_history');
+    if (savedHistory) {
+        try {
+            AIState.conversationHistory = JSON.parse(savedHistory);
+            // Display last 10 messages
+            const lastMessages = AIState.conversationHistory.slice(-10);
+            for (const msg of lastMessages) {
+                addChatMessage(msg.content, msg.role === 'user');
             }
-        }
-        return matrix;
-    }
-    
-    forward(input) {
-        // Simulate forward pass
-        // In production, this would call actual ML model
-        return this.simulateForward(input);
-    }
-    
-    simulateForward(input) {
-        // Simulate neural network output
-        const features = this.extractFeatures(input);
-        const prediction = {
-            pronunciation: this.sigmoid(features.pronunciation),
-            fluency: this.sigmoid(features.fluency),
-            grammar: this.sigmoid(features.grammar),
-            vocabulary: this.sigmoid(features.vocabulary),
-            confidence: 0.7 + Math.random() * 0.2
-        };
-        
-        return prediction;
-    }
-    
-    extractFeatures(text) {
-        // Extract linguistic features from text
-        const words = text.toLowerCase().split(' ');
-        const uniqueWords = new Set(words);
-        
-        return {
-            pronunciation: this.analyzePronunciationPatterns(text),
-            fluency: Math.min(1, words.length / 20),
-            grammar: this.checkGrammarPatterns(text),
-            vocabulary: Math.min(1, uniqueWords.size / 15)
-        };
-    }
-    
-    analyzePronunciationPatterns(text) {
-        // Check for common pronunciation patterns
-        let score = 0.7;
-        
-        const patterns = {
-            'th': /th/g,
-            'ing': /ing/g,
-            'ed': /ed$/gm,
-            's': /s$/gm
-        };
-        
-        for (const [pattern, regex] of Object.entries(patterns)) {
-            const matches = text.match(regex);
-            if (matches) {
-                score += matches.length * 0.02;
-            }
-        }
-        
-        return Math.min(1, score);
-    }
-    
-    checkGrammarPatterns(text) {
-        let score = 0.7;
-        
-        // Check for common grammar issues
-        const issues = {
-            'gonna': /gonna/gi,
-            'wanna': /wanna/gi,
-            'gotta': /gotta/gi,
-            'ain\'t': /ain't/gi
-        };
-        
-        for (const [issue, regex] of Object.entries(issues)) {
-            if (regex.test(text)) {
-                score -= 0.1;
-            }
-        }
-        
-        return Math.max(0.3, Math.min(1, score));
-    }
-    
-    sigmoid(x) {
-        return 1 / (1 + Math.exp(-x));
-    }
-    
-    relu(x) {
-        return Math.max(0, x);
-    }
-    
-    async train(trainingData, epochs = 10) {
-        console.log(`Training model for ${epochs} epochs...`);
-        
-        for (let epoch = 0; epoch < epochs; epoch++) {
-            const loss = await this.trainEpoch(trainingData);
-            console.log(`Epoch ${epoch + 1}/${epochs}, Loss: ${loss.toFixed(4)}`);
-        }
-        
-        return { success: true, finalLoss: 0.023 };
-    }
-    
-    async trainEpoch(trainingData) {
-        let totalLoss = 0;
-        
-        for (const sample of trainingData) {
-            const prediction = this.forward(sample.input);
-            const loss = this.computeLoss(prediction, sample.target);
-            totalLoss += loss;
-            this.backpropagate(loss);
-        }
-        
-        return totalLoss / trainingData.length;
-    }
-    
-    computeLoss(prediction, target) {
-        let loss = 0;
-        for (const key in prediction) {
-            loss += Math.pow(prediction[key] - target[key], 2);
-        }
-        return loss;
-    }
-    
-    backpropagate(loss) {
-        // Simulate backpropagation
-        // In production, this would update weights
-        for (const layer in this.weights) {
-            for (let i = 0; i < this.weights[layer].length; i++) {
-                for (let j = 0; j < this.weights[layer][i].length; j++) {
-                    this.weights[layer][i][j] += (Math.random() - 0.5) * 0.001;
-                }
-            }
+        } catch (e) {
+            console.error('Error loading chat history:', e);
         }
     }
-}
-
-// ============================================
-// PRONUNCIATION ANALYZER
-// ============================================
-
-class PronunciationAnalyzer {
-    constructor(neuralNetwork) {
-        this.nn = neuralNetwork;
-        this.phonemeMap = this.initPhonemeMap();
-        this.commonErrors = this.initCommonErrors();
-    }
     
-    initPhonemeMap() {
-        return {
-            'th': { phoneme: 'θ', description: 'voiceless dental fricative' },
-            'th_voiced': { phoneme: 'ð', description: 'voiced dental fricative' },
-            'sh': { phoneme: 'ʃ', description: 'voiceless postalveolar fricative' },
-            'ch': { phoneme: 'tʃ', description: 'voiceless postalveolar affricate' },
-            'zh': { phoneme: 'ʒ', description: 'voiced postalveolar fricative' },
-            'ng': { phoneme: 'ŋ', description: 'velar nasal' },
-            'r': { phoneme: 'ɹ', description: 'alveolar approximant' },
-            'l': { phoneme: 'l', description: 'alveolar lateral approximant' }
-        };
-    }
-    
-    initCommonErrors() {
-        return {
-            'th': {
-                common: ['t', 'd', 'f', 'v'],
-                description: 'TH sound is often pronounced as T, D, F, or V'
-            },
-            'r': {
-                common: ['w', 'l'],
-                description: 'R sound is often pronounced as W or L'
-            },
-            'vowel_length': {
-                common: ['short vowels', 'long vowels'],
-                description: 'Vowel length distinction is important in English'
-            },
-            'word_stress': {
-                common: ['wrong syllable'],
-                description: 'Word stress patterns affect meaning'
-            }
-        };
-    }
-    
-    async analyze(audioData, transcript, expectedText = null) {
-        // Extract acoustic features
-        const features = await this.extractAcousticFeatures(audioData);
-        
-        // Get neural network prediction
-        const prediction = this.nn.forward(transcript);
-        
-        // Detailed phoneme analysis
-        const phonemeAnalysis = this.analyzePhonemes(transcript);
-        
-        // Identify errors
-        const errors = this.identifyErrors(transcript, phonemeAnalysis);
-        
-        // Calculate scores
-        const scores = this.calculateScores(prediction, errors);
-        
-        // Generate feedback
-        const feedback = this.generateDetailedFeedback(scores, errors, phonemeAnalysis);
-        
-        return {
-            scores,
-            errors,
-            phonemeAnalysis,
-            feedback,
-            features,
-            confidence: prediction.confidence,
-            timestamp: new Date().toISOString()
-        };
-    }
-    
-    async extractAcousticFeatures(audioData) {
-        // Simulate acoustic feature extraction
-        // In production, this would use Web Audio API or server-side processing
-        
-        return {
-            pitch: 120 + Math.random() * 60,
-            energy: 0.5 + Math.random() * 0.3,
-            spectralCentroid: 800 + Math.random() * 400,
-            mfcc: Array(13).fill(0).map(() => (Math.random() - 0.5) * 2)
-        };
-    }
-    
-    analyzePhonemes(text) {
-        const words = text.toLowerCase().split(' ');
-        const analysis = [];
-        
-        for (const word of words) {
-            const phonemes = this.wordToPhonemes(word);
-            analysis.push({
-                word,
-                phonemes,
-                length: word.length,
-                syllables: this.countSyllables(word)
-            });
-        }
-        
-        return analysis;
-    }
-    
-    wordToPhonemes(word) {
-        // Simplified phoneme mapping
-        // In production, use CMU Pronouncing Dictionary
-        const phonemes = [];
-        
-        for (let i = 0; i < word.length; i++) {
-            const char = word[i];
-            const nextChar = word[i + 1];
-            
-            if (char === 't' && nextChar === 'h') {
-                phonemes.push('θ');
-                i++;
-            } else if (char === 's' && nextChar === 'h') {
-                phonemes.push('ʃ');
-                i++;
-            } else if (char === 'c' && nextChar === 'h') {
-                phonemes.push('tʃ');
-                i++;
-            } else if (char === 'n' && nextChar === 'g') {
-                phonemes.push('ŋ');
-                i++;
-            } else {
-                phonemes.push(this.charToPhoneme(char));
-            }
-        }
-        
-        return phonemes;
-    }
-    
-    charToPhoneme(char) {
-        const map = {
-            'a': 'æ', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'ɛ',
-            'f': 'f', 'g': 'g', 'h': 'h', 'i': 'ɪ', 'j': 'dʒ',
-            'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'ɑ',
-            'p': 'p', 'q': 'k', 'r': 'ɹ', 's': 's', 't': 't',
-            'u': 'ʌ', 'v': 'v', 'w': 'w', 'x': 'ks', 'y': 'j', 'z': 'z'
-        };
-        return map[char] || char;
-    }
-    
-    countSyllables(word) {
-        let count = 0;
-        const vowels = 'aeiouy';
-        let lastWasVowel = false;
-        
-        for (let i = 0; i < word.length; i++) {
-            const isVowel = vowels.includes(word[i]);
-            if (isVowel && !lastWasVowel) {
-                count++;
-            }
-            lastWasVowel = isVowel;
-        }
-        
-        return Math.max(1, count);
-    }
-    
-    identifyErrors(transcript, phonemeAnalysis) {
-        const errors = [];
-        
-        // Check for common error patterns
-        for (const [pattern, info] of Object.entries(this.commonErrors)) {
-            const regex = new RegExp(pattern, 'gi');
-            if (regex.test(transcript)) {
-                errors.push({
-                    type: pattern,
-                    severity: 'medium',
-                    description: info.description,
-                    suggestions: this.getSuggestions(pattern)
-                });
-            }
-        }
-        
-        // Check for mispronounced words
-        for (const analysis of phonemeAnalysis) {
-            if (analysis.phonemes.length > analysis.word.length * 1.5) {
-                errors.push({
-                    type: 'extra_syllables',
-                    word: analysis.word,
-                    severity: 'high',
-                    description: `Too many syllables in "${analysis.word}"`,
-                    suggestions: [`Practice saying "${analysis.word}" slowly`]
-                });
-            }
-        }
-        
-        return errors;
-    }
-    
-    getSuggestions(errorType) {
-        const suggestions = {
-            'th': [
-                'Place your tongue between your teeth',
-                'Blow air gently over your tongue',
-                'Practice with words: "think", "three", "mother"'
-            ],
-            'r': [
-                'Round your lips slightly',
-                'Raise the back of your tongue',
-                'Practice with words: "red", "run", "car"'
-            ],
-            'vowel_length': [
-                'Long vowels: "beat" vs short: "bit"',
-                'Practice minimal pairs',
-                'Use a mirror to watch your mouth shape'
-            ],
-            'word_stress': [
-                'Listen to native speakers',
-                'Use a dictionary to check stress',
-                'Practice with recorded examples'
-            ]
-        };
-        
-        return suggestions[errorType] || ['Practice with a native speaker', 'Record and compare yourself'];
-    }
-    
-    calculateScores(prediction, errors) {
-        const baseScore = {
-            pronunciation: prediction.pronunciation * 100,
-            fluency: prediction.fluency * 100,
-            grammar: prediction.grammar * 100,
-            vocabulary: prediction.vocabulary * 100
-        };
-        
-        // Deduct for errors
-        let errorPenalty = 0;
-        for (const error of errors) {
-            errorPenalty += error.severity === 'high' ? 5 : error.severity === 'medium' ? 3 : 1;
-        }
-        
-        const total = 
-            baseScore.pronunciation * AIModelConfig.weights.pronunciation +
-            baseScore.fluency * AIModelConfig.weights.fluency +
-            baseScore.grammar * AIModelConfig.weights.grammar +
-            baseScore.vocabulary * AIModelConfig.weights.vocabulary -
-            errorPenalty;
-        
-        return {
-            pronunciation: Math.round(Math.max(0, Math.min(100, baseScore.pronunciation))),
-            fluency: Math.round(Math.max(0, Math.min(100, baseScore.fluency))),
-            grammar: Math.round(Math.max(0, Math.min(100, baseScore.grammar))),
-            vocabulary: Math.round(Math.max(0, Math.min(100, baseScore.vocabulary))),
-            total: Math.round(Math.max(0, Math.min(100, total)))
-        };
-    }
-    
-    generateDetailedFeedback(scores, errors, phonemeAnalysis) {
-        const feedback = {
-            summary: '',
-            strengths: [],
-            improvements: [],
-            detailed: [],
-            nextSteps: []
-        };
-        
-        // Summary based on total score
-        if (scores.total >= AIModelConfig.thresholds.excellent) {
-            feedback.summary = 'Excellent! Your pronunciation is very clear and natural. You sound like a native speaker!';
-        } else if (scores.total >= AIModelConfig.thresholds.good) {
-            feedback.summary = 'Good job! Your pronunciation is clear with minor areas for improvement.';
-        } else if (scores.total >= AIModelConfig.thresholds.fair) {
-            feedback.summary = 'Fair effort. Focus on the key areas below to improve your pronunciation.';
-        } else {
-            feedback.summary = 'Let\'s work on the basics. Try practicing the sounds and words listed below.';
-        }
-        
-        // Strengths
-        if (scores.pronunciation >= 80) {
-            feedback.strengths.push('Clear consonant sounds');
-        }
-        if (scores.fluency >= 75) {
-            feedback.strengths.push('Good speaking rhythm');
-        }
-        if (scores.grammar >= 80) {
-            feedback.strengths.push('Correct sentence structure');
-        }
-        if (scores.vocabulary >= 75) {
-            feedback.strengths.push('Rich vocabulary usage');
-        }
-        
-        // Improvements from errors
-        for (const error of errors) {
-            feedback.improvements.push({
-                area: error.type,
-                description: error.description,
-                suggestions: error.suggestions.slice(0, 2)
-            });
-        }
-        
-        // Detailed phoneme feedback
-        for (const analysis of phonemeAnalysis.slice(0, 3)) {
-            if (analysis.phonemes.length > 0) {
-                feedback.detailed.push({
-                    word: analysis.word,
-                    phonemeCount: analysis.phonemes.length,
-                    syllableCount: analysis.syllables
-                });
-            }
-        }
-        
-        // Next steps
-        feedback.nextSteps = [
-            'Practice the problematic sounds daily',
-            'Record yourself and compare with native speakers',
-            'Use shadowing technique: repeat after audio',
-            'Focus on word stress and intonation'
-        ];
-        
-        return feedback;
-    }
-}
-
-// ============================================
-// ADAPTIVE LEARNING ENGINE
-// ============================================
-
-class AdaptiveLearningEngine {
-    constructor() {
-        this.userModels = new Map();
-        this.learningPaths = new Map();
-    }
-    
-    async getUserModel(userId) {
-        if (!this.userModels.has(userId)) {
-            this.userModels.set(userId, this.createUserModel(userId));
-        }
-        return this.userModels.get(userId);
-    }
-    
-    createUserModel(userId) {
-        return {
-            userId,
-            proficiency: {
-                overall: 0.5,
-                pronunciation: 0.5,
-                fluency: 0.5,
-                grammar: 0.5,
-                vocabulary: 0.5
-            },
-            weakAreas: [],
-            strongAreas: [],
-            learningRate: 0.05,
-            history: [],
-            preferences: {
-                difficulty: 'medium',
-                pace: 'normal',
-                focus: null
-            }
-        };
-    }
-    
-    async updateUserModel(userId, practiceResult) {
-        const model = await this.getUserModel(userId);
-        
-        // Update proficiency scores
-        model.proficiency.pronunciation = this.updateScore(
-            model.proficiency.pronunciation,
-            practiceResult.scores.pronunciation / 100
-        );
-        model.proficiency.fluency = this.updateScore(
-            model.proficiency.fluency,
-            practiceResult.scores.fluency / 100
-        );
-        model.proficiency.grammar = this.updateScore(
-            model.proficiency.grammar,
-            practiceResult.scores.grammar / 100
-        );
-        model.proficiency.vocabulary = this.updateScore(
-            model.proficiency.vocabulary,
-            practiceResult.scores.vocabulary / 100
-        );
-        
-        // Update overall proficiency
-        model.proficiency.overall = (
-            model.proficiency.pronunciation +
-            model.proficiency.fluency +
-            model.proficiency.grammar +
-            model.proficiency.vocabulary
-        ) / 4;
-        
-        // Identify weak areas
-        model.weakAreas = this.identifyWeakAreas(model.proficiency);
-        model.strongAreas = this.identifyStrongAreas(model.proficiency);
-        
-        // Add to history
-        model.history.push({
-            ...practiceResult,
+    // Add welcome message if no history
+    if (AIState.conversationHistory.length === 0) {
+        const welcomeMessage = `Hello! I'm your AI language learning assistant. I can help you practice English conversation, explain grammar, teach vocabulary, and more. What would you like to practice today?`;
+        addChatMessage(welcomeMessage, false);
+        AIState.conversationHistory.push({
+            role: 'assistant',
+            content: welcomeMessage,
             timestamp: new Date().toISOString()
         });
-        
-        // Keep only last 100 records
-        if (model.history.length > 100) {
-            model.history.shift();
-        }
-        
-        // Generate learning path
-        await this.generateLearningPath(userId);
-        
-        this.userModels.set(userId, model);
-        return model;
+        saveChatHistory();
     }
-    
-    updateScore(current, newScore) {
-        // Exponential moving average
-        const alpha = 0.3;
-        return current * (1 - alpha) + newScore * alpha;
-    }
-    
-    identifyWeakAreas(proficiency) {
-        const areas = [];
-        const threshold = 0.6;
-        
-        if (proficiency.pronunciation < threshold) areas.push('pronunciation');
-        if (proficiency.fluency < threshold) areas.push('fluency');
-        if (proficiency.grammar < threshold) areas.push('grammar');
-        if (proficiency.vocabulary < threshold) areas.push('vocabulary');
-        
-        return areas;
-    }
-    
-    identifyStrongAreas(proficiency) {
-        const areas = [];
-        const threshold = 0.8;
-        
-        if (proficiency.pronunciation >= threshold) areas.push('pronunciation');
-        if (proficiency.fluency >= threshold) areas.push('fluency');
-        if (proficiency.grammar >= threshold) areas.push('grammar');
-        if (proficiency.vocabulary >= threshold) areas.push('vocabulary');
-        
-        return areas;
-    }
-    
-    async generateLearningPath(userId) {
-        const model = await this.getUserModel(userId);
-        const path = {
-            userId,
-            generatedAt: new Date().toISOString(),
-            focusAreas: model.weakAreas.slice(0, 2),
-            recommendedExercises: [],
-            difficulty: this.calculateDifficulty(model.proficiency.overall),
-            estimatedTimeMinutes: 15
-        };
-        
-        // Generate exercises based on weak areas
-        for (const area of path.focusAreas) {
-            const exercises = await this.getExercisesForArea(area, path.difficulty);
-            path.recommendedExercises.push(...exercises);
-        }
-        
-        this.learningPaths.set(userId, path);
-        return path;
-    }
-    
-    calculateDifficulty(proficiency) {
-        if (proficiency < 0.4) return 'beginner';
-        if (proficiency < 0.7) return 'intermediate';
-        return 'advanced';
-    }
-    
-    async getExercisesForArea(area, difficulty) {
-        const exercises = {
-            pronunciation: {
-                beginner: [
-                    { type: 'sound', focus: 'basic vowels', duration: 5 },
-                    { type: 'minimal_pairs', focus: 'ship/sheep', duration: 5 }
-                ],
-                intermediate: [
-                    { type: 'sound', focus: 'th sounds', duration: 5 },
-                    { type: 'word_stress', focus: '2-syllable words', duration: 5 }
-                ],
-                advanced: [
-                    { type: 'intonation', focus: 'question patterns', duration: 5 },
-                    { type: 'connected_speech', focus: 'linking', duration: 5 }
-                ]
-            },
-            fluency: {
-                beginner: [
-                    { type: 'shadowing', focus: 'short phrases', duration: 5 },
-                    { type: 'repetition', focus: 'common expressions', duration: 5 }
-                ],
-                intermediate: [
-                    { type: 'shadowing', focus: 'longer sentences', duration: 5 },
-                    { type: 'timed_speech', focus: '1-minute talk', duration: 5 }
-                ],
-                advanced: [
-                    { type: 'impromptu', focus: 'spontaneous speech', duration: 5 },
-                    { type: 'debate', focus: 'opinion expression', duration: 5 }
-                ]
-            }
-        };
-        
-        return exercises[area]?.[difficulty] || exercises.pronunciation.beginner;
-    }
-    
-    async getNextChallenge(userId) {
-        const path = await this.generateLearningPath(userId);
-        const model = await this.getUserModel(userId);
-        
-        return {
-            type: path.focusAreas[0] || 'pronunciation',
-            difficulty: path.difficulty,
-            exercise: path.recommendedExercises[0],
-            estimatedTime: path.estimatedTimeMinutes,
-            adaptive: true
-        };
-    }
-}
-
-// ============================================
-// MODEL TRAINER
-// ============================================
-
-class ModelTrainer {
-    constructor(neuralNetwork) {
-        this.nn = neuralNetwork;
-        this.trainingData = [];
-        this.validationData = [];
-        this.metrics = {
-            accuracy: [],
-            loss: [],
-            timestamp: []
-        };
-    }
-    
-    async collectTrainingData() {
-        // In production, collect from user sessions
-        // This is simulated data
-        const data = [];
-        
-        for (let i = 0; i < 1000; i++) {
-            data.push({
-                input: this.generateSampleText(),
-                target: this.generateTargetScores()
-            });
-        }
-        
-        return data;
-    }
-    
-    generateSampleText() {
-        const samples = [
-            "I want to improve my English speaking skills",
-            "The weather is nice today",
-            "Can you help me with pronunciation?",
-            "I've been learning English for two years",
-            "What's your favorite food?"
-        ];
-        
-        return samples[Math.floor(Math.random() * samples.length)];
-    }
-    
-    generateTargetScores() {
-        return {
-            pronunciation: 0.5 + Math.random() * 0.5,
-            fluency: 0.5 + Math.random() * 0.5,
-            grammar: 0.5 + Math.random() * 0.5,
-            vocabulary: 0.5 + Math.random() * 0.5,
-            confidence: 0.6 + Math.random() * 0.3
-        };
-    }
-    
-    async train() {
-        console.log('Starting model training...');
-        
-        this.trainingData = await this.collectTrainingData();
-        
-        const result = await this.nn.train(this.trainingData, 10);
-        
-        this.updateMetrics(result);
-        
-        return {
-            success: true,
-            metrics: this.metrics,
-            modelVersion: AIModelConfig.model.version
-        };
-    }
-    
-    updateMetrics(result) {
-        this.metrics.accuracy.push(result.finalLoss ? 1 - result.finalLoss : 0.95);
-        this.metrics.loss.push(result.finalLoss || 0.05);
-        this.metrics.timestamp.push(new Date().toISOString());
-        
-        // Keep only last 100 metrics
-        if (this.metrics.accuracy.length > 100) {
-            this.metrics.accuracy.shift();
-            this.metrics.loss.shift();
-            this.metrics.timestamp.shift();
-        }
-    }
-    
-    async fineTune(userData) {
-        console.log(`Fine-tuning model with ${userData.length} samples...`);
-        
-        const fineTuneResult = await this.nn.train(userData, 3);
-        
-        return {
-            success: true,
-            improvement: 0.05,
-            newAccuracy: 0.92
-        };
-    }
-    
-    exportModel() {
-        return {
-            weights: this.nn.weights,
-            biases: this.nn.biases,
-            config: AIModelConfig,
-            version: AIModelConfig.model.version,
-            exportDate: new Date().toISOString()
-        };
-    }
-    
-    async importModel(modelData) {
-        this.nn.weights = modelData.weights;
-        this.nn.biases = modelData.biases;
-        
-        return { success: true, version: modelData.version };
-    }
-}
-
-// ============================================
-// AI SERVICE ORCHESTRATOR
-// ============================================
-
-class AIService {
-    constructor() {
-        this.nn = new NeuralNetwork();
-        this.analyzer = new PronunciationAnalyzer(this.nn);
-        this.adaptiveEngine = new AdaptiveLearningEngine();
-        this.trainer = new ModelTrainer(this.nn);
-        this.initialize();
-    }
-    
-    initialize() {
-        console.log(`AI Model ${AIModelConfig.model.name} v${AIModelConfig.model.version} initialized`);
-    }
-    
-    async analyzeSpeech(audioData, transcript, userId, expectedText = null) {
-        const startTime = performance.now();
-        
-        // Analyze pronunciation
-        const analysis = await this.analyzer.analyze(audioData, transcript, expectedText);
-        
-        // Update user model
-        if (userId) {
-            await this.adaptiveEngine.updateUserModel(userId, analysis);
-        }
-        
-        // Calculate response time
-        const responseTime = performance.now() - startTime;
-        
-        return {
-            ...analysis,
-            responseTime: Math.round(responseTime),
-            modelVersion: AIModelConfig.model.version
-        };
-    }
-    
-    async getPersonalizedChallenge(userId) {
-        const challenge = await this.adaptiveEngine.getNextChallenge(userId);
-        const userModel = await this.adaptiveEngine.getUserModel(userId);
-        
-        return {
-            ...challenge,
-            userProficiency: userModel.proficiency.overall,
-            weakAreas: userModel.weakAreas
-        };
-    }
-    
-    async getLearningPath(userId) {
-        return await this.adaptiveEngine.generateLearningPath(userId);
-    }
-    
-    async retrainModel() {
-        return await this.trainer.train();
-    }
-    
-    async fineTuneModel(userId) {
-        const userModel = await this.adaptiveEngine.getUserModel(userId);
-        const userData = userModel.history.map(session => ({
-            input: session.transcript,
-            target: {
-                pronunciation: session.scores.pronunciation / 100,
-                fluency: session.scores.fluency / 100,
-                grammar: session.scores.grammar / 100,
-                vocabulary: session.scores.vocabulary / 100,
-                confidence: 0.8
-            }
-        }));
-        
-        return await this.trainer.fineTune(userData);
-    }
-    
-    getModelMetrics() {
-        return {
-            name: AIModelConfig.model.name,
-            version: AIModelConfig.model.version,
-            accuracy: this.trainer.metrics.accuracy[this.trainer.metrics.accuracy.length - 1] || 0.95,
-            loss: this.trainer.metrics.loss[this.trainer.metrics.loss.length - 1] || 0.05,
-            totalTrainings: this.trainer.metrics.accuracy.length
-        };
-    }
-}
-
-// ============================================
-// EXPORTS
-// ============================================
-
-// Initialize AI service
-const aiService = new AIService();
-
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.AI = {
-    service: aiService,
-    config: AIModelConfig,
-    neuralNetwork: aiService.nn,
-    analyzer: aiService.analyzer,
-    adaptiveEngine: aiService.adaptiveEngine,
-    trainer: aiService.trainer
 };
 
-// Module exports
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        AIModelConfig,
-        NeuralNetwork,
-        PronunciationAnalyzer,
-        AdaptiveLearningEngine,
-        ModelTrainer,
-        AIService
-    };
-}
-
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('AI Model module loaded');
+/**
+ * Send message to AI
+ */
+const sendAIMessage = async (message) => {
+    if (!message.trim()) return;
     
-    // Expose for debugging
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        window.debugAI = aiService;
-        console.log('AI debug mode enabled. Access via window.debugAI');
+    // Add user message to chat
+    addChatMessage(message, true);
+    AIState.conversationHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+    });
+    saveChatHistory();
+    
+    // Clear input
+    if (AIDOM.chatInput) {
+        AIDOM.chatInput.value = '';
     }
-});
+    
+    // Show typing indicator
+    showTypingIndicator();
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                message: message,
+                sessionId: AIState.sessionId,
+                history: AIState.conversationHistory.slice(-20),
+                settings: AIState.settings
+            })
+        });
+        
+        const data = await response.json();
+        
+        hideTypingIndicator();
+        
+        if (data.success) {
+            addChatMessage(data.response, false);
+            AIState.conversationHistory.push({
+                role: 'assistant',
+                content: data.response,
+                timestamp: new Date().toISOString(),
+                suggestions: data.suggestions
+            });
+            saveChatHistory();
+            
+            // Show follow-up suggestions if available
+            if (data.suggestions && data.suggestions.length > 0) {
+                showFollowUpSuggestions(data.suggestions);
+            }
+        } else {
+            addChatMessage('Sorry, I encountered an error. Please try again.', false);
+        }
+    } catch (error) {
+        console.error('AI chat error:', error);
+        hideTypingIndicator();
+        addChatMessage('Network error. Please check your connection and try again.', false);
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Save chat history to localStorage
+ */
+const saveChatHistory = () => {
+    // Keep only last 100 messages
+    const historyToSave = AIState.conversationHistory.slice(-100);
+    localStorage.setItem('ai_chat_history', JSON.stringify(historyToSave));
+};
+
+/**
+ * Clear chat history
+ */
+const clearChatHistory = () => {
+    if (confirm('Are you sure you want to clear chat history?')) {
+        AIState.conversationHistory = [];
+        if (AIDOM.chatContainer) {
+            AIDOM.chatContainer.innerHTML = '';
+        }
+        localStorage.removeItem('ai_chat_history');
+        initAIChat(); // Re-initialize with welcome message
+        showToast('Chat history cleared', 'info');
+    }
+};
+
+/**
+ * Show follow-up suggestions
+ */
+const showFollowUpSuggestions = (suggestions) => {
+    const suggestionsContainer = AIDOM.suggestionsContainer;
+    if (!suggestionsContainer) return;
+    
+    suggestionsContainer.innerHTML = `
+        <div class="suggestions-title">Suggested responses:</div>
+        <div class="suggestions-buttons">
+            ${suggestions.map(s => `
+                <button class="suggestion-btn" onclick="ai.sendMessage('${escapeHtml(s).replace(/'/g, "\\'")}')">
+                    ${escapeHtml(s)}
+                </button>
+            `).join('')}
+        </div>
+    `;
+};
+
+// ============================================
+// Grammar Check Functions
+// ============================================
+
+/**
+ * Check grammar of text
+ */
+const checkGrammar = async (text) => {
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/grammar-check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                text: text,
+                level: AIState.settings.level
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayGrammarResults(data);
+            return data;
+        } else {
+            showToast(data.error || 'Grammar check failed', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Grammar check error:', error);
+        showToast('Failed to check grammar', 'error');
+        return null;
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Display grammar check results
+ */
+const displayGrammarResults = (results) => {
+    const container = document.getElementById('grammar-results');
+    if (!container) return;
+    
+    const { hasErrors, errors, score, suggestions, originalText } = results;
+    
+    container.innerHTML = `
+        <div class="grammar-score">
+            <div class="score-circle" data-score="${score}">
+                <span class="score-value">${score}</span>
+                <span class="score-label">Grammar Score</span>
+            </div>
+        </div>
+        
+        ${hasErrors ? `
+            <div class="grammar-errors">
+                <h4>Errors Found (${errors.length})</h4>
+                <div class="error-list">
+                    ${errors.map(error => `
+                        <div class="error-item">
+                            <div class="error-original">❌ ${escapeHtml(error.original)}</div>
+                            <div class="error-correction">✓ ${escapeHtml(error.correction)}</div>
+                            <div class="error-explanation">${escapeHtml(error.explanation)}</div>
+                            <div class="error-type">${error.type}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : `
+            <div class="no-errors">
+                <span class="success-icon">✅</span>
+                <p>No grammar errors found! Great job!</p>
+            </div>
+        `}
+        
+        ${suggestions && suggestions.length > 0 ? `
+            <div class="grammar-suggestions">
+                <h4>Suggestions for Improvement</h4>
+                <ul>
+                    ${suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+    `;
+};
+
+// ============================================
+// Vocabulary Functions
+// ============================================
+
+/**
+ * Get word definition and examples
+ */
+const getWordDefinition = async (word) => {
+    // Check cache first
+    if (AIState.cache.has(word)) {
+        return AIState.cache.get(word);
+    }
+    
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/vocabulary', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                word: word,
+                level: AIState.settings.level
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Cache result
+            AIState.cache.set(word, data);
+            return data;
+        } else {
+            showToast(data.error || 'Word not found', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Vocabulary lookup error:', error);
+        showToast('Failed to look up word', 'error');
+        return null;
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Display word definition
+ */
+const displayWordDefinition = (data) => {
+    const container = document.getElementById('word-definition');
+    if (!container) return;
+    
+    const { word, pronunciation, partOfSpeech, definitions, synonyms, antonyms, examples, tips } = data;
+    
+    container.innerHTML = `
+        <div class="word-header">
+            <h2>${escapeHtml(word)}</h2>
+            ${pronunciation ? `<span class="word-pronunciation">/${pronunciation}/</span>` : ''}
+            <span class="word-part">${partOfSpeech}</span>
+        </div>
+        
+        <div class="word-definitions">
+            <h4>Definitions</h4>
+            ${definitions.map(def => `
+                <div class="definition-item">
+                    <div class="definition-meaning">${escapeHtml(def.meaning)}</div>
+                    ${def.example ? `<div class="definition-example">"${escapeHtml(def.example)}"</div>` : ''}
+                </div>
+            `).join('')}
+        </div>
+        
+        ${synonyms && synonyms.length > 0 ? `
+            <div class="word-synonyms">
+                <h4>Synonyms</h4>
+                <div class="word-tags">
+                    ${synonyms.map(s => `<span class="word-tag">${escapeHtml(s)}</span>`).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        ${antonyms && antonyms.length > 0 ? `
+            <div class="word-antonyms">
+                <h4>Antonyms</h4>
+                <div class="word-tags">
+                    ${antonyms.map(a => `<span class="word-tag">${escapeHtml(a)}</span>`).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        ${examples && examples.length > 0 ? `
+            <div class="word-examples">
+                <h4>Example Sentences</h4>
+                <ul>
+                    ${examples.map(e => `<li>"${escapeHtml(e)}"</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+        
+        ${tips ? `
+            <div class="word-tips">
+                <h4>💡 Memory Tip</h4>
+                <p>${escapeHtml(tips)}</p>
+            </div>
+        ` : ''}
+        
+        <div class="word-actions">
+            <button class="btn btn-outline btn-sm" onclick="voice.textToSpeech('${escapeHtml(word)}')">🔊 Listen</button>
+            <button class="btn btn-outline btn-sm" onclick="vocabulary.addToStudyList('${escapeHtml(word)}')">📚 Add to Study List</button>
+        </div>
+    `;
+};
+
+// ============================================
+// Text Simplification
+// ============================================
+
+/**
+ * Simplify text for language learners
+ */
+const simplifyText = async (text) => {
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/simplify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                text: text,
+                targetLevel: AIState.settings.level
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displaySimplifiedText(data);
+            return data;
+        } else {
+            showToast(data.error || 'Text simplification failed', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Text simplification error:', error);
+        showToast('Failed to simplify text', 'error');
+        return null;
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Display simplified text
+ */
+const displaySimplifiedText = (data) => {
+    const container = document.getElementById('simplified-text');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="text-comparison">
+            <div class="original-text">
+                <h4>Original Text</h4>
+                <div class="text-content">${escapeHtml(data.original)}</div>
+            </div>
+            <div class="simplified-text">
+                <h4>Simplified (${data.targetLevel} level)</h4>
+                <div class="text-content">${escapeHtml(data.simplified)}</div>
+            </div>
+        </div>
+        <div class="text-actions">
+            <button class="btn btn-outline btn-sm" onclick="voice.textToSpeech('${escapeHtml(data.simplified)}')">🔊 Listen</button>
+            <button class="btn btn-outline btn-sm" onclick="copyToClipboard('${escapeHtml(data.simplified)}')">📋 Copy</button>
+        </div>
+    `;
+};
+
+// ============================================
+// Quiz Generation
+// ============================================
+
+/**
+ * Generate quiz questions
+ */
+const generateQuiz = async (topic, difficulty = 'intermediate', questionCount = 5) => {
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/quiz', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                topic: topic,
+                difficulty: difficulty,
+                questionCount: questionCount,
+                level: AIState.settings.level
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayQuiz(data);
+            return data;
+        } else {
+            showToast(data.error || 'Quiz generation failed', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Quiz generation error:', error);
+        showToast('Failed to generate quiz', 'error');
+        return null;
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Display quiz
+ */
+const displayQuiz = (data) => {
+    const container = document.getElementById('quiz-container');
+    if (!container) return;
+    
+    let quizHtml = `
+        <div class="quiz-header">
+            <h3>Quiz: ${escapeHtml(data.topic)}</h3>
+            <p>Difficulty: ${data.difficulty} | ${data.totalQuestions} questions</p>
+        </div>
+        <form id="quiz-form" class="quiz-form">
+    `;
+    
+    data.questions.forEach((q, index) => {
+        quizHtml += `
+            <div class="quiz-question">
+                <p class="question-text">${index + 1}. ${escapeHtml(q.question)}</p>
+                <div class="question-options">
+                    ${q.options.map((opt, optIndex) => `
+                        <label class="quiz-option">
+                            <input type="radio" name="q${index}" value="${optIndex}">
+                            <span>${escapeHtml(opt)}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+    
+    quizHtml += `
+            <button type="submit" class="btn btn-primary">Submit Quiz</button>
+        </form>
+        <div id="quiz-results" class="quiz-results"></div>
+    `;
+    
+    container.innerHTML = quizHtml;
+    
+    // Add submit handler
+    const quizForm = document.getElementById('quiz-form');
+    if (quizForm) {
+        quizForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            gradeQuiz(data.questions);
+        });
+    }
+};
+
+/**
+ * Grade quiz
+ */
+const gradeQuiz = (questions) => {
+    let score = 0;
+    const results = [];
+    
+    questions.forEach((q, index) => {
+        const selected = document.querySelector(`input[name="q${index}"]:checked`);
+        const isCorrect = selected && parseInt(selected.value) === q.correctAnswer;
+        if (isCorrect) score++;
+        
+        results.push({
+            question: q.question,
+            correct: isCorrect,
+            correctAnswer: q.options[q.correctAnswer],
+            explanation: q.explanation
+        });
+    });
+    
+    const percentage = (score / questions.length) * 100;
+    
+    const resultsContainer = document.getElementById('quiz-results');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = `
+            <div class="quiz-score">
+                <div class="score-circle" data-score="${percentage}">
+                    <span class="score-value">${Math.round(percentage)}%</span>
+                    <span class="score-label">Score</span>
+                </div>
+                <p>You got ${score} out of ${questions.length} correct!</p>
+            </div>
+            <div class="quiz-answers">
+                <h4>Review Answers</h4>
+                ${results.map((r, i) => `
+                    <div class="answer-review ${r.correct ? 'correct' : 'incorrect'}">
+                        <div class="question">${i + 1}. ${escapeHtml(r.question)}</div>
+                        <div class="your-answer">Your answer: ${r.correct ? '✓ Correct' : '✗ Incorrect'}</div>
+                        <div class="correct-answer">Correct answer: ${escapeHtml(r.correctAnswer)}</div>
+                        <div class="explanation">${escapeHtml(r.explanation)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+};
+
+// ============================================
+// Text Translation
+// ============================================
+
+/**
+ * Translate text
+ */
+const translateText = async (text, targetLanguage) => {
+    showAILoading();
+    
+    try {
+        const response = await fetch('/api/ai/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth.token}`
+            },
+            body: JSON.stringify({
+                text: text,
+                targetLanguage: targetLanguage,
+                sourceLanguage: 'en'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayTranslation(data);
+            return data;
+        } else {
+            showToast(data.error || 'Translation failed', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Translation error:', error);
+        showToast('Failed to translate text', 'error');
+        return null;
+    } finally {
+        hideAILoading();
+    }
+};
+
+/**
+ * Display translation
+ */
+const displayTranslation = (data) => {
+    const container = document.getElementById('translation-result');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="translation-box">
+            <div class="original">
+                <div class="label">Original (English)</div>
+                <div class="text">${escapeHtml(data.original)}</div>
+            </div>
+            <div class="translated">
+                <div class="label">Translated (${data.targetLanguage})</div>
+                <div class="text">${escapeHtml(data.translated)}</div>
+            </div>
+            <div class="translation-actions">
+                <button class="btn btn-outline btn-sm" onclick="voice.textToSpeech('${escapeHtml(data.translated)}')">🔊 Listen</button>
+                <button class="btn btn-outline btn-sm" onclick="copyToClipboard('${escapeHtml(data.translated)}')">📋 Copy</button>
+            </div>
+        </div>
+    `;
+};
+
+// ============================================
+// Settings Management
+// ============================================
+
+/**
+ * Update AI settings
+ */
+const updateAISettings = () => {
+    if (AIDOM.modelSelect) {
+        AIState.currentModel = AIDOM.modelSelect.value;
+    }
+    
+    if (AIDOM.temperatureSlider) {
+        AIState.settings.temperature = parseFloat(AIDOM.temperatureSlider.value);
+        const tempValue = document.getElementById('temperature-value');
+        if (tempValue) {
+            tempValue.textContent = AIState.settings.temperature;
+        }
+    }
+    
+    if (AIDOM.languageSelect) {
+        AIState.settings.language = AIDOM.languageSelect.value;
+    }
+    
+    if (AIDOM.levelSelect) {
+        AIState.settings.level = AIDOM.levelSelect.value;
+    }
+    
+    // Save settings to localStorage
+    localStorage.setItem('ai_settings', JSON.stringify(AIState.settings));
+};
+
+/**
+ * Load AI settings
+ */
+const loadAISettings = () => {
+    const savedSettings = localStorage.getItem('ai_settings');
+    if (savedSettings) {
+        try {
+            const settings = JSON.parse(savedSettings);
+            AIState.settings = { ...AIState.settings, ...settings };
+        } catch (e) {
+            console.error('Error loading AI settings:', e);
+        }
+    }
+    
+    // Apply settings to UI
+    if (AIDOM.modelSelect) {
+        AIDOM.modelSelect.value = AIState.currentModel;
+    }
+    
+    if (AIDOM.temperatureSlider) {
+        AIDOM.temperatureSlider.value = AIState.settings.temperature;
+        const tempValue = document.getElementById('temperature-value');
+        if (tempValue) {
+            tempValue.textContent = AIState.settings.temperature;
+        }
+    }
+    
+    if (AIDOM.languageSelect) {
+        AIDOM.languageSelect.value = AIState.settings.language;
+    }
+    
+    if (AIDOM.levelSelect) {
+        AIDOM.levelSelect.value = AIState.settings.level;
+    }
+};
+
+// ============================================
+// Event Listeners
+// ============================================
+
+/**
+ * Setup AI event listeners
+ */
+const setupAIEventListeners = () => {
+    // Chat send button
+    if (AIDOM.chatSendBtn && AIDOM.chatInput) {
+        AIDOM.chatSendBtn.addEventListener('click', () => {
+            sendAIMessage(AIDOM.chatInput.value);
+        });
+        
+        AIDOM.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAIMessage(AIDOM.chatInput.value);
+            }
+        });
+    }
+    
+    // Settings change listeners
+    if (AIDOM.modelSelect) {
+        AIDOM.modelSelect.addEventListener('change', updateAISettings);
+    }
+    
+    if (AIDOM.temperatureSlider) {
+        AIDOM.temperatureSlider.addEventListener('input', () => {
+            const value = parseFloat(AIDOM.temperatureSlider.value);
+            const tempValue = document.getElementById('temperature-value');
+            if (tempValue) {
+                tempValue.textContent = value;
+            }
+            updateAISettings();
+        });
+    }
+    
+    if (AIDOM.languageSelect) {
+        AIDOM.languageSelect.addEventListener('change', updateAISettings);
+    }
+    
+    if (AIDOM.levelSelect) {
+        AIDOM.levelSelect.addEventListener('change', updateAISettings);
+    }
+    
+    // Clear chat button
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', clearChatHistory);
+    }
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize AI module
+ */
+const initAI = async () => {
+    console.log('Initializing AI module...');
+    
+    // Load settings
+    loadAISettings();
+    
+    // Initialize chat
+    await initAIChat();
+    
+    // Setup event listeners
+    setupAIEventListeners();
+    
+    AIState.isInitialized = true;
+    
+    console.log('AI module initialized');
+};
+
+// ============================================
+// Export AI Module
+// ============================================
+
+const ai = {
+    // State
+    get isInitialized() { return AIState.isInitialized; },
+    get isProcessing() { return AIState.isProcessing; },
+    get settings() { return AIState.settings; },
+    
+    // Chat
+    sendMessage: sendAIMessage,
+    clearHistory: clearChatHistory,
+    
+    // Grammar
+    checkGrammar,
+    
+    // Vocabulary
+    getWordDefinition,
+    
+    // Text processing
+    simplifyText,
+    translateText,
+    
+    // Quiz
+    generateQuiz,
+    
+    // Settings
+    updateSettings: updateAISettings,
+    
+    // Initialize
+    init: initAI
+};
+
+// Make AI globally available
+window.ai = ai;
+
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ai;
+}
