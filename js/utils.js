@@ -1,969 +1,868 @@
-/* ============================================
-   SPEAKFLOW - UTILITIES MODULE
-   Version: 1.0.0
-   Common utility functions and helpers for the entire application
-   ============================================ */
-
 // ============================================
-// STRING UTILITIES
+// SpeakFlow Utility Functions
+// Common Utilities & Helper Functions
 // ============================================
 
-const StringUtils = {
-    /**
-     * Capitalizes the first letter of a string
-     * @param {string} str - Input string
-     * @returns {string} Capitalized string
-     */
-    capitalize(str) {
-        if (!str || typeof str !== 'string') return '';
-        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-    },
+// ============================================
+// DOM Utilities
+// ============================================
 
-    /**
-     * Capitalizes the first letter of each word in a string
-     * @param {string} str - Input string
-     * @returns {string} Title case string
-     */
-    titleCase(str) {
-        if (!str || typeof str !== 'string') return '';
-        return str.toLowerCase().split(' ').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
-    },
-
-    /**
-     * Truncates a string to a specified length
-     * @param {string} str - Input string
-     * @param {number} length - Maximum length
-     * @param {string} suffix - Suffix to add (default '...')
-     * @returns {string} Truncated string
-     */
-    truncate(str, length = 50, suffix = '...') {
-        if (!str || typeof str !== 'string') return '';
-        if (str.length <= length) return str;
-        return str.substring(0, length - suffix.length) + suffix;
-    },
-
-    /**
-     * Slugifies a string for URLs
-     * @param {string} str - Input string
-     * @returns {string} Slugified string
-     */
-    slugify(str) {
-        if (!str || typeof str !== 'string') return '';
-        return str
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\s-]/g, '')
-            .replace(/[\s_-]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    },
-
-    /**
-     * Removes HTML tags from a string
-     * @param {string} str - Input string with HTML
-     * @returns {string} Plain text string
-     */
-    stripHtml(str) {
-        if (!str || typeof str !== 'string') return '';
-        return str.replace(/<[^>]*>/g, '');
-    },
-
-    /**
-     * Escapes HTML special characters
-     * @param {string} str - Input string
-     * @returns {string} Escaped string
-     */
-    escapeHtml(str) {
-        if (!str || typeof str !== 'string') return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    },
-
-    /**
-     * Unescapes HTML entities
-     * @param {string} str - Input string with HTML entities
-     * @returns {string} Unescaped string
-     */
-    unescapeHtml(str) {
-        if (!str || typeof str !== 'string') return '';
-        const div = document.createElement('div');
-        div.innerHTML = str;
-        return div.textContent;
-    },
-
-    /**
-     * Counts words in a string
-     * @param {string} str - Input string
-     * @returns {number} Word count
-     */
-    wordCount(str) {
-        if (!str || typeof str !== 'string') return 0;
-        return str.trim().split(/\s+/).length;
-    },
-
-    /**
-     * Generates a random string
-     * @param {number} length - Length of the random string
-     * @returns {string} Random string
-     */
-    randomString(length = 8) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
+/**
+ * Get element by selector with error handling
+ * @param {string} selector - CSS selector
+ * @returns {HTMLElement|null}
+ */
+const getElement = (selector) => {
+    return document.querySelector(selector);
 };
 
-// ============================================
-// NUMBER UTILITIES
-// ============================================
-
-const NumberUtils = {
-    /**
-     * Formats a number with commas
-     * @param {number} num - Input number
-     * @returns {string} Formatted number
-     */
-    formatNumber(num) {
-        if (num === null || num === undefined) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    },
-
-    /**
-     * Formats a number as currency
-     * @param {number} amount - Amount
-     * @param {string} currency - Currency code (default 'USD')
-     * @returns {string} Formatted currency
-     */
-    formatCurrency(amount, currency = 'USD') {
-        const symbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥' };
-        const symbol = symbols[currency] || '$';
-        return `${symbol}${amount.toFixed(2)}`;
-    },
-
-    /**
-     * Formats a number as percentage
-     * @param {number} value - Value (0-1 or 0-100)
-     * @param {boolean} isDecimal - Whether value is decimal (0-1)
-     * @returns {string} Formatted percentage
-     */
-    formatPercentage(value, isDecimal = true) {
-        const percentage = isDecimal ? value * 100 : value;
-        return `${percentage.toFixed(1)}%`;
-    },
-
-    /**
-     * Clamps a number between min and max
-     * @param {number} num - Input number
-     * @param {number} min - Minimum value
-     * @param {number} max - Maximum value
-     * @returns {number} Clamped number
-     */
-    clamp(num, min, max) {
-        return Math.min(Math.max(num, min), max);
-    },
-
-    /**
-     * Maps a number from one range to another
-     * @param {number} value - Input value
-     * @param {number} fromLow - Source range low
-     * @param {number} fromHigh - Source range high
-     * @param {number} toLow - Target range low
-     * @param {number} toHigh - Target range high
-     * @returns {number} Mapped value
-     */
-    mapRange(value, fromLow, fromHigh, toLow, toHigh) {
-        return toLow + (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow);
-    },
-
-    /**
-     * Generates a random integer between min and max
-     * @param {number} min - Minimum value
-     * @param {number} max - Maximum value
-     * @returns {number} Random integer
-     */
-    randomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    },
-
-    /**
-     * Calculates the average of an array of numbers
-     * @param {number[]} arr - Array of numbers
-     * @returns {number} Average
-     */
-    average(arr) {
-        if (!arr || arr.length === 0) return 0;
-        return arr.reduce((a, b) => a + b, 0) / arr.length;
-    },
-
-    /**
-     * Formats file size in bytes to human readable
-     * @param {number} bytes - Size in bytes
-     * @returns {string} Formatted size
-     */
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    },
-
-    /**
-     * Converts seconds to MM:SS format
-     * @param {number} seconds - Total seconds
-     * @returns {string} Formatted time
-     */
-    formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
+/**
+ * Get all elements by selector
+ * @param {string} selector - CSS selector
+ * @returns {NodeList}
+ */
+const getElements = (selector) => {
+    return document.querySelectorAll(selector);
 };
 
-// ============================================
-// DATE UTILITIES
-// ============================================
-
-const DateUtils = {
-    /**
-     * Formats a date to a readable string
-     * @param {Date|string} date - Input date
-     * @param {string} format - Format (default 'MMM DD, YYYY')
-     * @returns {string} Formatted date
-     */
-    formatDate(date, format = 'MMM DD, YYYY') {
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return 'Invalid date';
-        
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const replacements = {
-            'YYYY': d.getFullYear(),
-            'YY': d.getFullYear().toString().slice(-2),
-            'MMM': months[d.getMonth()],
-            'MM': String(d.getMonth() + 1).padStart(2, '0'),
-            'DD': String(d.getDate()).padStart(2, '0'),
-            'HH': String(d.getHours()).padStart(2, '0'),
-            'mm': String(d.getMinutes()).padStart(2, '0'),
-            'ss': String(d.getSeconds()).padStart(2, '0')
-        };
-        
-        let result = format;
-        for (const [key, value] of Object.entries(replacements)) {
-            result = result.replace(key, value);
-        }
-        return result;
-    },
-
-    /**
-     * Returns a relative time string (e.g., "2 hours ago")
-     * @param {Date|string} date - Input date
-     * @returns {string} Relative time string
-     */
-    timeAgo(date) {
-        const now = new Date();
-        const past = new Date(date);
-        const seconds = Math.floor((now - past) / 1000);
-        
-        const intervals = [
-            { label: 'year', seconds: 31536000 },
-            { label: 'month', seconds: 2592000 },
-            { label: 'week', seconds: 604800 },
-            { label: 'day', seconds: 86400 },
-            { label: 'hour', seconds: 3600 },
-            { label: 'minute', seconds: 60 },
-            { label: 'second', seconds: 1 }
-        ];
-        
-        for (const interval of intervals) {
-            const count = Math.floor(seconds / interval.seconds);
-            if (count >= 1) {
-                return `${count} ${interval.label}${count !== 1 ? 's' : ''} ago`;
-            }
-        }
-        return 'just now';
-    },
-
-    /**
-     * Checks if a date is today
-     * @param {Date|string} date - Input date
-     * @returns {boolean} True if today
-     */
-    isToday(date) {
-        const d = new Date(date);
-        const today = new Date();
-        return d.toDateString() === today.toDateString();
-    },
-
-    /**
-     * Checks if a date is this week
-     * @param {Date|string} date - Input date
-     * @returns {boolean} True if this week
-     */
-    isThisWeek(date) {
-        const d = new Date(date);
-        const now = new Date();
-        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        return d >= weekStart && d <= weekEnd;
-    },
-
-    /**
-     * Returns start of day
-     * @param {Date} date - Input date
-     * @returns {Date} Start of day
-     */
-    startOfDay(date = new Date()) {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d;
-    },
-
-    /**
-     * Returns end of day
-     * @param {Date} date - Input date
-     * @returns {Date} End of day
-     */
-    endOfDay(date = new Date()) {
-        const d = new Date(date);
-        d.setHours(23, 59, 59, 999);
-        return d;
-    },
-
-    /**
-     * Gets the difference in days between two dates
-     * @param {Date|string} date1 - First date
-     * @param {Date|string} date2 - Second date
-     * @returns {number} Difference in days
-     */
-    daysBetween(date1, date2) {
-        const d1 = new Date(date1);
-        const d2 = new Date(date2);
-        const diffTime = Math.abs(d2 - d1);
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    },
-
-    /**
-     * Adds days to a date
-     * @param {Date} date - Input date
-     * @param {number} days - Number of days to add
-     * @returns {Date} New date
-     */
-    addDays(date, days) {
-        const result = new Date(date);
-        result.setDate(result.getDate() + days);
-        return result;
-    }
-};
-
-// ============================================
-// ARRAY UTILITIES
-// ============================================
-
-const ArrayUtils = {
-    /**
-     * Groups array items by a key
-     * @param {Array} arr - Input array
-     * @param {string|Function} key - Key to group by
-     * @returns {Object} Grouped object
-     */
-    groupBy(arr, key) {
-        return arr.reduce((result, item) => {
-            const groupKey = typeof key === 'function' ? key(item) : item[key];
-            if (!result[groupKey]) result[groupKey] = [];
-            result[groupKey].push(item);
-            return result;
-        }, {});
-    },
-
-    /**
-     * Removes duplicate items from an array
-     * @param {Array} arr - Input array
-     * @param {string|Function} key - Key to check uniqueness (optional)
-     * @returns {Array} Unique array
-     */
-    unique(arr, key = null) {
-        if (!key) return [...new Set(arr)];
-        
-        const seen = new Set();
-        return arr.filter(item => {
-            const value = typeof key === 'function' ? key(item) : item[key];
-            if (seen.has(value)) return false;
-            seen.add(value);
-            return true;
-        });
-    },
-
-    /**
-     * Shuffles an array (Fisher-Yates)
-     * @param {Array} arr - Input array
-     * @returns {Array} Shuffled array
-     */
-    shuffle(arr) {
-        const array = [...arr];
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    },
-
-    /**
-     * Chunks an array into smaller arrays
-     * @param {Array} arr - Input array
-     * @param {number} size - Chunk size
-     * @returns {Array[]} Chunked array
-     */
-    chunk(arr, size) {
-        const chunks = [];
-        for (let i = 0; i < arr.length; i += size) {
-            chunks.push(arr.slice(i, i + size));
-        }
-        return chunks;
-    },
-
-    /**
-     * Gets random items from an array
-     * @param {Array} arr - Input array
-     * @param {number} count - Number of items to get
-     * @returns {Array} Random items
-     */
-    random(arr, count = 1) {
-        const shuffled = this.shuffle(arr);
-        return count === 1 ? shuffled[0] : shuffled.slice(0, count);
-    },
-
-    /**
-     * Sorts an array by a key
-     * @param {Array} arr - Input array
-     * @param {string|Function} key - Sort key
-     * @param {string} order - 'asc' or 'desc'
-     * @returns {Array} Sorted array
-     */
-    sortBy(arr, key, order = 'asc') {
-        const sorted = [...arr].sort((a, b) => {
-            const aVal = typeof key === 'function' ? key(a) : a[key];
-            const bVal = typeof key === 'function' ? key(b) : b[key];
-            if (aVal < bVal) return order === 'asc' ? -1 : 1;
-            if (aVal > bVal) return order === 'asc' ? 1 : -1;
-            return 0;
-        });
-        return sorted;
-    },
-
-    /**
-     * Flattens nested arrays
-     * @param {Array} arr - Input array
-     * @param {number} depth - Depth to flatten
-     * @returns {Array} Flattened array
-     */
-    flatten(arr, depth = Infinity) {
-        return arr.flat(depth);
-    },
-
-    /**
-     * Intersection of multiple arrays
-     * @param {...Array} arrays - Arrays to intersect
-     * @returns {Array} Intersection
-     */
-    intersection(...arrays) {
-        if (arrays.length === 0) return [];
-        return arrays.reduce((a, b) => a.filter(c => b.includes(c)));
-    },
-
-    /**
-     * Difference between arrays
-     * @param {Array} arr1 - First array
-     * @param {Array} arr2 - Second array
-     * @returns {Array} Difference
-     */
-    difference(arr1, arr2) {
-        return arr1.filter(x => !arr2.includes(x));
-    }
-};
-
-// ============================================
-// OBJECT UTILITIES
-// ============================================
-
-const ObjectUtils = {
-    /**
-     * Deep clones an object
-     * @param {Object} obj - Object to clone
-     * @returns {Object} Cloned object
-     */
-    deepClone(obj) {
-        return JSON.parse(JSON.stringify(obj));
-    },
-
-    /**
-     * Merges multiple objects deeply
-     * @param {...Object} objects - Objects to merge
-     * @returns {Object} Merged object
-     */
-    deepMerge(...objects) {
-        const result = {};
-        for (const obj of objects) {
-            for (const key in obj) {
-                if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-                    result[key] = this.deepMerge(result[key] || {}, obj[key]);
-                } else {
-                    result[key] = obj[key];
-                }
-            }
-        }
-        return result;
-    },
-
-    /**
-     * Picks specific keys from an object
-     * @param {Object} obj - Source object
-     * @param {string[]} keys - Keys to pick
-     * @returns {Object} Picked object
-     */
-    pick(obj, keys) {
-        const result = {};
-        for (const key of keys) {
-            if (obj && key in obj) result[key] = obj[key];
-        }
-        return result;
-    },
-
-    /**
-     * Omits specific keys from an object
-     * @param {Object} obj - Source object
-     * @param {string[]} keys - Keys to omit
-     * @returns {Object} Object without omitted keys
-     */
-    omit(obj, keys) {
-        const result = { ...obj };
-        for (const key of keys) {
-            delete result[key];
-        }
-        return result;
-    },
-
-    /**
-     * Checks if object is empty
-     * @param {Object} obj - Object to check
-     * @returns {boolean} True if empty
-     */
-    isEmpty(obj) {
-        return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
-    },
-
-    /**
-     * Gets nested object value using dot notation
-     * @param {Object} obj - Source object
-     * @param {string} path - Dot notation path
-     * @param {*} defaultValue - Default value if not found
-     * @returns {*} Value at path
-     */
-    get(obj, path, defaultValue = undefined) {
-        const keys = path.split('.');
-        let result = obj;
-        for (const key of keys) {
-            if (result && typeof result === 'object' && key in result) {
-                result = result[key];
-            } else {
-                return defaultValue;
-            }
-        }
-        return result;
-    },
-
-    /**
-     * Sets nested object value using dot notation
-     * @param {Object} obj - Source object
-     * @param {string} path - Dot notation path
-     * @param {*} value - Value to set
-     * @returns {Object} Updated object
-     */
-    set(obj, path, value) {
-        const keys = path.split('.');
-        let current = obj;
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!current[keys[i]]) current[keys[i]] = {};
-            current = current[keys[i]];
-        }
-        current[keys[keys.length - 1]] = value;
-        return obj;
-    }
-};
-
-// ============================================
-// BROWSER UTILITIES
-// ============================================
-
-const BrowserUtils = {
-    /**
-     * Gets browser information
-     * @returns {Object} Browser info
-     */
-    getBrowserInfo() {
-        const ua = navigator.userAgent;
-        const browsers = {
-            Chrome: /Chrome/i,
-            Firefox: /Firefox/i,
-            Safari: /Safari/i,
-            Edge: /Edge/i,
-            Opera: /Opera/i
-        };
-        
-        for (const [name, pattern] of Object.entries(browsers)) {
-            if (pattern.test(ua)) {
-                return { name, version: this.getVersion(ua, name) };
-            }
-        }
-        return { name: 'Unknown', version: null };
-    },
-
-    getVersion(ua, browser) {
-        const patterns = {
-            Chrome: /Chrome\/(\d+)/,
-            Firefox: /Firefox\/(\d+)/,
-            Safari: /Version\/(\d+)/,
-            Edge: /Edge\/(\d+)/,
-            Opera: /OPR\/(\d+)/
-        };
-        const match = ua.match(patterns[browser]);
-        return match ? parseInt(match[1]) : null;
-    },
-
-    /**
-     * Checks if device is mobile
-     * @returns {boolean} True if mobile
-     */
-    isMobile() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    },
-
-    /**
-     * Checks if device is iOS
-     * @returns {boolean} True if iOS
-     */
-    isIOS() {
-        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    },
-
-    /**
-     * Checks if device is Android
-     * @returns {boolean} True if Android
-     */
-    isAndroid() {
-        return /Android/i.test(navigator.userAgent);
-    },
-
-    /**
-     * Gets viewport dimensions
-     * @returns {Object} Width and height
-     */
-    getViewport() {
-        return {
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
-    },
-
-    /**
-     * Copies text to clipboard
-     * @param {string} text - Text to copy
-     * @returns {Promise<boolean>} Success status
-     */
-    async copyToClipboard(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch (err) {
-            console.error('Failed to copy:', err);
-            return false;
-        }
-    },
-
-    /**
-     * Downloads a file
-     * @param {string} content - File content
-     * @param {string} filename - File name
-     * @param {string} type - MIME type
-     */
-    downloadFile(content, filename, type = 'text/plain') {
-        const blob = new Blob([content], { type });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
-
-    /**
-     * Gets URL parameters
-     * @returns {Object} URL parameters
-     */
-    getUrlParams() {
-        const params = {};
-        const searchParams = new URLSearchParams(window.location.search);
-        for (const [key, value] of searchParams) {
-            params[key] = value;
-        }
-        return params;
-    },
-
-    /**
-     * Sets URL parameters without reload
-     * @param {Object} params - Parameters to set
-     * @param {boolean} replace - Whether to replace history
-     */
-    setUrlParams(params, replace = false) {
-        const url = new URL(window.location.href);
-        for (const [key, value] of Object.entries(params)) {
-            if (value === null || value === undefined) {
-                url.searchParams.delete(key);
-            } else {
-                url.searchParams.set(key, value);
-            }
-        }
-        if (replace) {
-            window.history.replaceState({}, '', url);
+/**
+ * Create element with attributes and children
+ * @param {string} tag - HTML tag name
+ * @param {Object} attributes - Element attributes
+ * @param {Array|string} children - Child elements or text
+ * @returns {HTMLElement}
+ */
+const createElement = (tag, attributes = {}, children = []) => {
+    const element = document.createElement(tag);
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+        if (key === 'className') {
+            element.className = value;
+        } else if (key === 'dataset') {
+            Object.entries(value).forEach(([dataKey, dataValue]) => {
+                element.dataset[dataKey] = dataValue;
+            });
+        } else if (key === 'style' && typeof value === 'object') {
+            Object.assign(element.style, value);
         } else {
-            window.history.pushState({}, '', url);
+            element.setAttribute(key, value);
         }
+    });
+    
+    const addChildren = (items) => {
+        if (typeof items === 'string') {
+            element.appendChild(document.createTextNode(items));
+        } else if (Array.isArray(items)) {
+            items.forEach(child => addChildren(child));
+        } else if (items instanceof HTMLElement) {
+            element.appendChild(items);
+        }
+    };
+    
+    addChildren(children);
+    
+    return element;
+};
+
+/**
+ * Toggle element visibility
+ * @param {HTMLElement} element - Target element
+ * @param {boolean} show - Show or hide
+ */
+const toggleVisibility = (element, show) => {
+    if (element) {
+        element.style.display = show ? '' : 'none';
     }
 };
 
-// ============================================
-// VALIDATION UTILITIES
-// ============================================
+/**
+ * Add class to element with timeout
+ * @param {HTMLElement} element - Target element
+ * @param {string} className - Class to add
+ * @param {number} timeout - Remove after timeout (ms)
+ */
+const addClassWithTimeout = (element, className, timeout = 1000) => {
+    if (!element) return;
+    element.classList.add(className);
+    setTimeout(() => {
+        element.classList.remove(className);
+    }, timeout);
+};
 
-const ValidationUtils = {
-    /**
-     * Validates email format
-     * @param {string} email - Email to validate
-     * @returns {boolean} True if valid
-     */
-    isEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-    },
-
-    /**
-     * Validates phone number
-     * @param {string} phone - Phone number to validate
-     * @returns {boolean} True if valid
-     */
-    isPhone(phone) {
-        const re = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}$/;
-        return re.test(phone);
-    },
-
-    /**
-     * Validates URL
-     * @param {string} url - URL to validate
-     * @returns {boolean} True if valid
-     */
-    isUrl(url) {
-        try {
-            new URL(url);
-            return true;
-        } catch {
-            return false;
-        }
-    },
-
-    /**
-     * Validates password strength
-     * @param {string} password - Password to validate
-     * @returns {Object} Strength info
-     */
-    checkPasswordStrength(password) {
-        let score = 0;
-        const feedback = [];
-        
-        if (password.length >= 8) score++;
-        else feedback.push('At least 8 characters');
-        
-        if (/[A-Z]/.test(password)) score++;
-        else feedback.push('Include uppercase letters');
-        
-        if (/[a-z]/.test(password)) score++;
-        else feedback.push('Include lowercase letters');
-        
-        if (/[0-9]/.test(password)) score++;
-        else feedback.push('Include numbers');
-        
-        if (/[^A-Za-z0-9]/.test(password)) score++;
-        else feedback.push('Include special characters');
-        
-        const strength = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'][score];
-        
-        return { score, strength, feedback };
-    },
-
-    /**
-     * Validates if value is empty
-     * @param {*} value - Value to check
-     * @returns {boolean} True if empty
-     */
-    isEmpty(value) {
-        if (value === null || value === undefined) return true;
-        if (typeof value === 'string') return value.trim() === '';
-        if (Array.isArray(value)) return value.length === 0;
-        if (typeof value === 'object') return Object.keys(value).length === 0;
-        return false;
-    },
-
-    /**
-     * Validates if value is a number
-     * @param {*} value - Value to check
-     * @returns {boolean} True if number
-     */
-    isNumber(value) {
-        return !isNaN(parseFloat(value)) && isFinite(value);
-    }
+/**
+ * Smooth scroll to element
+ * @param {HTMLElement|string} target - Target element or selector
+ * @param {Object} options - Scroll options
+ */
+const scrollToElement = (target, options = {}) => {
+    const element = typeof target === 'string' ? getElement(target) : target;
+    if (!element) return;
+    
+    element.scrollIntoView({
+        behavior: 'smooth',
+        block: options.block || 'start',
+        inline: options.inline || 'nearest'
+    });
 };
 
 // ============================================
-// STORAGE UTILITIES
+// String Utilities
 // ============================================
 
-const StorageUtils = {
-    /**
-     * Sets item in localStorage with expiration
-     * @param {string} key - Storage key
-     * @param {*} value - Value to store
-     * @param {number} ttl - Time to live in milliseconds
-     */
-    setWithExpiry(key, value, ttl) {
-        const item = {
-            value,
-            expiry: Date.now() + ttl
-        };
-        localStorage.setItem(key, JSON.stringify(item));
-    },
+/**
+ * Capitalize first letter of string
+ * @param {string} str - Input string
+ * @returns {string}
+ */
+const capitalize = (str) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
 
-    /**
-     * Gets item from localStorage with expiration check
-     * @param {string} key - Storage key
-     * @returns {*} Stored value or null if expired
-     */
-    getWithExpiry(key) {
-        const itemStr = localStorage.getItem(key);
-        if (!itemStr) return null;
+/**
+ * Truncate string to length
+ * @param {string} str - Input string
+ * @param {number} length - Maximum length
+ * @param {string} suffix - Suffix to add
+ * @returns {string}
+ */
+const truncate = (str, length = 50, suffix = '...') => {
+    if (!str) return '';
+    if (str.length <= length) return str;
+    return str.substring(0, length - suffix.length) + suffix;
+};
+
+/**
+ * Slugify string for URLs
+ * @param {string} str - Input string
+ * @returns {string}
+ */
+const slugify = (str) => {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+};
+
+/**
+ * Escape HTML special characters
+ * @param {string} str - Input string
+ * @returns {string}
+ */
+const escapeHtml = (str) => {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+};
+
+/**
+ * Unescape HTML entities
+ * @param {string} str - Input string
+ * @returns {string}
+ */
+const unescapeHtml = (str) => {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.innerHTML = str;
+    return div.textContent;
+};
+
+/**
+ * Generate random string
+ * @param {number} length - String length
+ * @returns {string}
+ */
+const randomString = (length = 8) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
+// ============================================
+// Number & Math Utilities
+// ============================================
+
+/**
+ * Format number with K/M/B suffix
+ * @param {number} num - Input number
+ * @param {number} decimals - Decimal places
+ * @returns {string}
+ */
+const formatNumber = (num, decimals = 1) => {
+    if (num === null || num === undefined) return '0';
+    
+    const absNum = Math.abs(num);
+    if (absNum >= 1e9) {
+        return (num / 1e9).toFixed(decimals) + 'B';
+    }
+    if (absNum >= 1e6) {
+        return (num / 1e6).toFixed(decimals) + 'M';
+    }
+    if (absNum >= 1e3) {
+        return (num / 1e3).toFixed(decimals) + 'K';
+    }
+    return num.toString();
+};
+
+/**
+ * Format percentage
+ * @param {number} value - Value (0-100)
+ * @param {number} decimals - Decimal places
+ * @returns {string}
+ */
+const formatPercentage = (value, decimals = 0) => {
+    return `${value.toFixed(decimals)}%`;
+};
+
+/**
+ * Clamp number between min and max
+ * @param {number} num - Input number
+ * @param {number} min - Minimum value
+ * @param {number} max - Maximum value
+ * @returns {number}
+ */
+const clamp = (num, min, max) => {
+    return Math.min(Math.max(num, min), max);
+};
+
+/**
+ * Get random number between min and max
+ * @param {number} min - Minimum value
+ * @param {number} max - Maximum value
+ * @returns {number}
+ */
+const random = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+/**
+ * Calculate percentage
+ * @param {number} value - Current value
+ * @param {number} total - Total value
+ * @returns {number}
+ */
+const calculatePercentage = (value, total) => {
+    if (total === 0) return 0;
+    return (value / total) * 100;
+};
+
+// ============================================
+// Date & Time Utilities
+// ============================================
+
+/**
+ * Format date
+ * @param {Date|string|number} date - Input date
+ * @param {string} format - Format type ('short', 'long', 'relative', 'time')
+ * @returns {string}
+ */
+const formatDate = (date, format = 'short') => {
+    const d = new Date(date);
+    
+    if (isNaN(d.getTime())) return 'Invalid date';
+    
+    switch (format) {
+        case 'short':
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        case 'long':
+            return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        case 'relative':
+            return getRelativeTime(d);
+        case 'time':
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        case 'datetime':
+            return d.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        default:
+            return d.toLocaleDateString();
+    }
+};
+
+/**
+ * Get relative time string (e.g., "2 hours ago")
+ * @param {Date} date - Input date
+ * @returns {string}
+ */
+const getRelativeTime = (date) => {
+    const now = new Date();
+    const diff = now - date;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+    
+    if (seconds < 60) return 'just now';
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (weeks < 4) return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
+    return `${years} year${years > 1 ? 's' : ''} ago`;
+};
+
+/**
+ * Check if date is today
+ * @param {Date|string} date - Input date
+ * @returns {boolean}
+ */
+const isToday = (date) => {
+    const d = new Date(date);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+};
+
+/**
+ * Get days between two dates
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @returns {number}
+ */
+const daysBetween = (startDate, endDate) => {
+    const diff = new Date(endDate) - new Date(startDate);
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+// ============================================
+// Array & Object Utilities
+// ============================================
+
+/**
+ * Group array by key
+ * @param {Array} array - Input array
+ * @param {string|Function} key - Key to group by
+ * @returns {Object}
+ */
+const groupBy = (array, key) => {
+    return array.reduce((result, item) => {
+        const groupKey = typeof key === 'function' ? key(item) : item[key];
+        if (!result[groupKey]) {
+            result[groupKey] = [];
+        }
+        result[groupKey].push(item);
+        return result;
+    }, {});
+};
+
+/**
+ * Sort array by key
+ * @param {Array} array - Input array
+ * @param {string} key - Key to sort by
+ * @param {string} order - Sort order ('asc' or 'desc')
+ * @returns {Array}
+ */
+const sortBy = (array, key, order = 'asc') => {
+    const sorted = [...array].sort((a, b) => {
+        let aVal = a[key];
+        let bVal = b[key];
         
-        const item = JSON.parse(itemStr);
-        if (Date.now() > item.expiry) {
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        if (aVal < bVal) return order === 'asc' ? -1 : 1;
+        if (aVal > bVal) return order === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    return sorted;
+};
+
+/**
+ * Remove duplicates from array
+ * @param {Array} array - Input array
+ * @param {string} key - Key to check uniqueness
+ * @returns {Array}
+ */
+const unique = (array, key = null) => {
+    if (!key) {
+        return [...new Set(array)];
+    }
+    
+    const seen = new Set();
+    return array.filter(item => {
+        const value = item[key];
+        if (seen.has(value)) return false;
+        seen.add(value);
+        return true;
+    });
+};
+
+/**
+ * Deep clone object
+ * @param {Object} obj - Input object
+ * @returns {Object}
+ */
+const deepClone = (obj) => {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return new Date(obj);
+    if (obj instanceof Array) return obj.map(item => deepClone(item));
+    if (obj instanceof Object) {
+        const cloned = {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                cloned[key] = deepClone(obj[key]);
+            }
+        }
+        return cloned;
+    }
+    return obj;
+};
+
+/**
+ * Merge objects deeply
+ * @param {Object} target - Target object
+ * @param {Object} source - Source object
+ * @returns {Object}
+ */
+const deepMerge = (target, source) => {
+    const result = { ...target };
+    
+    for (const key in source) {
+        if (source.hasOwnProperty(key)) {
+            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                result[key] = deepMerge(target[key] || {}, source[key]);
+            } else {
+                result[key] = source[key];
+            }
+        }
+    }
+    
+    return result;
+};
+
+// ============================================
+// Storage Utilities
+// ============================================
+
+/**
+ * Set item in localStorage with expiry
+ * @param {string} key - Storage key
+ * @param {any} value - Value to store
+ * @param {number} expiry - Expiry in milliseconds
+ */
+const setStorageItem = (key, value, expiry = null) => {
+    const item = {
+        value: value,
+        timestamp: Date.now()
+    };
+    
+    if (expiry) {
+        item.expiry = expiry;
+    }
+    
+    localStorage.setItem(key, JSON.stringify(item));
+};
+
+/**
+ * Get item from localStorage with expiry check
+ * @param {string} key - Storage key
+ * @returns {any|null}
+ */
+const getStorageItem = (key) => {
+    const item = localStorage.getItem(key);
+    if (!item) return null;
+    
+    try {
+        const data = JSON.parse(item);
+        
+        if (data.expiry && (Date.now() - data.timestamp) > data.expiry) {
             localStorage.removeItem(key);
             return null;
         }
-        return item.value;
-    },
+        
+        return data.value;
+    } catch {
+        return item;
+    }
+};
 
-    /**
-     * Gets storage size in bytes
-     * @returns {number} Storage size
-     */
-    getSize() {
-        let total = 0;
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            const value = localStorage.getItem(key);
-            total += (key.length + value.length) * 2;
-        }
-        return total;
-    },
+/**
+ * Remove item from localStorage
+ * @param {string} key - Storage key
+ */
+const removeStorageItem = (key) => {
+    localStorage.removeItem(key);
+};
 
-    /**
-     * Clears all items matching a pattern
-     * @param {RegExp} pattern - Pattern to match
-     */
-    clearMatching(pattern) {
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (pattern.test(key)) {
-                keys.push(key);
-            }
+/**
+ * Clear all storage items with prefix
+ * @param {string} prefix - Key prefix
+ */
+const clearStorageByPrefix = (prefix) => {
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(prefix)) {
+            localStorage.removeItem(key);
         }
-        keys.forEach(key => localStorage.removeItem(key));
+    });
+};
+
+// ============================================
+// URL & Navigation Utilities
+// ============================================
+
+/**
+ * Get URL parameter
+ * @param {string} name - Parameter name
+ * @param {string} url - URL (optional)
+ * @returns {string|null}
+ */
+const getUrlParam = (name, url = window.location.href) => {
+    const urlObj = new URL(url);
+    return urlObj.searchParams.get(name);
+};
+
+/**
+ * Set URL parameter without reload
+ * @param {string} name - Parameter name
+ * @param {string} value - Parameter value
+ */
+const setUrlParam = (name, value) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set(name, value);
+    window.history.pushState({}, '', url);
+};
+
+/**
+ * Remove URL parameter
+ * @param {string} name - Parameter name
+ */
+const removeUrlParam = (name) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete(name);
+    window.history.pushState({}, '', url);
+};
+
+/**
+ * Copy text to clipboard
+ * @param {string} text - Text to copy
+ * @returns {Promise<boolean>}
+ */
+const copyToClipboard = async (text) => {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (error) {
+        console.error('Copy failed:', error);
+        return false;
     }
 };
 
 // ============================================
-// EXPORTS
+// Validation Utilities
 // ============================================
 
-// Combine all utilities
-const Utils = {
-    String: StringUtils,
-    Number: NumberUtils,
-    Date: DateUtils,
-    Array: ArrayUtils,
-    Object: ObjectUtils,
-    Browser: BrowserUtils,
-    Validation: ValidationUtils,
-    Storage: StorageUtils,
+/**
+ * Validate email format
+ * @param {string} email - Email to validate
+ * @returns {boolean}
+ */
+const isValidEmail = (email) => {
+    const regex = /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/;
+    return regex.test(email);
+};
+
+/**
+ * Validate phone number
+ * @param {string} phone - Phone number to validate
+ * @returns {boolean}
+ */
+const isValidPhone = (phone) => {
+    const regex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}$/;
+    return regex.test(phone);
+};
+
+/**
+ * Validate URL
+ * @param {string} url - URL to validate
+ * @returns {boolean}
+ */
+const isValidUrl = (url) => {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+/**
+ * Validate password strength
+ * @param {string} password - Password to validate
+ * @returns {Object}
+ */
+const validatePassword = (password) => {
+    const result = {
+        isValid: true,
+        errors: []
+    };
     
-    // Common helpers
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+    if (password.length < 6) {
+        result.isValid = false;
+        result.errors.push('Password must be at least 6 characters');
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+        result.isValid = false;
+        result.errors.push('Password must contain at least one uppercase letter');
+    }
+    
+    if (!/[a-z]/.test(password)) {
+        result.isValid = false;
+        result.errors.push('Password must contain at least one lowercase letter');
+    }
+    
+    if (!/[0-9]/.test(password)) {
+        result.isValid = false;
+        result.errors.push('Password must contain at least one number');
+    }
+    
+    return result;
+};
+
+// ============================================
+// Device & Browser Utilities
+// ============================================
+
+/**
+ * Detect device type
+ * @returns {string}
+ */
+const getDeviceType = () => {
+    const ua = navigator.userAgent;
+    if (/Mobile|Android|iPhone|iPad|iPod/i.test(ua)) return 'mobile';
+    if (/Tablet|iPad/i.test(ua)) return 'tablet';
+    return 'desktop';
+};
+
+/**
+ * Detect browser
+ * @returns {string}
+ */
+const getBrowser = () => {
+    const ua = navigator.userAgent;
+    if (/Chrome/i.test(ua) && !/Edge/i.test(ua)) return 'chrome';
+    if (/Firefox/i.test(ua)) return 'firefox';
+    if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return 'safari';
+    if (/Edge/i.test(ua)) return 'edge';
+    if (/MSIE|Trident/i.test(ua)) return 'ie';
+    return 'unknown';
+};
+
+/**
+ * Check if device is touch-enabled
+ * @returns {boolean}
+ */
+const isTouchDevice = () => {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+};
+
+/**
+ * Get viewport size
+ * @returns {Object}
+ */
+const getViewportSize = () => {
+    return {
+        width: window.innerWidth,
+        height: window.innerHeight
+    };
+};
+
+// ============================================
+// Color Utilities
+// ============================================
+
+/**
+ * Convert hex to RGB
+ * @param {string} hex - Hex color code
+ * @returns {Object}
+ */
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+};
+
+/**
+ * Get contrasting text color (black or white)
+ * @param {string} hex - Background color
+ * @returns {string}
+ */
+const getContrastColor = (hex) => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return '#000000';
+    
+    const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
+};
+
+/**
+ * Lighten color
+ * @param {string} hex - Hex color
+ * @param {number} percent - Lighten percentage
+ * @returns {string}
+ */
+const lightenColor = (hex, percent) => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    
+    const lighten = (value) => {
+        return Math.min(255, Math.floor(value + (255 - value) * (percent / 100)));
+    };
+    
+    const r = lighten(rgb.r);
+    const g = lighten(rgb.g);
+    const b = lighten(rgb.b);
+    
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
+
+// ============================================
+// Performance Utilities
+// ============================================
+
+/**
+ * Debounce function
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function}
+ */
+const debounce = (func, wait = 300) => {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            func(...args);
         };
-    },
-    
-    throttle(func, limit) {
-        let inThrottle;
-        return function(...args) {
-            if (!inThrottle) {
-                func.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
-    },
-    
-    async delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    },
-    
-    generateId(prefix = 'id') {
-        return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    },
-    
-    getDeviceInfo() {
-        return {
-            browser: BrowserUtils.getBrowserInfo(),
-            isMobile: BrowserUtils.isMobile(),
-            isIOS: BrowserUtils.isIOS(),
-            isAndroid: BrowserUtils.isAndroid(),
-            viewport: BrowserUtils.getViewport(),
-            language: navigator.language,
-            online: navigator.onLine
-        };
-    }
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 };
 
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.Utils = Utils;
+/**
+ * Throttle function
+ * @param {Function} func - Function to throttle
+ * @param {number} limit - Limit in milliseconds
+ * @returns {Function}
+ */
+const throttle = (func, limit = 300) => {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+};
 
-// Module exports
+/**
+ * Measure function execution time
+ * @param {Function} func - Function to measure
+ * @returns {Promise<number>}
+ */
+const measureTime = async (func) => {
+    const start = performance.now();
+    await func();
+    const end = performance.now();
+    return end - start;
+};
+
+// ============================================
+// Export Utilities
+// ============================================
+
+// Make utilities globally available
+window.utils = {
+    // DOM
+    getElement,
+    getElements,
+    createElement,
+    toggleVisibility,
+    addClassWithTimeout,
+    scrollToElement,
+    
+    // String
+    capitalize,
+    truncate,
+    slugify,
+    escapeHtml,
+    unescapeHtml,
+    randomString,
+    
+    // Number
+    formatNumber,
+    formatPercentage,
+    clamp,
+    random,
+    calculatePercentage,
+    
+    // Date
+    formatDate,
+    getRelativeTime,
+    isToday,
+    daysBetween,
+    
+    // Array/Object
+    groupBy,
+    sortBy,
+    unique,
+    deepClone,
+    deepMerge,
+    
+    // Storage
+    setStorageItem,
+    getStorageItem,
+    removeStorageItem,
+    clearStorageByPrefix,
+    
+    // URL
+    getUrlParam,
+    setUrlParam,
+    removeUrlParam,
+    copyToClipboard,
+    
+    // Validation
+    isValidEmail,
+    isValidPhone,
+    isValidUrl,
+    validatePassword,
+    
+    // Device
+    getDeviceType,
+    getBrowser,
+    isTouchDevice,
+    getViewportSize,
+    
+    // Color
+    hexToRgb,
+    getContrastColor,
+    lightenColor,
+    
+    // Performance
+    debounce,
+    throttle,
+    measureTime
+};
+
+// Export for module usage
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Utils;
+    module.exports = window.utils;
 }
-
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-console.log('Utils module loaded');
