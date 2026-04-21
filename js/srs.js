@@ -1,1079 +1,1048 @@
-/* ============================================
-   SPEAKFLOW - SPACED REPETITION SYSTEM (SRS)
-   Version: 1.0.0
-   Handles vocabulary learning with spaced repetition algorithm
-   ============================================ */
-
 // ============================================
-// SRS CONFIGURATION
+// SpeakFlow SRS (Spaced Repetition System) Module
+// Vocabulary Learning with SRS Algorithm
 // ============================================
 
-const SRSConfig = {
-    // SM-2 Algorithm Settings
-    sm2: {
-        initialInterval: 1,      // days
-        easyInterval: 4,          // days
-        graduationInterval: 21,   // days
-        easeFactor: 2.5,
-        minimumEaseFactor: 1.3,
-        maximumInterval: 365      // days
+// ============================================
+// SRS State Management
+// ============================================
+
+const SRSState = {
+    isInitialized: false,
+    userId: null,
+    cards: [],
+    dueCards: [],
+    currentSession: null,
+    currentCardIndex: 0,
+    stats: {
+        totalCards: 0,
+        masteredCards: 0,
+        learningCards: 0,
+        dueToday: 0,
+        retentionRate: 0,
+        streak: 0
     },
-    
-    // Review Settings
-    reviews: {
-        maxPerDay: 50,
-        newWordsPerDay: 10,
-        reviewBatchSize: 20,
-        leechThreshold: 5         // reviews before marking as leech
-    },
-    
-    // Difficulty Levels
-    difficulties: {
-        easy: { initialEase: 2.5, interval: 4 },
-        medium: { initialEase: 2.5, interval: 2 },
-        hard: { initialEase: 2.2, interval: 1 }
-    },
-    
-    // Proficiency Levels
-    proficiency: {
-        unknown: 0,
-        learning: 1,
-        reviewing: 2,
-        mastered: 3
-    },
-    
-    // Storage Keys
-    storage: {
-        words: 'srs_words',
-        reviews: 'srs_reviews',
-        stats: 'srs_stats'
+    settings: {
+        dailyGoal: 20,
+        newCardsPerDay: 10,
+        maxReviews: 50,
+        autoPlayAudio: true,
+        showExample: true
     }
 };
 
 // ============================================
-// SRS ALGORITHM (SM-2)
+// Constants
 // ============================================
 
-class SRSAlgorithm {
-    constructor() {
-        this.config = SRSConfig.sm2;
+const REVIEW_RESULTS = {
+    AGAIN: 0,
+    HARD: 1,
+    GOOD: 2,
+    EASY: 3
+};
+
+const PROFICIENCY_LEVELS = {
+    NEW: 0,
+    LEARNING: 1,
+    REVIEWING: 2,
+    FAMILIAR: 3,
+    MASTERED: 4
+};
+
+const RESULT_LABELS = {
+    [REVIEW_RESULTS.AGAIN]: 'Again',
+    [REVIEW_RESULTS.HARD]: 'Hard',
+    [REVIEW_RESULTS.GOOD]: 'Good',
+    [REVIEW_RESULTS.EASY]: 'Easy'
+};
+
+const RESULT_COLORS = {
+    [REVIEW_RESULTS.AGAIN]: '#ef4444',
+    [REVIEW_RESULTS.HARD]: '#f59e0b',
+    [REVIEW_RESULTS.GOOD]: '#10b981',
+    [REVIEW_RESULTS.EASY]: '#3b82f6'
+};
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Get user ID from auth
+ */
+const getUserId = () => {
+    return auth?.user?.id || localStorage.getItem('user_id') || null;
+};
+
+/**
+ * Show toast notification
+ */
+const showToast = (message, type = 'info', title = null) => {
+    if (window.showToast) {
+        window.showToast(message, type, title);
+    } else {
+        console.log(`[SRS] ${type}: ${message}`);
     }
+};
+
+/**
+ * Save SRS data to localStorage
+ */
+const saveToLocalStorage = () => {
+    localStorage.setItem('srs_cards', JSON.stringify(SRSState.cards));
+    localStorage.setItem('srs_stats', JSON.stringify(SRSState.stats));
+    localStorage.setItem('srs_settings', JSON.stringify(SRSState.settings));
+};
+
+/**
+ * Load SRS data from localStorage
+ */
+const loadFromLocalStorage = () => {
+    const savedCards = localStorage.getItem('srs_cards');
+    const savedStats = localStorage.getItem('srs_stats');
+    const savedSettings = localStorage.getItem('srs_settings');
     
-    calculateNextReview(card, quality) {
-        // Quality ratings (0-5):
-        // 0-2: Incorrect (repeat)
-        // 3: Hard (partial recall)
-        // 4: Good (correct)
-        // 5: Easy (perfect recall)
+    if (savedCards) {
+        SRSState.cards = JSON.parse(savedCards);
+    }
+    if (savedStats) {
+        SRSState.stats = JSON.parse(savedStats);
+    }
+    if (savedSettings) {
+        SRSState.settings = { ...SRSState.settings, ...JSON.parse(savedSettings) };
+    }
+};
+
+// ============================================
+// API Calls
+// ============================================
+
+/**
+ * Fetch user's vocabulary cards
+ */
+const fetchCards = async () => {
+    try {
+        const response = await fetch('/api/vocabulary/cards', {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
         
-        let { interval, easeFactor, repetitions } = card;
+        const data = await response.json();
         
-        // Update ease factor based on quality
-        if (quality >= 3) {
-            let newEase = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-            easeFactor = Math.max(this.config.minimumEaseFactor, newEase);
+        if (data.success) {
+            SRSState.cards = data.data.cards;
+            SRSState.stats = data.data.stats;
+            updateStats();
+            return SRSState.cards;
         }
+        return [];
+    } catch (error) {
+        console.error('Fetch cards error:', error);
+        loadFromLocalStorage();
+        return SRSState.cards;
+    }
+};
+
+/**
+ * Get due cards for review
+ */
+const getDueCards = async () => {
+    try {
+        const response = await fetch('/api/vocabulary/due', {
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
         
-        // Calculate new interval
-        if (quality < 3) {
-            // Incorrect - reset
-            repetitions = 0;
-            interval = 1;
-        } else if (repetitions === 0) {
-            interval = 1;
-            repetitions = 1;
-        } else if (repetitions === 1) {
-            interval = 6;
-            repetitions = 2;
-        } else {
-            interval = Math.round(interval * easeFactor);
-            repetitions++;
+        const data = await response.json();
+        
+        if (data.success) {
+            SRSState.dueCards = data.data.cards;
+            SRSState.stats.dueToday = data.data.count;
+            return SRSState.dueCards;
         }
-        
-        // Cap interval at maximum
-        interval = Math.min(interval, this.config.maximumInterval);
-        
-        // Calculate next review date
-        const nextReview = new Date();
-        nextReview.setDate(nextReview.getDate() + interval);
-        
-        return {
-            interval,
-            easeFactor,
-            repetitions,
-            nextReview,
-            quality
-        };
-    }
-    
-    calculateRetention(history) {
-        if (history.length === 0) return 0;
-        
-        const correct = history.filter(r => r.quality >= 3).length;
-        return (correct / history.length) * 100;
-    }
-    
-    getDueCards(cards, limit = SRSConfig.reviews.maxPerDay) {
+        return [];
+    } catch (error) {
+        console.error('Get due cards error:', error);
+        // Use local calculation
         const now = new Date();
+        SRSState.dueCards = SRSState.cards.filter(card => {
+            const nextReview = new Date(card.nextReviewDate);
+            return nextReview <= now && card.proficiency !== PROFICIENCY_LEVELS.MASTERED;
+        });
+        SRSState.stats.dueToday = SRSState.dueCards.length;
+        return SRSState.dueCards;
+    }
+};
+
+/**
+ * Submit review result
+ */
+const submitReview = async (cardId, quality, responseTime) => {
+    try {
+        const response = await fetch('/api/vocabulary/review', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({
+                cardId,
+                quality,
+                responseTime
+            })
+        });
         
-        return cards
-            .filter(card => new Date(card.nextReview) <= now && card.proficiency !== SRSConfig.proficiency.mastered)
-            .sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview))
-            .slice(0, limit);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update local card
+            const cardIndex = SRSState.cards.findIndex(c => c.id === cardId);
+            if (cardIndex !== -1) {
+                SRSState.cards[cardIndex] = data.data.card;
+            }
+            updateStats();
+            saveToLocalStorage();
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Submit review error:', error);
+        return null;
     }
-    
-    getNewCards(cards, limit = SRSConfig.reviews.newWordsPerDay) {
-        return cards
-            .filter(card => card.proficiency === SRSConfig.proficiency.unknown)
-            .slice(0, limit);
+};
+
+/**
+ * Add new vocabulary word
+ */
+const addVocabulary = async (word, translation, example = '') => {
+    try {
+        const response = await fetch('/api/vocabulary/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${auth?.token || ''}`
+            },
+            body: JSON.stringify({
+                word,
+                translation,
+                example
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            SRSState.cards.unshift(data.data.card);
+            updateStats();
+            saveToLocalStorage();
+            showToast(`Added "${word}" to your vocabulary!`, 'success');
+            return data.data.card;
+        }
+        return null;
+    } catch (error) {
+        console.error('Add vocabulary error:', error);
+        return null;
     }
-    
-    isLeech(card) {
-        const failedReviews = card.reviewHistory.filter(r => r.quality < 3).length;
-        return failedReviews >= SRSConfig.reviews.leechThreshold;
+};
+
+/**
+ * Delete vocabulary card
+ */
+const deleteCard = async (cardId) => {
+    try {
+        const response = await fetch(`/api/vocabulary/cards/${cardId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${auth?.token || ''}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            SRSState.cards = SRSState.cards.filter(c => c.id !== cardId);
+            updateStats();
+            saveToLocalStorage();
+            showToast('Card deleted', 'info');
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Delete card error:', error);
+        return false;
     }
-}
+};
 
 // ============================================
-// VOCABULARY MANAGER
+// Review Session Management
 // ============================================
 
-class VocabularyManager {
-    constructor() {
-        this.words = new Map();
-        this.categories = new Map();
-        this.init();
+/**
+ * Start a review session
+ */
+const startReviewSession = async () => {
+    await getDueCards();
+    
+    if (SRSState.dueCards.length === 0) {
+        showToast('No cards due for review! Come back later.', 'success', 'All Caught Up! 🎉');
+        return false;
     }
     
-    init() {
-        this.loadWords();
-        this.loadCategories();
-        this.loadDefaultWords();
+    // Limit number of cards per session
+    const maxCards = Math.min(SRSState.dueCards.length, SRSState.settings.maxReviews);
+    SRSState.currentSession = {
+        cards: SRSState.dueCards.slice(0, maxCards),
+        startTime: Date.now(),
+        correctCount: 0,
+        totalCount: maxCards
+    };
+    SRSState.currentCardIndex = 0;
+    
+    showReviewCard();
+    return true;
+};
+
+/**
+ * Show current review card
+ */
+const showReviewCard = () => {
+    const container = document.getElementById('srs-card-container');
+    if (!container) return;
+    
+    if (SRSState.currentCardIndex >= SRSState.currentSession.cards.length) {
+        endReviewSession();
+        return;
     }
     
-    loadWords() {
-        const saved = localStorage.getItem(SRSConfig.storage.words);
-        if (saved) {
-            try {
-                const words = JSON.parse(saved);
-                words.forEach(word => this.words.set(word.id, word));
-            } catch (e) {
-                console.error('Failed to load words:', e);
+    const card = SRSState.currentSession.cards[SRSState.currentCardIndex];
+    const progress = ((SRSState.currentCardIndex) / SRSState.currentSession.cards.length) * 100;
+    
+    container.innerHTML = `
+        <div class="srs-card">
+            <div class="srs-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <span class="progress-text">${SRSState.currentCardIndex + 1} / ${SRSState.currentSession.cards.length}</span>
+            </div>
+            
+            <div class="card-front">
+                <div class="card-word">${escapeHtml(card.word)}</div>
+                ${card.pronunciation ? `<div class="card-pronunciation">/${card.pronunciation}/</div>` : ''}
+                <button class="btn btn-outline btn-sm" onclick="srs.playAudio('${card.word}')">🔊 Listen</button>
+            </div>
+            
+            <div class="card-back" style="display: none;">
+                <div class="card-translation">${escapeHtml(card.translation)}</div>
+                ${card.example ? `<div class="card-example">"${escapeHtml(card.example)}"</div>` : ''}
+                ${card.partOfSpeech ? `<div class="card-part">${card.partOfSpeech}</div>` : ''}
+            </div>
+            
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="srs.revealCard()">Show Answer</button>
+            </div>
+        </div>
+    `;
+};
+
+/**
+ * Reveal card answer
+ */
+const revealCard = () => {
+    const cardFront = document.querySelector('.card-front');
+    const cardBack = document.querySelector('.card-back');
+    const actions = document.querySelector('.card-actions');
+    
+    if (cardFront && cardBack) {
+        cardFront.style.display = 'none';
+        cardBack.style.display = 'block';
+        
+        actions.innerHTML = `
+            <button class="btn btn-review again" onclick="srs.rateCard(${REVIEW_RESULTS.AGAIN})">
+                ${RESULT_LABELS[REVIEW_RESULTS.AGAIN]}
+            </button>
+            <button class="btn btn-review hard" onclick="srs.rateCard(${REVIEW_RESULTS.HARD})">
+                ${RESULT_LABELS[REVIEW_RESULTS.HARD]}
+            </button>
+            <button class="btn btn-review good" onclick="srs.rateCard(${REVIEW_RESULTS.GOOD})">
+                ${RESULT_LABELS[REVIEW_RESULTS.GOOD]}
+            </button>
+            <button class="btn btn-review easy" onclick="srs.rateCard(${REVIEW_RESULTS.EASY})">
+                ${RESULT_LABELS[REVIEW_RESULTS.EASY]}
+            </button>
+        `;
+    }
+};
+
+/**
+ * Rate current card
+ */
+const rateCard = async (quality) => {
+    const card = SRSState.currentSession.cards[SRSState.currentCardIndex];
+    const startTime = SRSState.currentSession.startTime;
+    const responseTime = (Date.now() - startTime) / 1000;
+    
+    // Record correct answer for stats
+    if (quality >= REVIEW_RESULTS.GOOD) {
+        SRSState.currentSession.correctCount++;
+    }
+    
+    // Submit review to backend
+    await submitReview(card.id, quality, responseTime);
+    
+    // Move to next card
+    SRSState.currentCardIndex++;
+    showReviewCard();
+    
+    // Track progress
+    updateSessionProgress();
+};
+
+/**
+ * Update session progress
+ */
+const updateSessionProgress = () => {
+    const progress = SRSState.currentSession;
+    const remaining = progress.totalCount - progress.currentCardIndex;
+    
+    if (remaining > 0) {
+        const progressBar = document.querySelector('.srs-progress .progress-fill');
+        if (progressBar) {
+            const percentage = (progress.currentCardIndex / progress.totalCount) * 100;
+            progressBar.style.width = `${percentage}%`;
+        }
+        
+        const progressText = document.querySelector('.srs-progress .progress-text');
+        if (progressText) {
+            progressText.textContent = `${progress.currentCardIndex + 1} / ${progress.totalCount}`;
+        }
+    }
+};
+
+/**
+ * End review session
+ */
+const endReviewSession = () => {
+    const session = SRSState.currentSession;
+    const accuracy = (session.correctCount / session.totalCount) * 100;
+    const duration = Math.round((Date.now() - session.startTime) / 1000);
+    
+    showToast(`Session complete! ${session.correctCount}/${session.totalCount} correct (${Math.round(accuracy)}%)`, 'success', 'Great Work! 🎉');
+    
+    // Show session summary
+    const container = document.getElementById('srs-card-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="session-summary">
+                <h3>Review Session Complete!</h3>
+                <div class="summary-stats">
+                    <div class="stat">
+                        <span class="stat-value">${session.totalCount}</span>
+                        <span class="stat-label">Cards Reviewed</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${session.correctCount}</span>
+                        <span class="stat-label">Correct</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${Math.round(accuracy)}%</span>
+                        <span class="stat-label">Accuracy</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}</span>
+                        <span class="stat-label">Time</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="srs.startReview()">Start Another Session</button>
+                <button class="btn btn-outline" onclick="srs.showDashboard()">Back to Dashboard</button>
+            </div>
+        `;
+    }
+    
+    SRSState.currentSession = null;
+    updateStats();
+};
+
+/**
+ * Play audio for word
+ */
+const playAudio = (word) => {
+    if (window.voice && window.voice.textToSpeech) {
+        window.voice.textToSpeech(word);
+    } else {
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        speechSynthesis.speak(utterance);
+    }
+};
+
+// ============================================
+// Dashboard & Stats
+// ============================================
+
+/**
+ * Update statistics
+ */
+const updateStats = () => {
+    const totalCards = SRSState.cards.length;
+    const masteredCards = SRSState.cards.filter(c => c.proficiency === PROFICIENCY_LEVELS.MASTERED).length;
+    const learningCards = SRSState.cards.filter(c => c.proficiency === PROFICIENCY_LEVELS.LEARNING || c.proficiency === PROFICIENCY_LEVELS.REVIEWING).length;
+    const dueToday = SRSState.cards.filter(c => {
+        const nextReview = new Date(c.nextReviewDate);
+        return nextReview <= new Date() && c.proficiency !== PROFICIENCY_LEVELS.MASTERED;
+    }).length;
+    
+    // Calculate retention rate (based on last 100 reviews)
+    const recentReviews = SRSState.cards.flatMap(c => c.reviewHistory || []).slice(-100);
+    const correctReviews = recentReviews.filter(r => r.result >= REVIEW_RESULTS.GOOD).length;
+    const retentionRate = recentReviews.length > 0 ? (correctReviews / recentReviews.length) * 100 : 0;
+    
+    SRSState.stats = {
+        totalCards,
+        masteredCards,
+        learningCards,
+        dueToday,
+        retentionRate: Math.round(retentionRate),
+        streak: calculateStreak()
+    };
+    
+    saveToLocalStorage();
+    renderDashboard();
+};
+
+/**
+ * Calculate learning streak
+ */
+const calculateStreak = () => {
+    const reviewDates = SRSState.cards
+        .flatMap(c => c.reviewHistory || [])
+        .map(r => new Date(r.date).toDateString());
+    const uniqueDates = [...new Set(reviewDates)].sort();
+    
+    let streak = 0;
+    let currentStreak = 0;
+    let lastDate = null;
+    
+    for (const date of uniqueDates.reverse()) {
+        if (!lastDate) {
+            currentStreak = 1;
+        } else {
+            const diff = (new Date(lastDate) - new Date(date)) / (1000 * 60 * 60 * 24);
+            if (diff === 1) {
+                currentStreak++;
+            } else {
+                break;
             }
         }
+        lastDate = date;
+        streak = Math.max(streak, currentStreak);
     }
     
-    loadCategories() {
-        this.categories.set('basic', {
-            id: 'basic',
-            name: 'Basic Vocabulary',
-            description: 'Essential words for beginners',
-            icon: '🌟',
-            color: '#3b82f6'
+    return streak;
+};
+
+/**
+ * Render dashboard
+ */
+const renderDashboard = () => {
+    const container = document.getElementById('srs-dashboard');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="srs-stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${SRSState.stats.totalCards}</div>
+                <div class="stat-label">Total Cards</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${SRSState.stats.masteredCards}</div>
+                <div class="stat-label">Mastered</div>
+                <div class="stat-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${(SRSState.stats.masteredCards / SRSState.stats.totalCards) * 100}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${SRSState.stats.dueToday}</div>
+                <div class="stat-label">Due Today</div>
+                <button class="btn btn-primary btn-sm" onclick="srs.startReview()">Review Now</button>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${SRSState.stats.retentionRate}%</div>
+                <div class="stat-label">Retention Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">🔥 ${SRSState.stats.streak}</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${SRSState.stats.learningCards}</div>
+                <div class="stat-label">Learning</div>
+            </div>
+        </div>
+        
+        <div class="srs-proficiency-chart">
+            <h4>Proficiency Distribution</h4>
+            <div class="proficiency-bars">
+                <div class="proficiency-item">
+                    <span class="proficiency-label">New</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getProficiencyPercentage(PROFICIENCY_LEVELS.NEW)}%; background: #9ca3af"></div>
+                    </div>
+                    <span class="proficiency-count">${getProficiencyCount(PROFICIENCY_LEVELS.NEW)}</span>
+                </div>
+                <div class="proficiency-item">
+                    <span class="proficiency-label">Learning</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getProficiencyPercentage(PROFICIENCY_LEVELS.LEARNING)}%; background: #f59e0b"></div>
+                    </div>
+                    <span class="proficiency-count">${getProficiencyCount(PROFICIENCY_LEVELS.LEARNING)}</span>
+                </div>
+                <div class="proficiency-item">
+                    <span class="proficiency-label">Reviewing</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getProficiencyPercentage(PROFICIENCY_LEVELS.REVIEWING)}%; background: #3b82f6"></div>
+                    </div>
+                    <span class="proficiency-count">${getProficiencyCount(PROFICIENCY_LEVELS.REVIEWING)}</span>
+                </div>
+                <div class="proficiency-item">
+                    <span class="proficiency-label">Familiar</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getProficiencyPercentage(PROFICIENCY_LEVELS.FAMILIAR)}%; background: #10b981"></div>
+                    </div>
+                    <span class="proficiency-count">${getProficiencyCount(PROFICIENCY_LEVELS.FAMILIAR)}</span>
+                </div>
+                <div class="proficiency-item">
+                    <span class="proficiency-label">Mastered</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${getProficiencyPercentage(PROFICIENCY_LEVELS.MASTERED)}%; background: #8b5cf6"></div>
+                    </div>
+                    <span class="proficiency-count">${getProficiencyCount(PROFICIENCY_LEVELS.MASTERED)}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="srs-review-forecast">
+            <h4>Review Forecast</h4>
+            <div class="forecast-chart" id="forecast-chart"></div>
+        </div>
+        
+        <div class="srs-settings">
+            <h4>Settings</h4>
+            <div class="settings-item">
+                <label>Daily Review Goal</label>
+                <input type="number" id="daily-goal" value="${SRSState.settings.dailyGoal}" min="5" max="100">
+            </div>
+            <div class="settings-item">
+                <label>New Cards Per Day</label>
+                <input type="number" id="new-cards" value="${SRSState.settings.newCardsPerDay}" min="1" max="20">
+            </div>
+            <div class="settings-item">
+                <label>Auto-play Audio</label>
+                <label class="switch">
+                    <input type="checkbox" id="auto-play" ${SRSState.settings.autoPlayAudio ? 'checked' : ''}>
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            <button class="btn btn-primary" onclick="srs.saveSettings()">Save Settings</button>
+        </div>
+    `;
+    
+    // Render forecast chart
+    renderForecastChart();
+    
+    // Setup settings listeners
+    document.getElementById('daily-goal')?.addEventListener('change', (e) => {
+        SRSState.settings.dailyGoal = parseInt(e.target.value);
+    });
+    document.getElementById('new-cards')?.addEventListener('change', (e) => {
+        SRSState.settings.newCardsPerDay = parseInt(e.target.value);
+    });
+    document.getElementById('auto-play')?.addEventListener('change', (e) => {
+        SRSState.settings.autoPlayAudio = e.target.checked;
+    });
+};
+
+/**
+ * Get count of cards at proficiency level
+ */
+const getProficiencyCount = (level) => {
+    return SRSState.cards.filter(c => c.proficiency === level).length;
+};
+
+/**
+ * Get percentage of cards at proficiency level
+ */
+const getProficiencyPercentage = (level) => {
+    if (SRSState.stats.totalCards === 0) return 0;
+    return (getProficiencyCount(level) / SRSState.stats.totalCards) * 100;
+};
+
+/**
+ * Render forecast chart
+ */
+const renderForecastChart = () => {
+    const container = document.getElementById('forecast-chart');
+    if (!container) return;
+    
+    const forecast = [];
+    const today = new Date();
+    
+    for (let i = 0; i <= 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dueCount = SRSState.cards.filter(c => {
+            const nextReview = new Date(c.nextReviewDate);
+            return nextReview <= date && c.proficiency !== PROFICIENCY_LEVELS.MASTERED;
+        }).length;
+        forecast.push({ date: date.toLocaleDateString('en', { weekday: 'short' }), count: dueCount });
+    }
+    
+    const maxCount = Math.max(...forecast.map(f => f.count), 1);
+    
+    container.innerHTML = `
+        <div class="forecast-bars">
+            ${forecast.map(f => `
+                <div class="forecast-bar">
+                    <div class="bar" style="height: ${(f.count / maxCount) * 100}%"></div>
+                    <span class="label">${f.date}</span>
+                    <span class="count">${f.count}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
+
+/**
+ * Show dashboard
+ */
+const showDashboard = () => {
+    const container = document.getElementById('srs-card-container');
+    if (container) {
+        container.innerHTML = '<div id="srs-dashboard"></div>';
+        renderDashboard();
+    }
+};
+
+/**
+ * Save settings
+ */
+const saveSettings = () => {
+    localStorage.setItem('srs_settings', JSON.stringify(SRSState.settings));
+    showToast('Settings saved!', 'success');
+};
+
+// ============================================
+// Vocabulary List
+// ============================================
+
+/**
+ * Show vocabulary list
+ */
+const showVocabularyList = () => {
+    const container = document.getElementById('srs-card-container');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="vocabulary-header">
+            <h3>My Vocabulary</h3>
+            <button class="btn btn-primary" onclick="srs.showAddWordModal()">+ Add Word</button>
+        </div>
+        <div class="vocabulary-search">
+            <input type="text" id="vocab-search" class="form-input" placeholder="Search words...">
+        </div>
+        <div class="vocabulary-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="new">New</button>
+            <button class="filter-btn" data-filter="learning">Learning</button>
+            <button class="filter-btn" data-filter="mastered">Mastered</button>
+            <button class="filter-btn" data-filter="due">Due</button>
+        </div>
+        <div id="vocabulary-list" class="vocabulary-list"></div>
+    `;
+    
+    renderVocabularyList();
+    
+    // Setup search
+    const searchInput = document.getElementById('vocab-search');
+    searchInput.addEventListener('input', () => renderVocabularyList(searchInput.value));
+    
+    // Setup filters
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderVocabularyList(searchInput.value, btn.dataset.filter);
         });
-        
-        this.categories.set('business', {
-            id: 'business',
-            name: 'Business English',
-            description: 'Professional vocabulary for workplace',
-            icon: '💼',
-            color: '#10b981'
-        });
-        
-        this.categories.set('academic', {
-            id: 'academic',
-            name: 'Academic Words',
-            description: 'Vocabulary for IELTS/TOEFL',
-            icon: '📚',
-            color: '#8b5cf6'
-        });
-        
-        this.categories.set('daily', {
-            id: 'daily',
-            name: 'Daily Conversation',
-            description: 'Common phrases for everyday use',
-            icon: '🗣️',
-            color: '#f59e0b'
-        });
-        
-        this.categories.set('idioms', {
-            id: 'idioms',
-            name: 'Idioms & Phrases',
-            description: 'Common English expressions',
-            icon: '🎯',
-            color: '#ef4444'
-        });
-    }
+    });
+};
+
+/**
+ * Render vocabulary list
+ */
+const renderVocabularyList = (search = '', filter = 'all') => {
+    const container = document.getElementById('vocabulary-list');
+    if (!container) return;
     
-    loadDefaultWords() {
-        if (this.words.size > 0) return;
-        
-        const defaultWords = [
-            // Basic Vocabulary
-            { word: 'confident', meaning: 'feeling sure about yourself and your abilities', example: 'She felt confident about the interview.', category: 'basic', difficulty: 'medium', proficiency: 0 },
-            { word: 'essential', meaning: 'absolutely necessary or extremely important', example: 'Water is essential for life.', category: 'basic', difficulty: 'medium', proficiency: 0 },
-            { word: 'improve', meaning: 'to make something better', example: 'I want to improve my English.', category: 'basic', difficulty: 'easy', proficiency: 0 },
-            { word: 'opportunity', meaning: 'a chance to do something', example: 'This is a great opportunity to learn.', category: 'basic', difficulty: 'medium', proficiency: 0 },
-            { word: 'challenge', meaning: 'something difficult that tests your abilities', example: 'Learning a new language is a challenge.', category: 'basic', difficulty: 'medium', proficiency: 0 },
-            
-            // Business Vocabulary
-            { word: 'deadline', meaning: 'the time by which something must be finished', example: 'The project deadline is Friday.', category: 'business', difficulty: 'medium', proficiency: 0 },
-            { word: 'negotiate', meaning: 'to discuss something to reach an agreement', example: 'We need to negotiate the contract terms.', category: 'business', difficulty: 'hard', proficiency: 0 },
-            { word: 'collaborate', meaning: 'to work together with others', example: 'Our teams collaborate on many projects.', category: 'business', difficulty: 'hard', proficiency: 0 },
-            
-            // Academic Vocabulary
-            { word: 'analyze', meaning: 'to examine something in detail', example: 'Students must analyze the data.', category: 'academic', difficulty: 'medium', proficiency: 0 },
-            { word: 'significant', meaning: 'important or noticeable', example: 'There was a significant improvement.', category: 'academic', difficulty: 'hard', proficiency: 0 },
-            { word: 'consequently', meaning: 'as a result', example: 'He worked hard; consequently, he passed.', category: 'academic', difficulty: 'hard', proficiency: 0 },
-            
-            // Daily Conversation
-            { word: 'catch up', meaning: 'to talk with someone you haven\'t seen recently', example: 'Let\'s catch up over coffee.', category: 'daily', difficulty: 'medium', proficiency: 0 },
-            { word: 'figure out', meaning: 'to understand or solve something', example: 'I need to figure out this problem.', category: 'daily', difficulty: 'medium', proficiency: 0 },
-            { word: 'run into', meaning: 'to meet someone unexpectedly', example: 'I ran into an old friend today.', category: 'daily', difficulty: 'medium', proficiency: 0 },
-            
-            // Idioms
-            { word: 'break the ice', meaning: 'to make people feel more comfortable', example: 'He told a joke to break the ice.', category: 'idioms', difficulty: 'hard', proficiency: 0 },
-            { word: 'hit the nail on the head', meaning: 'to be exactly right', example: 'You hit the nail on the head with that analysis.', category: 'idioms', difficulty: 'hard', proficiency: 0 },
-            { word: 'once in a blue moon', meaning: 'very rarely', example: 'I go to the cinema once in a blue moon.', category: 'idioms', difficulty: 'hard', proficiency: 0 }
-        ];
-        
-        for (const wordData of defaultWords) {
-            this.addWord(wordData);
-        }
-        
-        this.saveWords();
-    }
+    let filteredCards = [...SRSState.cards];
     
-    addWord(wordData) {
-        const id = this.generateId();
-        const now = new Date();
-        
-        const word = {
-            id,
-            ...wordData,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-            interval: 0,
-            easeFactor: SRSConfig.sm2.easeFactor,
-            repetitions: 0,
-            nextReview: now.toISOString(),
-            reviewHistory: [],
-            proficiency: wordData.proficiency || SRSConfig.proficiency.unknown,
-            tags: wordData.tags || []
-        };
-        
-        this.words.set(id, word);
-        this.saveWords();
-        
-        return word;
-    }
-    
-    updateWord(wordId, updates) {
-        const word = this.words.get(wordId);
-        if (!word) return null;
-        
-        Object.assign(word, updates);
-        word.updatedAt = new Date().toISOString();
-        this.saveWords();
-        
-        return word;
-    }
-    
-    deleteWord(wordId) {
-        const deleted = this.words.delete(wordId);
-        this.saveWords();
-        return deleted;
-    }
-    
-    getWord(wordId) {
-        return this.words.get(wordId);
-    }
-    
-    getAllWords() {
-        return Array.from(this.words.values());
-    }
-    
-    getWordsByCategory(category) {
-        return Array.from(this.words.values()).filter(w => w.category === category);
-    }
-    
-    getWordsByDifficulty(difficulty) {
-        return Array.from(this.words.values()).filter(w => w.difficulty === difficulty);
-    }
-    
-    getWordsByProficiency(proficiency) {
-        return Array.from(this.words.values()).filter(w => w.proficiency === proficiency);
-    }
-    
-    searchWords(query) {
-        const lowerQuery = query.toLowerCase();
-        
-        return Array.from(this.words.values()).filter(word => 
-            word.word.toLowerCase().includes(lowerQuery) ||
-            word.meaning.toLowerCase().includes(lowerQuery) ||
-            (word.example && word.example.toLowerCase().includes(lowerQuery))
+    // Apply search
+    if (search) {
+        const term = search.toLowerCase();
+        filteredCards = filteredCards.filter(c => 
+            c.word.toLowerCase().includes(term) || 
+            c.translation.toLowerCase().includes(term)
         );
     }
     
-    getStats() {
-        const words = Array.from(this.words.values());
-        
-        return {
-            total: words.length,
-            byCategory: this.getStatsByCategory(words),
-            byDifficulty: this.getStatsByDifficulty(words),
-            byProficiency: this.getStatsByProficiency(words),
-            mastered: words.filter(w => w.proficiency === SRSConfig.proficiency.mastered).length,
-            learning: words.filter(w => w.proficiency === SRSConfig.proficiency.learning).length,
-            reviewing: words.filter(w => w.proficiency === SRSConfig.proficiency.reviewing).length,
-            unknown: words.filter(w => w.proficiency === SRSConfig.proficiency.unknown).length
-        };
-    }
-    
-    getStatsByCategory(words) {
-        const stats = {};
-        for (const word of words) {
-            if (!stats[word.category]) {
-                stats[word.category] = 0;
-            }
-            stats[word.category]++;
-        }
-        return stats;
-    }
-    
-    getStatsByDifficulty(words) {
-        const stats = { easy: 0, medium: 0, hard: 0 };
-        for (const word of words) {
-            stats[word.difficulty]++;
-        }
-        return stats;
-    }
-    
-    getStatsByProficiency(words) {
-        const stats = { 0: 0, 1: 0, 2: 0, 3: 0 };
-        for (const word of words) {
-            stats[word.proficiency]++;
-        }
-        return stats;
-    }
-    
-    generateId() {
-        return `word_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-    
-    saveWords() {
-        const wordsArray = Array.from(this.words.values());
-        localStorage.setItem(SRSConfig.storage.words, JSON.stringify(wordsArray));
-    }
-    
-    importWords(wordsData) {
-        for (const wordData of wordsData) {
-            this.addWord(wordData);
-        }
-    }
-    
-    exportWords() {
-        return Array.from(this.words.values());
-    }
-}
-
-// ============================================
-// REVIEW MANAGER
-// ============================================
-
-class ReviewManager {
-    constructor(vocabularyManager, algorithm) {
-        this.vocab = vocabularyManager;
-        this.algorithm = algorithm;
-        this.reviewQueue = [];
-        this.reviewHistory = [];
-        this.stats = this.loadStats();
-        this.init();
-    }
-    
-    init() {
-        this.loadReviewHistory();
-        this.updateReviewQueue();
-    }
-    
-    loadReviewHistory() {
-        const saved = localStorage.getItem(SRSConfig.storage.reviews);
-        if (saved) {
-            try {
-                this.reviewHistory = JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load review history:', e);
-            }
-        }
-    }
-    
-    loadStats() {
-        const saved = localStorage.getItem(SRSConfig.storage.stats);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error('Failed to load stats:', e);
-            }
-        }
-        
-        return {
-            totalReviews: 0,
-            correctReviews: 0,
-            streakDays: 0,
-            lastReviewDate: null,
-            wordsLearned: 0,
-            totalTimeSpent: 0 // minutes
-        };
-    }
-    
-    updateReviewQueue() {
-        const allWords = this.vocab.getAllWords();
-        const dueCards = this.algorithm.getDueCards(allWords);
-        const newCards = this.algorithm.getNewCards(allWords);
-        
-        this.reviewQueue = [...dueCards, ...newCards];
-        
-        // Limit queue size
-        if (this.reviewQueue.length > SRSConfig.reviews.reviewBatchSize) {
-            this.reviewQueue = this.reviewQueue.slice(0, SRSConfig.reviews.reviewBatchSize);
-        }
-        
-        return this.reviewQueue;
-    }
-    
-    getNextReview() {
-        if (this.reviewQueue.length === 0) {
-            this.updateReviewQueue();
-        }
-        
-        return this.reviewQueue[0] || null;
-    }
-    
-    submitReview(wordId, quality, responseTime = null) {
-        const word = this.vocab.getWord(wordId);
-        if (!word) return null;
-        
-        const review = {
-            wordId,
-            word: word.word,
-            quality,
-            responseTime,
-            timestamp: new Date().toISOString()
-        };
-        
-        // Calculate next review using SM-2 algorithm
-        const card = {
-            interval: word.interval,
-            easeFactor: word.easeFactor,
-            repetitions: word.repetitions
-        };
-        
-        const nextReviewData = this.algorithm.calculateNextReview(card, quality);
-        
-        // Update word with new SRS data
-        word.interval = nextReviewData.interval;
-        word.easeFactor = nextReviewData.easeFactor;
-        word.repetitions = nextReviewData.repetitions;
-        word.nextReview = nextReviewData.nextReview.toISOString();
-        word.reviewHistory.push(review);
-        
-        // Update proficiency based on performance
-        if (quality >= 4 && word.repetitions >= 3) {
-            word.proficiency = SRSConfig.proficiency.mastered;
-        } else if (quality >= 3 && word.repetitions >= 1) {
-            word.proficiency = SRSConfig.proficiency.reviewing;
-        } else if (quality >= 3) {
-            word.proficiency = SRSConfig.proficiency.learning;
-        } else if (quality < 3 && word.proficiency !== SRSConfig.proficiency.unknown) {
-            word.proficiency = SRSConfig.proficiency.learning;
-        }
-        
-        // Check for leech words
-        if (this.algorithm.isLeech(word)) {
-            word.isLeech = true;
-        }
-        
-        this.vocab.updateWord(wordId, word);
-        
-        // Update stats
-        this.updateStats(review);
-        
-        // Add to history
-        this.reviewHistory.push(review);
-        this.saveReviewHistory();
-        
-        // Remove from queue
-        this.reviewQueue = this.reviewQueue.filter(w => w.id !== wordId);
-        
-        return {
-            word,
-            nextReview: nextReviewData.nextReview,
-            isCorrect: quality >= 3,
-            isLeech: word.isLeech || false
-        };
-    }
-    
-    updateStats(review) {
-        this.stats.totalReviews++;
-        
-        if (review.quality >= 3) {
-            this.stats.correctReviews++;
-        }
-        
-        if (review.responseTime) {
-            this.stats.totalTimeSpent += review.responseTime / 60;
-        }
-        
-        // Update streak
-        const today = new Date().toDateString();
-        if (this.stats.lastReviewDate !== today) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            if (this.stats.lastReviewDate === yesterday.toDateString()) {
-                this.stats.streakDays++;
-            } else if (this.stats.lastReviewDate !== today) {
-                this.stats.streakDays = 1;
-            }
-            
-            this.stats.lastReviewDate = today;
-        }
-        
-        // Update words learned count
-        const masteredCount = this.vocab.getWordsByProficiency(SRSConfig.proficiency.mastered).length;
-        this.stats.wordsLearned = masteredCount;
-        
-        this.saveStats();
-    }
-    
-    saveReviewHistory() {
-        // Keep only last 1000 reviews
-        const recentHistory = this.reviewHistory.slice(-1000);
-        localStorage.setItem(SRSConfig.storage.reviews, JSON.stringify(recentHistory));
-    }
-    
-    saveStats() {
-        localStorage.setItem(SRSConfig.storage.stats, JSON.stringify(this.stats));
-    }
-    
-    getStats() {
-        const retention = (this.stats.correctReviews / this.stats.totalReviews) * 100;
-        
-        return {
-            ...this.stats,
-            retentionRate: isNaN(retention) ? 0 : Math.round(retention),
-            queueSize: this.reviewQueue.length,
-            dueToday: this.reviewQueue.filter(w => new Date(w.nextReview) <= new Date()).length
-        };
-    }
-    
-    getReviewHistory(limit = 50) {
-        return this.reviewHistory.slice(-limit).reverse();
-    }
-    
-    getPerformanceChartData(days = 30) {
-        const data = [];
-        const now = new Date();
-        
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(now.getDate() - i);
-            const dateStr = date.toDateString();
-            
-            const dayReviews = this.reviewHistory.filter(r => 
-                new Date(r.timestamp).toDateString() === dateStr
-            );
-            
-            const correct = dayReviews.filter(r => r.quality >= 3).length;
-            const total = dayReviews.length;
-            
-            data.push({
-                date: dateStr,
-                correct,
-                total,
-                rate: total > 0 ? (correct / total) * 100 : 0
+    // Apply filter
+    switch (filter) {
+        case 'new':
+            filteredCards = filteredCards.filter(c => c.proficiency === PROFICIENCY_LEVELS.NEW);
+            break;
+        case 'learning':
+            filteredCards = filteredCards.filter(c => c.proficiency === PROFICIENCY_LEVELS.LEARNING || c.proficiency === PROFICIENCY_LEVELS.REVIEWING);
+            break;
+        case 'mastered':
+            filteredCards = filteredCards.filter(c => c.proficiency === PROFICIENCY_LEVELS.MASTERED);
+            break;
+        case 'due':
+            filteredCards = filteredCards.filter(c => {
+                const nextReview = new Date(c.nextReviewDate);
+                return nextReview <= new Date() && c.proficiency !== PROFICIENCY_LEVELS.MASTERED;
             });
-        }
-        
-        return data;
+            break;
     }
     
-    resetProgress(wordId) {
-        const word = this.vocab.getWord(wordId);
-        if (!word) return null;
-        
-        word.interval = 0;
-        word.easeFactor = SRSConfig.sm2.easeFactor;
-        word.repetitions = 0;
-        word.nextReview = new Date().toISOString();
-        word.proficiency = SRSConfig.proficiency.unknown;
-        word.reviewHistory = [];
-        
-        this.vocab.updateWord(wordId, word);
-        
-        return word;
+    if (filteredCards.length === 0) {
+        container.innerHTML = '<p class="no-results">No vocabulary cards found.</p>';
+        return;
     }
     
-    resetAllProgress() {
-        const words = this.vocab.getAllWords();
-        for (const word of words) {
-            this.resetProgress(word.id);
-        }
-        
-        this.stats = {
-            totalReviews: 0,
-            correctReviews: 0,
-            streakDays: 0,
-            lastReviewDate: null,
-            wordsLearned: 0,
-            totalTimeSpent: 0
-        };
-        
-        this.reviewHistory = [];
-        this.saveStats();
-        this.saveReviewHistory();
-        this.updateReviewQueue();
-        
-        return true;
-    }
-}
-
-// ============================================
-// SRS UI CONTROLLER
-// ============================================
-
-class SRSUIController {
-    constructor(vocabularyManager, reviewManager, algorithm) {
-        this.vocab = vocabularyManager;
-        this.reviewManager = reviewManager;
-        this.algorithm = algorithm;
-        this.currentCard = null;
-        this.isFlipped = false;
-        this.elements = {};
-        this.init();
-    }
-    
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.renderDashboard();
-        this.loadNextCard();
-    }
-    
-    bindElements() {
-        this.elements = {
-            wordDisplay: document.getElementById('srsWord'),
-            meaningDisplay: document.getElementById('srsMeaning'),
-            exampleDisplay: document.getElementById('srsExample'),
-            cardContainer: document.getElementById('srsCard'),
-            easyBtn: document.getElementById('srsEasyBtn'),
-            againBtn: document.getElementById('srsAgainBtn'),
-            hardBtn: document.getElementById('srsHardBtn'),
-            statsContainer: document.getElementById('srsStats'),
-            queueCount: document.getElementById('queueCount'),
-            streakDisplay: document.getElementById('streakDisplay'),
-            masteredCount: document.getElementById('masteredCount'),
-            categoryFilter: document.getElementById('categoryFilter'),
-            wordList: document.getElementById('wordList')
-        };
-    }
-    
-    bindEvents() {
-        if (this.elements.easyBtn) {
-            this.elements.easyBtn.addEventListener('click', () => this.submitReview(4));
-        }
-        
-        if (this.elements.againBtn) {
-            this.elements.againBtn.addEventListener('click', () => this.submitReview(2));
-        }
-        
-        if (this.elements.hardBtn) {
-            this.elements.hardBtn.addEventListener('click', () => this.submitReview(3));
-        }
-        
-        if (this.elements.cardContainer) {
-            this.elements.cardContainer.addEventListener('click', () => this.flipCard());
-        }
-        
-        if (this.elements.categoryFilter) {
-            this.elements.categoryFilter.addEventListener('change', () => this.filterWords());
-        }
-    }
-    
-    loadNextCard() {
-        this.currentCard = this.reviewManager.getNextReview();
-        
-        if (this.currentCard) {
-            this.displayCard(this.currentCard);
-            this.isFlipped = false;
-            this.resetCardFlip();
-        } else {
-            this.showCompletionMessage();
-        }
-        
-        this.updateQueueInfo();
-    }
-    
-    displayCard(word) {
-        if (this.elements.wordDisplay) {
-            this.elements.wordDisplay.textContent = word.word;
-        }
-        
-        if (this.elements.meaningDisplay) {
-            this.elements.meaningDisplay.textContent = 'Click to reveal meaning';
-            this.elements.meaningDisplay.style.opacity = '0.7';
-        }
-        
-        if (this.elements.exampleDisplay && word.example) {
-            this.elements.exampleDisplay.textContent = `Example: ${word.example}`;
-            this.elements.exampleDisplay.style.display = 'block';
-        } else if (this.elements.exampleDisplay) {
-            this.elements.exampleDisplay.style.display = 'none';
-        }
-    }
-    
-    flipCard() {
-        if (!this.currentCard) return;
-        
-        this.isFlipped = !this.isFlipped;
-        
-        if (this.isFlipped) {
-            if (this.elements.meaningDisplay) {
-                this.elements.meaningDisplay.textContent = this.currentCard.meaning;
-                this.elements.meaningDisplay.style.opacity = '1';
-            }
-        } else {
-            if (this.elements.meaningDisplay) {
-                this.elements.meaningDisplay.textContent = 'Click to reveal meaning';
-                this.elements.meaningDisplay.style.opacity = '0.7';
-            }
-        }
-    }
-    
-    resetCardFlip() {
-        if (this.elements.meaningDisplay) {
-            this.elements.meaningDisplay.textContent = 'Click to reveal meaning';
-            this.elements.meaningDisplay.style.opacity = '0.7';
-        }
-    }
-    
-    async submitReview(quality) {
-        if (!this.currentCard) return;
-        
-        // Disable buttons during processing
-        this.setButtonsEnabled(false);
-        
-        // Animate submission
-        this.animateSubmission(quality);
-        
-        // Submit review
-        const result = this.reviewManager.submitReview(this.currentCard.id, quality);
-        
-        // Show feedback
-        this.showFeedback(result);
-        
-        // Load next card
-        setTimeout(() => {
-            this.loadNextCard();
-            this.setButtonsEnabled(true);
-            this.renderDashboard();
-        }, 500);
-    }
-    
-    animateSubmission(quality) {
-        const card = this.elements.cardContainer;
-        if (!card) return;
-        
-        if (quality >= 4) {
-            card.style.animation = 'correct-pulse 0.3s ease';
-        } else {
-            card.style.animation = 'incorrect-shake 0.3s ease';
-        }
-        
-        setTimeout(() => {
-            card.style.animation = '';
-        }, 300);
-    }
-    
-    showFeedback(result) {
-        const feedback = document.createElement('div');
-        feedback.className = 'review-feedback';
-        
-        if (result.isCorrect) {
-            feedback.innerHTML = '✅ Great job! +10 XP';
-            feedback.style.background = '#10b981';
-        } else {
-            feedback.innerHTML = '📚 Keep practicing! +5 XP';
-            feedback.style.background = '#f59e0b';
-        }
-        
-        if (result.isLeech) {
-            feedback.innerHTML += '<br>⚠️ This word needs extra attention';
-        }
-        
-        document.body.appendChild(feedback);
-        
-        setTimeout(() => {
-            feedback.remove();
-        }, 2000);
-        
-        // Dispatch XP event
-        const event = new CustomEvent('srs:xpGain', {
-            detail: { xp: result.isCorrect ? 10 : 5 }
-        });
-        document.dispatchEvent(event);
-    }
-    
-    setButtonsEnabled(enabled) {
-        const buttons = [this.elements.easyBtn, this.elements.againBtn, this.elements.hardBtn];
-        buttons.forEach(btn => {
-            if (btn) btn.disabled = !enabled;
-        });
-    }
-    
-    showCompletionMessage() {
-        if (this.elements.wordDisplay) {
-            this.elements.wordDisplay.textContent = '🎉 All caught up!';
-        }
-        if (this.elements.meaningDisplay) {
-            this.elements.meaningDisplay.textContent = 'Great job! Come back tomorrow for more words.';
-        }
-        if (this.elements.exampleDisplay) {
-            this.elements.exampleDisplay.style.display = 'none';
-        }
-    }
-    
-    renderDashboard() {
-        const stats = this.reviewManager.getStats();
-        const vocabStats = this.vocab.getStats();
-        
-        if (this.elements.statsContainer) {
-            this.elements.statsContainer.innerHTML = `
-                <div class="srs-stats-grid">
-                    <div class="stat">
-                        <div class="stat-value">${stats.streakDays}</div>
-                        <div class="stat-label">Day Streak</div>
+    container.innerHTML = `
+        <div class="vocabulary-grid">
+            ${filteredCards.map(card => `
+                <div class="vocab-card" data-id="${card.id}">
+                    <div class="vocab-word">${escapeHtml(card.word)}</div>
+                    <div class="vocab-translation">${escapeHtml(card.translation)}</div>
+                    <div class="vocab-meta">
+                        <span class="proficiency proficiency-${card.proficiency}">${getProficiencyLabel(card.proficiency)}</span>
+                        <span class="next-review">Next: ${formatDate(card.nextReviewDate)}</span>
                     </div>
-                    <div class="stat">
-                        <div class="stat-value">${stats.wordsLearned}</div>
-                        <div class="stat-label">Mastered</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">${stats.retentionRate}%</div>
-                        <div class="stat-label">Retention</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">${vocabStats.total}</div>
-                        <div class="stat-label">Total Words</div>
+                    <div class="vocab-actions">
+                        <button class="btn-icon" onclick="srs.playAudio('${card.word}')">🔊</button>
+                        <button class="btn-icon" onclick="srs.editCard('${card.id}')">✏️</button>
+                        <button class="btn-icon delete" onclick="srs.deleteCard('${card.id}')">🗑️</button>
                     </div>
                 </div>
-            `;
-        }
-        
-        if (this.elements.queueCount) {
-            this.elements.queueCount.textContent = stats.queueSize;
-        }
-        
-        if (this.elements.streakDisplay) {
-            this.elements.streakDisplay.textContent = stats.streakDays;
-        }
-        
-        if (this.elements.masteredCount) {
-            this.elements.masteredCount.textContent = stats.wordsLearned;
-        }
-        
-        this.renderWordList();
-    }
-    
-    updateQueueInfo() {
-        const stats = this.reviewManager.getStats();
-        const queueInfo = document.getElementById('queueInfo');
-        if (queueInfo) {
-            queueInfo.innerHTML = `
-                <span>📚 ${stats.queueSize} words in queue</span>
-                <span>✅ ${stats.correctReviews}/${stats.totalReviews} correct</span>
-            `;
-        }
-    }
-    
-    renderWordList() {
-        if (!this.elements.wordList) return;
-        
-        const category = this.elements.categoryFilter?.value;
-        let words = this.vocab.getAllWords();
-        
-        if (category && category !== 'all') {
-            words = words.filter(w => w.category === category);
-        }
-        
-        this.elements.wordList.innerHTML = words.map(word => `
-            <div class="word-list-item" data-id="${word.id}">
-                <div class="word-info">
-                    <span class="word-text">${this.escapeHtml(word.word)}</span>
-                    <span class="word-meaning">${this.escapeHtml(word.meaning)}</span>
-                </div>
-                <div class="word-meta">
-                    <span class="word-proficiency proficiency-${word.proficiency}">
-                        ${this.getProficiencyLabel(word.proficiency)}
-                    </span>
-                    <span class="word-category">${word.category}</span>
-                    <button class="btn-icon reset-word" data-id="${word.id}">↻</button>
-                </div>
-            </div>
-        `).join('');
-        
-        // Attach reset handlers
-        document.querySelectorAll('.reset-word').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = btn.dataset.id;
-                if (confirm('Reset progress for this word?')) {
-                    this.reviewManager.resetProgress(id);
-                    this.renderWordList();
-                    this.renderDashboard();
-                }
-            });
-        });
-    }
-    
-    filterWords() {
-        this.renderWordList();
-    }
-    
-    getProficiencyLabel(proficiency) {
-        const labels = {
-            0: 'Not Started',
-            1: 'Learning',
-            2: 'Reviewing',
-            3: 'Mastered'
-        };
-        return labels[proficiency] || 'Unknown';
-    }
-    
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-}
-
-// ============================================
-// EXPORTS
-// ============================================
-
-// Initialize SRS system
-const srsAlgorithm = new SRSAlgorithm();
-const vocabularyManager = new VocabularyManager();
-const reviewManager = new ReviewManager(vocabularyManager, srsAlgorithm);
-const srsUI = new SRSUIController(vocabularyManager, reviewManager, srsAlgorithm);
-
-// Global exports
-window.SpeakFlow = window.SpeakFlow || {};
-window.SpeakFlow.SRS = {
-    algorithm: srsAlgorithm,
-    vocabulary: vocabularyManager,
-    reviews: reviewManager,
-    ui: srsUI,
-    config: SRSConfig
+            `).join('')}
+        </div>
+    `;
 };
 
-// Module exports
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        SRSConfig,
-        SRSAlgorithm,
-        VocabularyManager,
-        ReviewManager,
-        SRSUIController
+/**
+ * Get proficiency label
+ */
+const getProficiencyLabel = (level) => {
+    const labels = {
+        [PROFICIENCY_LEVELS.NEW]: 'New',
+        [PROFICIENCY_LEVELS.LEARNING]: 'Learning',
+        [PROFICIENCY_LEVELS.REVIEWING]: 'Reviewing',
+        [PROFICIENCY_LEVELS.FAMILIAR]: 'Familiar',
+        [PROFICIENCY_LEVELS.MASTERED]: 'Mastered'
     };
+    return labels[level] || 'Unknown';
+};
+
+/**
+ * Show add word modal
+ */
+const showAddWordModal = () => {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New Word</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-word-form">
+                    <div class="form-group">
+                        <label class="form-label">Word</label>
+                        <input type="text" name="word" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Translation</label>
+                        <input type="text" name="translation" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Example Sentence (optional)</label>
+                        <textarea name="example" class="form-textarea" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Add Word</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    
+    const form = modal.querySelector('#add-word-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const word = form.querySelector('[name="word"]').value;
+        const translation = form.querySelector('[name="translation"]').value;
+        const example = form.querySelector('[name="example"]').value;
+        
+        await addVocabulary(word, translation, example);
+        closeModal();
+        showVocabularyList();
+    });
+};
+
+/**
+ * Edit card
+ */
+const editCard = async (cardId) => {
+    const card = SRSState.cards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Word</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-word-form">
+                    <div class="form-group">
+                        <label class="form-label">Word</label>
+                        <input type="text" name="word" class="form-input" value="${escapeHtml(card.word)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Translation</label>
+                        <input type="text" name="translation" class="form-input" value="${escapeHtml(card.translation)}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Example Sentence</label>
+                        <textarea name="example" class="form-textarea" rows="2">${escapeHtml(card.example || '')}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    
+    const form = modal.querySelector('#edit-word-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        // In production, call API to update
+        card.word = form.querySelector('[name="word"]').value;
+        card.translation = form.querySelector('[name="translation"]').value;
+        card.example = form.querySelector('[name="example"]').value;
+        
+        saveToLocalStorage();
+        closeModal();
+        showVocabularyList();
+        showToast('Word updated!', 'success');
+    });
+};
+
+// ============================================
+// Initialization
+// ============================================
+
+/**
+ * Initialize SRS module
+ */
+const initSRS = async () => {
+    if (SRSState.isInitialized) return;
+    
+    console.log('Initializing SRS module...');
+    
+    SRSState.userId = getUserId();
+    
+    // Load data
+    loadFromLocalStorage();
+    await fetchCards();
+    
+    // Render dashboard
+    renderDashboard();
+    
+    SRSState.isInitialized = true;
+    
+    console.log('SRS module initialized');
+};
+
+// ============================================
+// Export SRS Module
+// ============================================
+
+const srs = {
+    // State
+    get isInitialized() { return SRSState.isInitialized; },
+    get cards() { return SRSState.cards; },
+    get stats() { return SRSState.stats; },
+    
+    // Session management
+    startReview: startReviewSession,
+    revealCard,
+    rateCard,
+    
+    // Card management
+    addVocabulary,
+    deleteCard,
+    editCard,
+    
+    // Dashboard
+    showDashboard,
+    showVocabularyList,
+    
+    // Audio
+    playAudio,
+    
+    // Settings
+    saveSettings,
+    
+    // Initialize
+    init: initSRS
+};
+
+// Make srs globally available
+window.srs = srs;
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSRS);
+} else {
+    initSRS();
 }
 
-// ============================================
-// CSS ANIMATIONS
-// ============================================
-
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes correct-pulse {
-        0% { transform: scale(1); background: var(--bg-primary); }
-        50% { transform: scale(1.02); background: #10b98120; }
-        100% { transform: scale(1); background: var(--bg-primary); }
-    }
-    
-    @keyframes incorrect-shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
-    }
-    
-    .review-feedback {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        border-radius: 40px;
-        color: white;
-        font-weight: 600;
-        z-index: 1000;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-    
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    }
-    
-    .srs-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-    
-    .word-list-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px;
-        border-bottom: 1px solid var(--border-light);
-        cursor: pointer;
-    }
-    
-    .word-list-item:hover {
-        background: var(--bg-tertiary);
-    }
-    
-    .proficiency-0 { color: var(--text-tertiary); }
-    .proficiency-1 { color: var(--color-warning); }
-    .proficiency-2 { color: var(--color-primary); }
-    .proficiency-3 { color: var(--color-success); }
-`;
-
-document.head.appendChild(style);
-
-// ============================================
-// AUTO-INITIALIZATION
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('SRS module initialized');
-    
-    // Debug mode
-    if (window.location.hostname === 'localhost') {
-        window.debugSRS = {
-            algorithm: srsAlgorithm,
-            vocabulary: vocabularyManager,
-            reviews: reviewManager
-        };
-        console.log('SRS debug mode enabled');
-    }
-});
+// Export for module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = srs;
+}
