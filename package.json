@@ -1,0 +1,71 @@
+{
+  "name": "speakflow",
+  "version": "1.0.0",
+  "description": "AI-powered language learning platform with voice recognition and real-time pronunciation feedback",
+  "main": "backend/server.js",
+  "scripts": {
+    "vercel-build": "npm install --prefix backend",
+    "build": "echo 'Building SpeakFlow...' && npm run build:css && npm run build:js",
+    "build:css": "echo 'Building CSS...'",
+    "build:js": "echo 'Building JavaScript...'",
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "test": "npm test --prefix backend",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "clean": "rm -rf node_modules backend/node_modules",
+    "postinstall": "npm install --prefix backend"
+  },
+  "keywords": [
+    "language-learning",
+    "voice-recognition",
+    "artificial-intelligence",
+    "pwa",
+    "education",
+    "english-learning",
+    "pronunciation",
+    "speech-recognition"
+  ],
+  "author": {
+    "name": "SpeakFlow Team",
+    "email": "team@speakflow.com",
+    "url": "https://speakflow.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/susaku-col/SpeakEnglish"
+  },
+  "bugs": {
+    "url": "https://github.com/susaku-col/SpeakEnglish/issues"
+  },
+  "homepage": "https://speakflow.vercel.app",
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
+  "private": false,
+  "workspaces": [
+    "backend"
+  ],
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.json": [
+      "prettier --write"
+    ]
+  },
+  "volta": {
+    "node": "18.17.0",
+    "npm": "9.8.1"
+  }
+}
