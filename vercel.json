@@ -228,5 +228,4 @@
   "outputDirectory": ".",
   "framework": null,
   "regions": ["iad1"],
-  "ignoreCommand": "echo 'Excluding large AI model files from deployment'"
 }
