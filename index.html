@@ -111,6 +111,20 @@
             font-size: 1rem;
         }
 
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
         .mobile-toggle {
             display: none;
             flex-direction: column;
@@ -283,9 +297,9 @@
             background: white;
             padding: 2rem;
             border-radius: 1rem;
-            max-width: 600px;
+            max-width: 650px;
             width: 90%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
             position: relative;
         }
@@ -327,17 +341,6 @@
             border-radius: 8px;
         }
 
-        .user-message {
-            background: #667eea;
-            color: white;
-            text-align: right;
-        }
-
-        .ai-message {
-            background: #e2e8f0;
-            color: #1a1a2e;
-        }
-
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -350,19 +353,9 @@
             z-index: 3000;
         }
 
-        /* Voice Recording Animation */
-        .recording-animation {
-            animation: pulseRed 1s infinite;
-        }
-
-        @keyframes pulseRed {
-            0% { background-color: #ef4444; transform: scale(1); }
-            50% { background-color: #dc2626; transform: scale(1.05); }
-            100% { background-color: #ef4444; transform: scale(1); }
-        }
-
+        /* Voice Conversation Styles */
         .voice-bubble {
-            padding: 0.75rem;
+            padding: 0.75rem 1rem;
             border-radius: 18px;
             margin: 0.5rem 0;
             max-width: 85%;
@@ -380,6 +373,52 @@
             color: white;
             margin-right: auto;
             width: fit-content;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 0.5rem 1rem;
+            background: #e2e8f0;
+            border-radius: 18px;
+            width: fit-content;
+            margin: 0.5rem 0;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        .recording-animation {
+            animation: pulseRed 1s infinite;
+        }
+
+        @keyframes pulseRed {
+            0% { background-color: #ef4444; transform: scale(1); }
+            50% { background-color: #dc2626; transform: scale(1.05); }
+            100% { background-color: #ef4444; transform: scale(1); }
+        }
+
+        .voice-status-listening {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+        }
+
+        .voice-status-thinking {
+            background: #fef3c7 !important;
+            color: #d97706 !important;
         }
 
         @media (max-width: 768px) {
@@ -470,7 +509,7 @@
                 <div class="feature-card" id="featureAIChat">
                     <div class="feature-icon">🤖</div>
                     <h3>AI Voice Conversation</h3>
-                    <p>Practice real voice conversations with AI. Get corrections & alternatives!</p>
+                    <p>🎤 Voice-to-voice AI chatbot. Bicara dan AI langsung menjawab dengan suara!</p>
                     <div class="xp-display">+25 XP</div>
                 </div>
                 <div class="feature-card" id="featureLearningPath">
@@ -548,29 +587,32 @@
         </div>
     </div>
 
-    <!-- MODAL AI VOICE CONVERSATION (LENGKAP DENGAN VOICE) -->
+    <!-- MODAL AI VOICE CONVERSATION (Langsung Voice-to-Voice) -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="aiChatModal">&times;</span>
             <h2>🤖 AI Voice Conversation Partner</h2>
-            <p style="color: #666; margin-bottom: 1rem;">🎤 Bicaralah dengan AI - dapatkan koreksi dan alternatif jawaban</p>
+            <p style="color: #666; margin-bottom: 0.5rem;">🎤 <strong>Mode Voice-to-Voice</strong> - Bicaralah, AI akan langsung menjawab dengan suara!</p>
             
-            <div id="voiceStatus" style="background: #f0f4f8; padding: 0.5rem; border-radius: 8px; text-align: center; margin-bottom: 1rem;">
-                ⚪ Microphone siap. Klik tombol di bawah untuk mulai bicara.
+            <div id="voiceStatus" style="background: #f0f4f8; padding: 0.75rem; border-radius: 8px; text-align: center; margin-bottom: 1rem; transition: all 0.3s;">
+                ⚪ Klik tombol di bawah untuk mulai percakapan suara
             </div>
             
-            <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem;">
-                <button id="voiceRecordBtn" class="btn btn-primary" style="background: #ef4444; padding: 1rem 2rem; font-size: 1.2rem;">
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button id="voiceRecordBtn" class="btn btn-danger" style="padding: 1rem 2rem; font-size: 1.2rem;">
                     🎙️ Mulai Bicara
                 </button>
                 <button id="stopRecordBtn" class="btn btn-outline" style="display: none;">
                     ⏹️ Berhenti
                 </button>
+                <button id="clearChatBtn" class="btn btn-outline">
+                    🗑️ Clear Chat
+                </button>
             </div>
             
-            <div id="voiceConversation" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
+            <div id="voiceConversation" style="height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
                 <div class="ai-bubble voice-bubble">
-                    🤖 AI: Hello! I'm your AI voice conversation partner. Let's practice English together. Please click the microphone and say something!
+                    🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
                 </div>
             </div>
             
@@ -580,7 +622,9 @@
                 <div id="alternativeText" style="color: #7c3aed; margin-top: 0.5rem; font-size: 0.875rem;"></div>
             </div>
             
-            <button id="endVoiceChatBtn" class="btn btn-outline" style="margin-top: 1rem; width: 100%;">End Session (+25 XP)</button>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button id="endVoiceChatBtn" class="btn btn-outline" style="flex: 1;">End Session (+25 XP)</button>
+            </div>
         </div>
     </div>
 
@@ -711,7 +755,7 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;">
                 <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI voice conversation is incredible!"</p><h4>- David</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI voice conversation is incredible! Like talking to a real person."</p><h4>- David</h4><span>⭐ 5.0</span></div>
                 <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the corrections and alternatives feature!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
             </div>
         </div>
@@ -728,7 +772,7 @@
     </section>
 
     <footer style="background: #1a1a2e; color: white; padding: 2rem; text-align: center;">
-        <p>&copy; 2026 SpeakFlow. All rights reserved.</p>
+        <p>&copy; 2024 SpeakFlow. All rights reserved.</p>
     </footer>
 
     <div id="toast" class="toast"></div>
@@ -838,13 +882,15 @@
             return false;
         }
 
-        // ============ AI VOICE CONVERSATION ============
+        // ============ AI VOICE CONVERSATION (VOICE-TO-VOICE) ============
         let voiceRecognition = null;
         let isRecording = false;
+        let isThinking = false;
+        let currentSpeechSynthesis = null;
 
         const conversationDatabase = {
             greetings: {
-                patterns: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening'],
+                patterns: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'halo'],
                 responses: [
                     { 
                         text: "Hello! Nice to meet you. How are you today?",
@@ -857,7 +903,7 @@
                 ]
             },
             howAreYou: {
-                patterns: ['how are you', "how're you", "how are you doing", "how's it going"],
+                patterns: ['how are you', "how're you", "how are you doing", "how's it going", "how do you do"],
                 responses: [
                     {
                         text: "I'm doing great, thank you for asking! How about you?",
@@ -870,7 +916,7 @@
                 ]
             },
             weather: {
-                patterns: ['weather', 'sunny', 'rain', 'cloudy', 'hot', 'cold', 'temperature'],
+                patterns: ['weather', 'sunny', 'rain', 'cloudy', 'hot', 'cold', 'temperature', 'cuaca'],
                 responses: [
                     {
                         text: "The weather today is beautiful, isn't it? Perfect for outdoor activities!",
@@ -883,7 +929,7 @@
                 ]
             },
             food: {
-                patterns: ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'restaurant', 'cook'],
+                patterns: ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'restaurant', 'cook', 'makan'],
                 responses: [
                     {
                         text: "Food is always a great topic! What's your favorite dish?",
@@ -896,7 +942,7 @@
                 ]
             },
             hobby: {
-                patterns: ['hobby', 'like to', 'enjoy', 'love to', 'free time', 'weekend', 'sport', 'music', 'movie', 'read'],
+                patterns: ['hobby', 'like to', 'enjoy', 'love to', 'free time', 'weekend', 'sport', 'music', 'movie', 'read', 'hobi'],
                 responses: [
                     {
                         text: "That sounds like a wonderful hobby! How long have you been doing it?",
@@ -904,6 +950,58 @@
                             "That's interesting! What do you enjoy most about it?",
                             "Nice! Do you have any other hobbies you'd like to share?",
                             "That's great! Many people find hobbies very relaxing."
+                        ]
+                    }
+                ]
+            },
+            work: {
+                patterns: ['work', 'job', 'company', 'office', 'career', 'profession', 'student', 'study', 'kerja'],
+                responses: [
+                    {
+                        text: "That's fascinating! What do you like most about your work or study?",
+                        alternatives: [
+                            "Tell me more about your daily routine at work or school!",
+                            "That sounds challenging! How do you manage your time?",
+                            "Interesting! What inspired you to choose that path?"
+                        ]
+                    }
+                ]
+            },
+            travel: {
+                patterns: ['travel', 'vacation', 'holiday', 'trip', 'visit', 'beach', 'mountain', 'city', 'liburan'],
+                responses: [
+                    {
+                        text: "Traveling is amazing! Where's your favorite place you've visited?",
+                        alternatives: [
+                            "I'd love to hear about your travel experiences! Any recommendations?",
+                            "Do you prefer beach destinations or mountain getaways?",
+                            "What's your dream destination for your next vacation?"
+                        ]
+                    }
+                ]
+            },
+            thank: {
+                patterns: ['thank', 'thanks', 'terima kasih'],
+                responses: [
+                    {
+                        text: "You're very welcome! I'm happy to help you practice English.",
+                        alternatives: [
+                            "My pleasure! Keep up the great work!",
+                            "Anytime! Let's continue practicing!",
+                            "You're welcome! Is there anything else you'd like to talk about?"
+                        ]
+                    }
+                ]
+            },
+            bye: {
+                patterns: ['bye', 'goodbye', 'see you', 'later', 'exit', 'stop', 'selesai'],
+                responses: [
+                    {
+                        text: "Goodbye! It was great talking with you. Keep practicing and see you next time!",
+                        alternatives: [
+                            "Take care! Keep learning English every day!",
+                            "Bye for now! Don't forget to practice daily!",
+                            "See you later! You're doing great!"
                         ]
                     }
                 ]
@@ -943,14 +1041,17 @@
                 { error: /i is/g, correction: "I am", message: "Use 'I am' instead of 'I is'" },
                 { error: /you is/g, correction: "you are", message: "Use 'you are' instead of 'you is'" },
                 { error: /they is/g, correction: "they are", message: "Use 'they are' instead of 'they is'" },
+                { error: /she are/g, correction: "she is", message: "Use 'she is' instead of 'she are'" },
+                { error: /he are/g, correction: "he is", message: "Use 'he is' instead of 'he are'" },
                 { error: /go to home/g, correction: "go home", message: "Say 'go home' not 'go to home'" },
                 { error: /listen music/g, correction: "listen to music", message: "Add 'to': 'listen to music'" },
-                { error: /explain me/g, correction: "explain to me", message: "Say 'explain to me'" }
+                { error: /explain me/g, correction: "explain to me", message: "Say 'explain to me'" },
+                { error: /tell me why/g, correction: "tell me why", message: "Good grammar!" }
             ];
             
             for (const rule of grammarRules) {
-                if (rule.error.test(lowerText)) {
-                    correctedText = userText.replace(rule.error, rule.correction);
+                if (rule.error.test(correctedText.toLowerCase())) {
+                    correctedText = correctedText.replace(rule.error, rule.correction);
                     corrections.push(rule.message);
                 }
             }
@@ -975,67 +1076,44 @@
             };
         }
 
-        function initVoiceChatRecognition() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                voiceRecognition = new SpeechRecognition();
-                voiceRecognition.lang = 'en-US';
-                voiceRecognition.continuous = false;
-                voiceRecognition.interimResults = false;
-                
-                voiceRecognition.onstart = function() {
-                    isRecording = true;
-                    const statusDiv = document.getElementById('voiceStatus');
-                    if(statusDiv) {
-                        statusDiv.innerHTML = '🔴 Sedang merekam... Bicaralah dengan jelas';
-                        statusDiv.style.background = '#fee2e2';
-                    }
-                    const recordBtn = document.getElementById('voiceRecordBtn');
-                    const stopBtn = document.getElementById('stopRecordBtn');
-                    if(recordBtn) {
-                        recordBtn.style.display = 'none';
-                        recordBtn.classList.add('recording-animation');
-                    }
-                    if(stopBtn) stopBtn.style.display = 'block';
-                };
-                
-                voiceRecognition.onend = function() {
-                    isRecording = false;
-                    const statusDiv = document.getElementById('voiceStatus');
-                    if(statusDiv) {
-                        statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol untuk mulai bicara.';
-                        statusDiv.style.background = '#f0f4f8';
-                    }
-                    const recordBtn = document.getElementById('voiceRecordBtn');
-                    const stopBtn = document.getElementById('stopRecordBtn');
-                    if(recordBtn) {
-                        recordBtn.style.display = 'block';
-                        recordBtn.classList.remove('recording-animation');
-                    }
-                    if(stopBtn) stopBtn.style.display = 'none';
-                };
-                
-                voiceRecognition.onresult = function(event) {
-                    const userText = event.results[0][0].transcript;
-                    processUserVoice(userText);
-                };
-                
-                voiceRecognition.onerror = function(event) {
-                    const statusDiv = document.getElementById('voiceStatus');
-                    if(statusDiv) {
-                        statusDiv.innerHTML = '⚠️ Error: ' + event.error + '. Silakan coba lagi.';
-                        statusDiv.style.background = '#fee2e2';
-                    }
-                    setTimeout(() => {
-                        if(statusDiv) {
-                            statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol untuk mulai bicara.';
-                            statusDiv.style.background = '#f0f4f8';
-                        }
-                    }, 2000);
-                };
-                return true;
+        // Fungsi untuk berbicara (Text-to-Speech)
+        function speakText(text, callback) {
+            if (currentSpeechSynthesis) {
+                window.speechSynthesis.cancel();
             }
-            return false;
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            utterance.onend = function() {
+                if (callback) callback();
+            };
+            
+            utterance.onerror = function() {
+                if (callback) callback();
+            };
+            
+            currentSpeechSynthesis = utterance;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Fungsi untuk menampilkan typing indicator
+        function showTypingIndicator() {
+            const conversationDiv = document.getElementById('voiceConversation');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            conversationDiv.appendChild(typingDiv);
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) typingDiv.remove();
         }
 
         function processUserVoice(userText) {
@@ -1046,6 +1124,7 @@
                     🗣️ You: ${userText}
                 </div>
             `;
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
             
             const aiData = generateAIResponse(userText);
             
@@ -1069,7 +1148,19 @@
                 alternativeSpan.innerHTML = `💡 Alternatif jawaban untuk pertanyaan yang sama:<br>• ${aiData.alternatives.join('<br>• ')}`;
             }
             
+            showTypingIndicator();
+            isThinking = true;
+            
+            const statusDiv = document.getElementById('voiceStatus');
+            if(statusDiv) {
+                statusDiv.innerHTML = '💭 AI sedang berpikir dan menyiapkan jawaban suara...';
+                statusDiv.className = 'voice-status-thinking';
+                statusDiv.style.background = '#fef3c7';
+            }
+            
             setTimeout(() => {
+                hideTypingIndicator();
+                
                 conversationDiv.innerHTML += `
                     <div class="ai-bubble voice-bubble">
                         🤖 AI: ${aiData.response}
@@ -1077,25 +1168,105 @@
                 `;
                 conversationDiv.scrollTop = conversationDiv.scrollHeight;
                 
-                const utterance = new SpeechSynthesisUtterance(aiData.response);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
+                speakText(aiData.response, function() {
+                    isThinking = false;
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '🎤 Selesai bicara. Klik tombol merah untuk bicara lagi!';
+                        statusDiv.className = '';
+                        statusDiv.style.background = '#f0f4f8';
+                    }
+                });
                 
                 setTimeout(() => {
                     if(resultDiv) resultDiv.style.display = 'none';
                 }, 8000);
-            }, 500);
-            
-            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+            }, 800);
+        }
+
+        function initVoiceChatRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                voiceRecognition = new SpeechRecognition();
+                voiceRecognition.lang = 'en-US';
+                voiceRecognition.continuous = false;
+                voiceRecognition.interimResults = false;
+                
+                voiceRecognition.onstart = function() {
+                    isRecording = true;
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '🔴 Sedang merekam... Bicaralah dengan jelas';
+                        statusDiv.className = 'voice-status-listening';
+                        statusDiv.style.background = '#fee2e2';
+                    }
+                    const recordBtn = document.getElementById('voiceRecordBtn');
+                    const stopBtn = document.getElementById('stopRecordBtn');
+                    if(recordBtn) {
+                        recordBtn.style.display = 'none';
+                        recordBtn.classList.add('recording-animation');
+                    }
+                    if(stopBtn) stopBtn.style.display = 'block';
+                };
+                
+                voiceRecognition.onend = function() {
+                    isRecording = false;
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv && !isThinking) {
+                        statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol merah untuk mulai bicara.';
+                        statusDiv.className = '';
+                        statusDiv.style.background = '#f0f4f8';
+                    }
+                    const recordBtn = document.getElementById('voiceRecordBtn');
+                    const stopBtn = document.getElementById('stopRecordBtn');
+                    if(recordBtn) {
+                        recordBtn.style.display = 'block';
+                        recordBtn.classList.remove('recording-animation');
+                    }
+                    if(stopBtn) stopBtn.style.display = 'none';
+                };
+                
+                voiceRecognition.onresult = function(event) {
+                    const userText = event.results[0][0].transcript;
+                    processUserVoice(userText);
+                };
+                
+                voiceRecognition.onerror = function(event) {
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '⚠️ Error: ' + event.error + '. Silakan coba lagi.';
+                        statusDiv.style.background = '#fee2e2';
+                    }
+                    setTimeout(() => {
+                        if(statusDiv && !isRecording && !isThinking) {
+                            statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol merah untuk mulai bicara.';
+                            statusDiv.style.background = '#f0f4f8';
+                        }
+                    }, 2000);
+                    
+                    const recordBtn = document.getElementById('voiceRecordBtn');
+                    const stopBtn = document.getElementById('stopRecordBtn');
+                    if(recordBtn) {
+                        recordBtn.style.display = 'block';
+                        recordBtn.classList.remove('recording-animation');
+                    }
+                    if(stopBtn) stopBtn.style.display = 'none';
+                    isRecording = false;
+                };
+                return true;
+            }
+            return false;
         }
 
         function startVoiceRecording() {
+            if (isThinking) {
+                showToast('⏳ AI sedang berbicara, tunggu sebentar...');
+                return;
+            }
             if(voiceRecognition) {
                 try {
                     voiceRecognition.start();
                 } catch(e) {
-                    showToast('Recognition already started');
+                    showToast('Please wait a moment before speaking again');
                 }
             } else {
                 showToast('⚠️ Voice recognition not supported. Please use Google Chrome!');
@@ -1108,7 +1279,24 @@
             }
         }
 
+        function clearChat() {
+            const conversationDiv = document.getElementById('voiceConversation');
+            if(conversationDiv) {
+                conversationDiv.innerHTML = `
+                    <div class="ai-bubble voice-bubble">
+                        🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
+                    </div>
+                `;
+            }
+            const resultDiv = document.getElementById('voiceResult');
+            if(resultDiv) resultDiv.style.display = 'none';
+            showToast('Chat cleared!');
+        }
+
         function endVoiceChat() {
+            if (currentSpeechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
             addXP(25);
             closeModal('aiChatModal');
             showToast('+25 XP earned from voice conversation practice!');
@@ -1117,7 +1305,7 @@
             if(conversationDiv) {
                 conversationDiv.innerHTML = `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: Hello! I'm your AI voice conversation partner. Let's practice English together. Please click the microphone and say something!
+                        🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
                     </div>
                 `;
             }
@@ -1134,6 +1322,9 @@
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
             if(modal) modal.style.display = 'none';
+            if (modalId === 'aiChatModal' && currentSpeechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
         }
 
         function showToast(msg) {
@@ -1267,6 +1458,7 @@
             
             document.getElementById('voiceRecordBtn').onclick = startVoiceRecording;
             document.getElementById('stopRecordBtn').onclick = stopVoiceRecording;
+            document.getElementById('clearChatBtn').onclick = clearChat;
             document.getElementById('endVoiceChatBtn').onclick = endVoiceChat;
             
             document.getElementById('submitQuizBtn').onclick = submitQuiz;
