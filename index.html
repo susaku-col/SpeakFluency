@@ -287,6 +287,7 @@
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
+            position: relative;
         }
 
         .modal-content input, .modal-content select {
@@ -298,10 +299,13 @@
         }
 
         .close-modal {
-            float: right;
+            position: absolute;
+            top: 15px;
+            right: 20px;
             cursor: pointer;
             font-size: 1.5rem;
             font-weight: bold;
+            color: #666;
         }
 
         .close-modal:hover {
@@ -452,11 +456,11 @@
     <!-- MODAL PRACTICE SPEAKING -->
     <div id="practiceModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('practiceModal')">&times;</span>
+            <span class="close-modal" data-modal="practiceModal">&times;</span>
             <h2>🎤 Practice Speaking</h2>
             
             <label>📝 Choose a sentence to practice:</label>
-            <select id="sentenceSelect" onchange="changeSentence()">
+            <select id="sentenceSelect">
                 <option value="The weather is beautiful today">🌤️ The weather is beautiful today (Easy)</option>
                 <option value="I would like to order a coffee please">☕ I would like to order a coffee please (Medium)</option>
                 <option value="Could you tell me where the nearest station is">🗺️ Could you tell me where the nearest station is (Hard)</option>
@@ -484,23 +488,23 @@
     <!-- MODAL AI CHAT -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('aiChatModal')">&times;</span>
+            <span class="close-modal" data-modal="aiChatModal">&times;</span>
             <h2>🤖 AI Conversation Partner</h2>
             <div id="chatMessages" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
                 <div class="ai-message chat-message">AI: Hello! I'm your AI conversation partner. What would you like to talk about today?</div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
                 <input type="text" id="chatInput" placeholder="Type your message..." style="flex: 1;">
-                <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+                <button class="btn btn-primary" id="sendChatBtn">Send</button>
             </div>
-            <button class="btn btn-outline" style="margin-top: 1rem; width: 100%;" onclick="addXP(15); closeModal('aiChatModal'); showToast('+15 XP earned!')">End Session (+15 XP)</button>
+            <button class="btn btn-outline" id="endChatBtn" style="margin-top: 1rem; width: 100%;">End Session (+15 XP)</button>
         </div>
     </div>
 
     <!-- MODAL LEARNING PATH -->
     <div id="learningPathModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('learningPathModal')">&times;</span>
+            <span class="close-modal" data-modal="learningPathModal">&times;</span>
             <h2>📊 Find Your Level</h2>
             <p>Answer these questions to get personalized lessons:</p>
             <select id="q1">
@@ -509,7 +513,7 @@
             <select id="q2">
                 <option>Daily conversation</option><option>Business English</option><option>Exam preparation</option>
             </select>
-            <button class="btn btn-primary" style="width:100%; margin-top:1rem;" onclick="submitQuiz()">Get My Path</button>
+            <button class="btn btn-primary" id="submitQuizBtn" style="width:100%; margin-top:1rem;">Get My Path</button>
             <div id="quizResult" style="margin-top: 1rem;"></div>
         </div>
     </div>
@@ -517,7 +521,7 @@
     <!-- MODAL GAMIFICATION -->
     <div id="gamificationModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('gamificationModal')">&times;</span>
+            <span class="close-modal" data-modal="gamificationModal">&times;</span>
             <h2>🎮 Your Progress</h2>
             <p>🏆 <strong id="displayXP">0</strong> Total XP</p>
             <p>🔥 <strong id="displayStreak">0</strong> Day Streak</p>
@@ -537,10 +541,10 @@
     <!-- MODAL OFFLINE -->
     <div id="offlineModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('offlineModal')">&times;</span>
+            <span class="close-modal" data-modal="offlineModal">&times;</span>
             <h2>📱 Offline Mode</h2>
-            <button class="btn btn-primary" style="width:100%; margin:0.5rem 0;" onclick="downloadLesson('Basic')">📥 Download Basic Lessons</button>
-            <button class="btn btn-primary" style="width:100%; margin:0.5rem 0;" onclick="downloadLesson('Intermediate')">📥 Download Intermediate Lessons</button>
+            <button class="btn btn-primary" id="downloadBasicBtn" style="width:100%; margin:0.5rem 0;">📥 Download Basic Lessons</button>
+            <button class="btn btn-primary" id="downloadInterBtn" style="width:100%; margin:0.5rem 0;">📥 Download Intermediate Lessons</button>
             <div id="downloadStatus" style="margin-top: 1rem; text-align:center;"></div>
         </div>
     </div>
@@ -548,15 +552,15 @@
     <!-- MODAL COMMUNITY -->
     <div id="communityModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('communityModal')">&times;</span>
+            <span class="close-modal" data-modal="communityModal">&times;</span>
             <h2>👥 Live Practice Sessions</h2>
             <div style="border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin:0.5rem 0;">
                 <strong>English Conversation Club</strong><br>🕐 Today, 7:00 PM • 12 participants<br>
-                <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="joinSession('English Conversation Club')">Join Session</button>
+                <button class="btn btn-primary joinSessionBtn" data-session="English Conversation Club" style="margin-top:0.5rem;">Join Session</button>
             </div>
             <div style="border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin:0.5rem 0;">
                 <strong>Business English Practice</strong><br>🕐 Tomorrow, 6:00 PM • 8 participants<br>
-                <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="joinSession('Business English Practice')">Join Session</button>
+                <button class="btn btn-primary joinSessionBtn" data-session="Business English Practice" style="margin-top:0.5rem;">Join Session</button>
             </div>
         </div>
     </div>
@@ -564,9 +568,9 @@
     <!-- MODAL LOGIN/SIGNUP -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('loginModal')">&times;</span>
+            <span class="close-modal" data-modal="loginModal">&times;</span>
             <h2>Welcome Back!</h2>
-            <form onsubmit="event.preventDefault(); showToast('Login successful!'); closeModal('loginModal');">
+            <form id="loginForm">
                 <input type="email" placeholder="Email" required>
                 <input type="password" placeholder="Password" required>
                 <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
@@ -576,9 +580,9 @@
 
     <div id="signupModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('signupModal')">&times;</span>
+            <span class="close-modal" data-modal="signupModal">&times;</span>
             <h2>Create Account</h2>
-            <form onsubmit="event.preventDefault(); showToast('Account created! Start learning now!'); closeModal('signupModal');">
+            <form id="signupForm">
                 <input type="text" placeholder="Full Name" required>
                 <input type="email" placeholder="Email" required>
                 <input type="password" placeholder="Password" required>
@@ -599,14 +603,14 @@
                     <h3>Free</h3>
                     <div style="font-size:2rem; font-weight:bold;">$0</div>
                     <ul style="list-style:none; margin:1rem 0;"><li>✓ 3 lessons/day</li><li>✓ Basic features</li></ul>
-                    <button class="btn btn-outline" onclick="showToast('Free plan activated!')">Get Started</button>
+                    <button class="btn btn-outline pricingFreeBtn">Get Started</button>
                 </div>
                 <div style="background:white; padding:2rem; border-radius:1rem; text-align:center; border:2px solid #667eea;">
                     <div style="background:#667eea; color:white; display:inline-block; padding:0.25rem 1rem; border-radius:2rem; font-size:0.75rem; margin-top:-2.5rem; margin-bottom:1rem;">Most Popular</div>
                     <h3>Pro</h3>
                     <div style="font-size:2rem; font-weight:bold;">$12<span style="font-size:1rem;">/mo</span></div>
                     <ul style="list-style:none; margin:1rem 0;"><li>✓ Unlimited lessons</li><li>✓ All AI features</li></ul>
-                    <button class="btn btn-primary" onclick="showToast('Start 7-day Pro trial!')">Try Free</button>
+                    <button class="btn btn-primary pricingProBtn">Try Free</button>
                 </div>
             </div>
         </div>
@@ -632,7 +636,7 @@
         <div class="container">
             <h2 style="font-size:2rem;">Ready to Start Your Language Journey?</h2>
             <p style="margin:1rem 0;">Join 50,000+ learners already improving with SpeakFlow</p>
-            <button class="btn btn-primary btn-large" style="background:white; color:#667eea;" onclick="openModal('practiceModal')">Start Speaking Free 🎤</button>
+            <button class="btn btn-primary btn-large" id="ctaStartBtn" style="background:white; color:#667eea;">Start Speaking Free 🎤</button>
             <p style="margin-top:1rem; opacity:0.8;">No credit card required • Free 7-day trial</p>
         </div>
     </section>
@@ -712,7 +716,6 @@
                 recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
                     
-                    // Calculate accuracy
                     const targetWords = currentTargetSentence.toLowerCase().split(' ');
                     const spokenWords = transcript.toLowerCase().split(' ');
                     let correct = 0;
@@ -743,24 +746,67 @@
                     if (event.error === 'no-speech') {
                         document.getElementById('recognitionResult').innerHTML = '⚠️ No speech detected. Please click the microphone button and speak clearly into your microphone.';
                     } else {
-                        document.getElementById('recognitionResult').innerHTML = '⚠️ Error: ' + event.error + '. Please try again. Make sure your microphone is working.';
+                        document.getElementById('recognitionResult').innerHTML = '⚠️ Error: ' + event.error + '. Please try again.';
                     }
                 };
                 
                 return true;
             } else {
-                document.getElementById('recognitionResult').innerHTML = '⚠️ Voice recognition not supported. Please use Google Chrome for best experience.';
+                if(document.getElementById('recognitionResult')) {
+                    document.getElementById('recognitionResult').innerHTML = '⚠️ Voice recognition not supported. Please use Google Chrome.';
+                }
                 return false;
+            }
+        }
+
+        // ============ MODAL FUNCTIONS ============
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        function scrollToSection(id) {
+            const element = document.getElementById(id);
+            if(element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if(window.innerWidth <= 768) {
+                const navLinks = document.getElementById('navLinks');
+                if(navLinks) navLinks.classList.remove('show');
             }
         }
 
         // ============ PRACTICE FUNCTIONS ============
         function changeSentence() {
             const select = document.getElementById('sentenceSelect');
-            currentTargetSentence = select.value;
-            document.getElementById('targetSentence').innerText = `"${currentTargetSentence}"`;
-            document.getElementById('recognitionResult').innerHTML = '💡 Click "Start Speaking" and say the sentence above';
-            lastPracticeAccuracy = 0;
+            if(select) {
+                currentTargetSentence = select.value;
+                const targetSpan = document.getElementById('targetSentence');
+                if(targetSpan) {
+                    targetSpan.innerText = `"${currentTargetSentence}"`;
+                }
+                const resultDiv = document.getElementById('recognitionResult');
+                if(resultDiv) {
+                    resultDiv.innerHTML = '💡 Click "Start Speaking" and say the sentence above';
+                }
+                lastPracticeAccuracy = 0;
+            }
         }
 
         function completePractice() {
@@ -779,6 +825,29 @@
             } else {
                 showToast(`💡 Try speaking first to earn XP! Click the microphone button.`);
             }
+        }
+
+        function startListening() {
+            if(recognition) {
+                const resultDiv = document.getElementById('recognitionResult');
+                if(resultDiv) {
+                    resultDiv.innerHTML = "🎤 Listening... Speak now!";
+                }
+                recognition.start();
+            } else {
+                const resultDiv = document.getElementById('recognitionResult');
+                if(resultDiv) {
+                    resultDiv.innerHTML = "⚠️ Voice recognition not supported. Try using Google Chrome!";
+                }
+            }
+        }
+
+        function listenExample() {
+            const utterance = new SpeechSynthesisUtterance(currentTargetSentence);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+            showToast("🔊 Listening to correct pronunciation...");
         }
 
         // ============ AI CHAT FUNCTIONS ============
@@ -800,12 +869,21 @@
             }, 500);
         }
 
+        function endChat() {
+            addXP(15);
+            closeModal('aiChatModal');
+            showToast('+15 XP earned from conversation practice!');
+        }
+
         // ============ LEARNING PATH FUNCTIONS ============
         function submitQuiz() {
             const level = document.getElementById('q1').value;
             const goal = document.getElementById('q2').value;
             let result = `📚 Your personalized path is ready!<br>📍 Level: ${level}<br>🎯 Goal: ${goal}<br>📖 Recommended: 15 minutes daily practice.`;
-            document.getElementById('quizResult').innerHTML = result;
+            const resultDiv = document.getElementById('quizResult');
+            if(resultDiv) {
+                resultDiv.innerHTML = result;
+            }
             addXP(20);
             setTimeout(() => {
                 closeModal('learningPathModal');
@@ -814,14 +892,17 @@
 
         // ============ OFFLINE FUNCTIONS ============
         function downloadLesson(level) {
-            document.getElementById('downloadStatus').innerHTML = '📥 Downloading ' + level + ' lessons...';
-            setTimeout(() => {
-                document.getElementById('downloadStatus').innerHTML = '✅ ' + level + ' lessons downloaded! Available offline.';
-                addXP(5);
+            const statusDiv = document.getElementById('downloadStatus');
+            if(statusDiv) {
+                statusDiv.innerHTML = '📥 Downloading ' + level + ' lessons...';
                 setTimeout(() => {
-                    document.getElementById('downloadStatus').innerHTML = '';
+                    statusDiv.innerHTML = '✅ ' + level + ' lessons downloaded! Available offline.';
+                    addXP(5);
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                    }, 2000);
                 }, 2000);
-            }, 2000);
+            }
         }
 
         // ============ COMMUNITY FUNCTIONS ============
@@ -831,73 +912,127 @@
             closeModal('communityModal');
         }
 
-        // ============ MODAL FUNCTIONS ============
-        function openModal(modalId) {
-            document.getElementById(modalId).style.display = 'flex';
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
-        }
-
-        function scrollToSection(id) {
-            document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
-            if(window.innerWidth <= 768) document.getElementById('navLinks').classList.remove('show');
-        }
-
         // ============ EVENT LISTENERS ============
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize speech recognition
             initRecognition();
             
-            // Navbar buttons
-            document.getElementById('startSpeakingBtn').onclick = () => openModal('practiceModal');
-            document.getElementById('watchDemoBtn').onclick = () => showToast('▶️ Demo: AI pronunciation analysis will appear here');
-            document.getElementById('navHome').onclick = () => scrollToSection('home');
-            document.getElementById('navFeatures').onclick = () => scrollToSection('features');
-            document.getElementById('navPricing').onclick = () => scrollToSection('pricing');
-            document.getElementById('navAbout').onclick = () => scrollToSection('about');
-            document.getElementById('navContact').onclick = () => scrollToSection('contact');
-            document.getElementById('logoHome').onclick = () => scrollToSection('home');
-            document.getElementById('btnLogin').onclick = () => openModal('loginModal');
-            document.getElementById('btnSignup').onclick = () => openModal('signupModal');
-            document.getElementById('mobileToggle').onclick = () => document.getElementById('navLinks').classList.toggle('show');
+            // Navigation
+            const startBtn = document.getElementById('startSpeakingBtn');
+            if(startBtn) startBtn.onclick = () => openModal('practiceModal');
+            
+            const watchDemo = document.getElementById('watchDemoBtn');
+            if(watchDemo) watchDemo.onclick = () => showToast('▶️ Demo: AI pronunciation analysis');
+            
+            const ctaBtn = document.getElementById('ctaStartBtn');
+            if(ctaBtn) ctaBtn.onclick = () => openModal('practiceModal');
+            
+            const navHome = document.getElementById('navHome');
+            if(navHome) navHome.onclick = () => scrollToSection('home');
+            
+            const navFeatures = document.getElementById('navFeatures');
+            if(navFeatures) navFeatures.onclick = () => scrollToSection('features');
+            
+            const navPricing = document.getElementById('navPricing');
+            if(navPricing) navPricing.onclick = () => scrollToSection('pricing');
+            
+            const navAbout = document.getElementById('navAbout');
+            if(navAbout) navAbout.onclick = () => scrollToSection('about');
+            
+            const navContact = document.getElementById('navContact');
+            if(navContact) navContact.onclick = () => scrollToSection('contact');
+            
+            const logoHome = document.getElementById('logoHome');
+            if(logoHome) logoHome.onclick = () => scrollToSection('home');
+            
+            const btnLogin = document.getElementById('btnLogin');
+            if(btnLogin) btnLogin.onclick = () => openModal('loginModal');
+            
+            const btnSignup = document.getElementById('btnSignup');
+            if(btnSignup) btnSignup.onclick = () => openModal('signupModal');
+            
+            const mobileToggle = document.getElementById('mobileToggle');
+            const navLinks = document.getElementById('navLinks');
+            if(mobileToggle) {
+                mobileToggle.onclick = () => navLinks.classList.toggle('show');
+            }
             
             // Practice modal buttons
+            const sentenceSelect = document.getElementById('sentenceSelect');
+            if(sentenceSelect) sentenceSelect.onchange = changeSentence;
+            
             const listenBtn = document.getElementById('listenBtn');
-            if(listenBtn) {
-                listenBtn.onclick = () => {
-                    const utterance = new SpeechSynthesisUtterance(currentTargetSentence);
-                    utterance.lang = 'en-US';
-                    utterance.rate = 0.8;
-                    window.speechSynthesis.speak(utterance);
-                    showToast("🔊 Listening to correct pronunciation...");
-                };
-            }
+            if(listenBtn) listenBtn.onclick = listenExample;
             
             const micBtn = document.getElementById('micBtn');
-            if(micBtn) {
-                micBtn.onclick = () => {
-                    if(recognition) {
-                        document.getElementById('recognitionResult').innerHTML = "🎤 Listening... Speak now!";
-                        recognition.start();
-                    } else {
-                        document.getElementById('recognitionResult').innerHTML = "⚠️ Voice recognition not supported. Try using Google Chrome!";
-                    }
+            if(micBtn) micBtn.onclick = startListening;
+            
+            const completeBtn = document.getElementById('completePracticeBtn');
+            if(completeBtn) completeBtn.onclick = completePractice;
+            
+            // AI Chat buttons
+            const sendChatBtn = document.getElementById('sendChatBtn');
+            if(sendChatBtn) sendChatBtn.onclick = sendChatMessage;
+            
+            const endChatBtn = document.getElementById('endChatBtn');
+            if(endChatBtn) endChatBtn.onclick = endChat;
+            
+            const chatInput = document.getElementById('chatInput');
+            if(chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if(e.key === 'Enter') sendChatMessage();
+                });
+            }
+            
+            // Learning Path
+            const submitQuizBtn = document.getElementById('submitQuizBtn');
+            if(submitQuizBtn) submitQuizBtn.onclick = submitQuiz;
+            
+            // Offline
+            const downloadBasic = document.getElementById('downloadBasicBtn');
+            if(downloadBasic) downloadBasic.onclick = () => downloadLesson('Basic');
+            
+            const downloadInter = document.getElementById('downloadInterBtn');
+            if(downloadInter) downloadInter.onclick = () => downloadLesson('Intermediate');
+            
+            // Community join buttons
+            document.querySelectorAll('.joinSessionBtn').forEach(btn => {
+                btn.onclick = () => joinSession(btn.getAttribute('data-session'));
+            });
+            
+            // Pricing
+            const pricingFree = document.querySelector('.pricingFreeBtn');
+            if(pricingFree) pricingFree.onclick = () => showToast('Free plan activated!');
+            
+            const pricingPro = document.querySelector('.pricingProBtn');
+            if(pricingPro) pricingPro.onclick = () => showToast('Start 7-day Pro trial!');
+            
+            // Login/Signup forms
+            const loginForm = document.getElementById('loginForm');
+            if(loginForm) {
+                loginForm.onsubmit = (e) => {
+                    e.preventDefault();
+                    showToast('Login successful!');
+                    closeModal('loginModal');
                 };
             }
             
-            const completeBtn = document.getElementById('completePracticeBtn');
-            if(completeBtn) {
-                completeBtn.onclick = completePractice;
+            const signupForm = document.getElementById('signupForm');
+            if(signupForm) {
+                signupForm.onsubmit = (e) => {
+                    e.preventDefault();
+                    showToast('Account created! Start learning now!');
+                    closeModal('signupModal');
+                };
             }
+            
+            // Close buttons
+            document.querySelectorAll('.close-modal').forEach(closeBtn => {
+                closeBtn.onclick = () => {
+                    const modalId = closeBtn.getAttribute('data-modal');
+                    if(modalId) closeModal(modalId);
+                };
+            });
         });
 
         // Close modal when clicking outside
