@@ -4,513 +4,943 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#4F46E5">
-    <meta name="description" content="SpeakFlow - AI-Powered Language Learning Platform with Voice Recognition">
-    <meta name="keywords" content="language learning, AI, voice recognition, English speaking, pronunciation">
-    <meta name="author" content="SpeakFlow">
-    <meta name="robots" content="index, follow">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://speakflow.vercel.app/">
-    <meta property="og:title" content="SpeakFlow - AI Language Learning">
-    <meta property="og:description" content="Master English speaking with AI-powered voice recognition">
-    <meta property="og:image" content="/public/images/og-image.jpg">
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://speakflow.vercel.app/">
-    <meta property="twitter:title" content="SpeakFlow - AI Language Learning">
-    <meta property="twitter:description" content="Master English speaking with AI-powered voice recognition">
-    <meta property="twitter:image" content="/public/images/og-image.jpg">
-    
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/public/images/icons/icon-192x192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SpeakFlow">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/public/images/favicon.ico">
-    <link rel="shortcut icon" href="/public/images/favicon.ico">
-    
-    <!-- Stylesheets -->
-    <link rel="stylesheet" href="/css/main.css">
-    <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/mobile.css">
-    
-    <!-- Theme (default light) -->
-    <link rel="stylesheet" href="/css/themes/light.css" id="theme-stylesheet">
-    
     <title>SpeakFlow - AI-Powered Language Learning</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            line-height: 1.5;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Light Theme (default) */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-card: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --accent: #4F46E5;
+            --accent-hover: #4338ca;
+            --accent-light: #e0e7ff;
+            --success: #10b981;
+            --danger: #ef4444;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        body.dark {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-card: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --accent: #818cf8;
+            --accent-hover: #6366f1;
+            --accent-light: #312e81;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* Components */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            background: rgba(var(--bg-primary-rgb), 0.9);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--accent);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-large {
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 2rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            font-size: 1.25rem;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .mobile-menu-toggle span {
+            width: 25px;
+            height: 3px;
+            background: var(--text-primary);
+            border-radius: 2px;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            padding: 8rem 0 5rem;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .hero-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #4F46E5, #8B5CF6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            display: block;
+        }
+
+        .demo-player {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+        }
+
+        .demo-avatar {
+            font-size: 4rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .pulse-circle {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.3;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Features */
+        .features-section, .pricing-section, .testimonials-section, .cta-section, .how-it-works {
+            padding: 5rem 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-badge {
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 0.25rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid var(--border-color);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pronunciation-meter {
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .gamification-preview {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Steps */
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 2rem;
+            background: var(--bg-card);
+            border-radius: 1rem;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-weight: bold;
+        }
+
+        .step-arrow {
+            font-size: 2rem;
+            color: var(--accent);
+        }
+
+        /* Pricing */
+        .pricing-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: 0.3s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .pricing-card.popular {
+            border: 2px solid var(--accent);
+            transform: scale(1.02);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+        }
+
+        .pricing-price {
+            margin: 1.5rem 0;
+        }
+
+        .amount {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+
+        .pricing-features li {
+            padding: 0.5rem 0;
+        }
+
+        /* Testimonials */
+        .testimonials-slider {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .testimonial-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
+
+        .testimonial-avatar {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* CTA */
+        .cta-section {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+            text-align: center;
+        }
+
+        .cta-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-section .btn-primary {
+            background: white;
+            color: var(--accent);
+            margin-top: 1.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            padding: 3rem 0 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-col a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin: 0.5rem 0;
+            cursor: pointer;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        /* Loading */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            z-index: 3000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-menu {
+                display: none;
+            }
+            .mobile-menu-toggle {
+                display: flex;
+            }
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-title {
+                font-size: 2rem;
+            }
+            .steps-container {
+                flex-direction: column;
+            }
+            .step-arrow {
+                transform: rotate(90deg);
+            }
+            .pricing-card.popular {
+                transform: scale(1);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 <body>
-    <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loader">
             <div class="loader-spinner"></div>
-            <p>Loading SpeakFlow...</p>
+            <p style="margin-top: 1rem;">Loading SpeakFlow...</p>
         </div>
     </div>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar" id="navbar">
+    <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-logo">
-                <img src="/public/images/logo.svg" alt="SpeakFlow Logo" class="logo-img">
-                <span class="logo-text">SpeakFlow</span>
+            <div class="nav-logo" id="logo-home">
+                <span class="logo-text">🎤 SpeakFlow</span>
             </div>
-            
             <div class="nav-menu" id="nav-menu">
-                <a href="#home" class="nav-link active">Home</a>
-                <a href="#features" class="nav-link">Features</a>
-                <a href="#pricing" class="nav-link">Pricing</a>
-                <a href="#about" class="nav-link">About</a>
-                <a href="#contact" class="nav-link">Contact</a>
+                <button class="nav-link active" data-section="home">Home</button>
+                <button class="nav-link" data-section="features">Features</button>
+                <button class="nav-link" data-section="pricing">Pricing</button>
+                <button class="nav-link" data-section="about">About</button>
+                <button class="nav-link" data-section="contact">Contact</button>
             </div>
-            
             <div class="nav-actions">
-                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-                    🌙
-                </button>
+                <button id="theme-toggle" class="theme-toggle">🌙</button>
                 <button id="login-btn" class="btn btn-outline">Login</button>
                 <button id="signup-btn" class="btn btn-primary">Sign Up Free</button>
                 <div class="mobile-menu-toggle" id="mobile-menu-toggle">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                    <span></span><span></span><span></span>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main>
-        <!-- Hero Section -->
         <section id="home" class="hero-section">
-            <div class="hero-background">
-                <img src="/public/images/hero-bg.jpg" alt="Hero background" class="hero-bg-img">
-                <div class="hero-overlay"></div>
-            </div>
             <div class="hero-container">
                 <div class="hero-content">
-                    <h1 class="hero-title animate-fade-in">
-                        Master English Speaking with 
-                        <span class="highlight">AI-Powered</span> Voice Recognition
-                    </h1>
-                    <p class="hero-subtitle animate-fade-in-delay">
-                        Speak with confidence using real-time pronunciation feedback, 
-                        personalized lessons, and gamified learning experiences.
-                    </p>
-                    <div class="hero-buttons animate-fade-in-delay-2">
-                        <button id="get-started" class="btn btn-large btn-primary pulse-animation">
-                            Start Speaking Now 🎤
-                        </button>
-                        <button id="watch-demo" class="btn btn-large btn-outline">
-                            Watch Demo ▶
-                        </button>
+                    <h1 class="hero-title">Master English Speaking with <span class="highlight">AI-Powered</span> Voice Recognition</h1>
+                    <p class="hero-subtitle">Speak with confidence using real-time pronunciation feedback, personalized lessons, and gamified learning experiences.</p>
+                    <div class="hero-buttons">
+                        <button id="get-started" class="btn btn-large btn-primary">Start Speaking Now 🎤</button>
+                        <button id="watch-demo" class="btn btn-large btn-outline">Watch Demo ▶</button>
                     </div>
-                    <div class="hero-stats animate-fade-in-delay-3">
-                        <div class="stat">
-                            <span class="stat-number">50K+</span>
-                            <span class="stat-label">Active Learners</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-number">98%</span>
-                            <span class="stat-label">Satisfaction Rate</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-number">30+</span>
-                            <span class="stat-label">Languages</span>
-                        </div>
+                    <div class="hero-stats">
+                        <div class="stat"><span class="stat-number">50K+</span><span class="stat-label">Active Learners</span></div>
+                        <div class="stat"><span class="stat-number">98%</span><span class="stat-label">Satisfaction Rate</span></div>
+                        <div class="stat"><span class="stat-number">30+</span><span class="stat-label">Languages</span></div>
                     </div>
                 </div>
-                <div class="hero-image animate-slide-in">
+                <div class="hero-image">
                     <div class="demo-player">
-                        <div class="demo-avatar">
-                            <div class="pulse-circle"></div>
-                            <span>🎤</span>
-                        </div>
-                        <div class="demo-text">
-                            <p>"Hello, how are you today?"</p>
-                            <span class="demo-score">92% accuracy</span>
-                        </div>
+                        <div class="demo-avatar"><div class="pulse-circle"></div>🎤</div>
+                        <div class="demo-text"><p>"Hello, how are you today?"</p><span class="demo-score" style="color: var(--accent);">92% accuracy</span></div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Features Section -->
         <section id="features" class="features-section">
             <div class="container">
-                <div class="section-header">
-                    <span class="section-badge">Why Choose Us</span>
-                    <h2 class="section-title">Powerful Features for Language Mastery</h2>
-                    <p class="section-subtitle">Everything you need to speak with confidence</p>
-                </div>
-                
+                <div class="section-header"><span class="section-badge">Why Choose Us</span><h2 class="section-title">Powerful Features for Language Mastery</h2><p class="section-subtitle">Everything you need to speak with confidence</p></div>
                 <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">🎯</div>
-                        <h3>Real-time Pronunciation</h3>
-                        <p>AI analyzes your speech and gives instant feedback on pronunciation accuracy.</p>
-                        <div class="feature-demo">
-                            <div class="pronunciation-meter">
-                                <div class="meter-fill" style="width: 85%"></div>
-                            </div>
-                            <span>85% accurate</span>
-                        </div>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">🤖</div>
-                        <h3>AI Conversation Partner</h3>
-                        <p>Practice real conversations with our advanced AI chatbot that adapts to your level.</p>
-                        <button class="feature-btn try-ai">Try AI Chat →</button>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">📊</div>
-                        <h3>Personalized Learning Path</h3>
-                        <p>AI creates custom lessons based on your strengths and weaknesses.</p>
-                        <div class="progress-indicator">
-                            <span>Your progress</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width: 67%"></div></div>
-                        </div>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">🎮</div>
-                        <h3>Gamified Experience</h3>
-                        <p>Earn XP, unlock achievements, and maintain streaks while learning.</p>
-                        <div class="gamification-preview">
-                            <span>🏆 Level 5</span>
-                            <span>🔥 7 day streak</span>
-                            <span>⭐ 1250 XP</span>
-                        </div>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">📱</div>
-                        <h3>Offline Mode</h3>
-                        <p>Download lessons and practice anytime, anywhere without internet.</p>
-                        <div class="offline-badge">✓ Available Offline</div>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <div class="feature-icon">👥</div>
-                        <h3>Community Practice</h3>
-                        <p>Join live speaking sessions with learners worldwide.</p>
-                        <button class="feature-btn join-community">Join Community →</button>
-                    </div>
+                    <div class="feature-card"><div class="feature-icon">🎯</div><h3>Real-time Pronunciation</h3><p>AI analyzes your speech and gives instant feedback.</p><div class="pronunciation-meter"><div class="meter-fill" style="width: 85%"></div></div><span>85% accurate</span></div>
+                    <div class="feature-card"><div class="feature-icon">🤖</div><h3>AI Conversation Partner</h3><p>Practice real conversations with adaptive AI chatbot.</div>
+                    <div class="feature-card"><div class="feature-icon">📊</div><h3>Personalized Learning Path</h3><p>Custom lessons based on your progress.</p><div class="progress-indicator"><span>Your progress</span><div class="progress-bar"><div class="progress-fill" style="width: 67%"></div></div></div></div>
+                    <div class="feature-card"><div class="feature-icon">🎮</div><h3>Gamified Experience</h3><p>Earn XP and maintain streaks.</p><div class="gamification-preview"><span>🏆 Level 5</span><span>🔥 7 day streak</span><span>⭐ 1250 XP</span></div></div>
+                    <div class="feature-card"><div class="feature-icon">📱</div><h3>Offline Mode</h3><p>Download lessons and practice anywhere.</p><div class="offline-badge" style="background: var(--success); color: white; display: inline-block; padding: 0.25rem 0.5rem; border-radius: 0.5rem; margin-top: 1rem;">✓ Available Offline</div></div>
+                    <div class="feature-card"><div class="feature-icon">👥</div><h3>Community Practice</h3><p>Live speaking sessions worldwide.</p></div>
                 </div>
             </div>
         </section>
 
-        <!-- How It Works -->
-        <section class="how-it-works">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-badge">Simple Process</span>
-                    <h2 class="section-title">Start Speaking in 3 Easy Steps</h2>
-                </div>
-                <div class="steps-container">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <div class="step-icon">📝</div>
-                        <h3>Take Assessment</h3>
-                        <p>Quick AI-powered level test to personalize your journey</p>
-                    </div>
-                    <div class="step-arrow">→</div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <div class="step-icon">🎤</div>
-                        <h3>Practice Daily</h3>
-                        <p>15-minute speaking sessions with instant feedback</p>
-                    </div>
-                    <div class="step-arrow">→</div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <div class="step-icon">📈</div>
-                        <h3>Track Progress</h3>
-                        <p>Watch your fluency improve with detailed analytics</p>
-                    </div>
-                </div>
-            </div>
+        <section id="how-it-works" class="how-it-works">
+            <div class="container"><div class="section-header"><span class="section-badge">Simple Process</span><h2 class="section-title">Start Speaking in 3 Easy Steps</h2></div>
+            <div class="steps-container"><div class="step"><div class="step-number">1</div><div class="step-icon">📝</div><h3>Take Assessment</h3><p>Quick AI-powered level test</p></div><div class="step-arrow">→</div><div class="step"><div class="step-number">2</div><div class="step-icon">🎤</div><h3>Practice Daily</h3><p>15-minute speaking sessions</p></div><div class="step-arrow">→</div><div class="step"><div class="step-number">3</div><div class="step-icon">📈</div><h3>Track Progress</h3><p>Watch your fluency improve</p></div></div></div>
         </section>
 
-        <!-- Pricing Section -->
         <section id="pricing" class="pricing-section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-badge">Pricing</span>
-                    <h2 class="section-title">Choose Your Learning Plan</h2>
-                    <div class="pricing-toggle">
-                        <span class="toggle-label monthly active">Monthly</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="billing-toggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-label yearly">Yearly <span class="save-badge">Save 30%</span></span>
-                    </div>
-                </div>
-                
-                <div class="pricing-grid">
-                    <div class="pricing-card">
-                        <div class="pricing-badge">Free</div>
-                        <h3>Basic</h3>
-                        <div class="pricing-price">
-                            <span class="currency">$</span>
-                            <span class="amount" data-monthly="0" data-yearly="0">0</span>
-                            <span class="period">/forever</span>
-                        </div>
-                        <ul class="pricing-features">
-                            <li>✓ 3 lessons per day</li>
-                            <li>✓ Basic pronunciation feedback</li>
-                            <li>✓ 500+ vocabulary words</li>
-                            <li>✓ Community access</li>
-                            <li>✗ AI conversation partner</li>
-                            <li>✗ Offline mode</li>
-                        </ul>
-                        <button class="btn btn-outline pricing-btn">Get Started</button>
-                    </div>
-                    
-                    <div class="pricing-card popular">
-                        <div class="pricing-badge">Most Popular</div>
-                        <h3>Pro</h3>
-                        <div class="pricing-price">
-                            <span class="currency">$</span>
-                            <span class="amount" data-monthly="12" data-yearly="8.40">12</span>
-                            <span class="period" data-monthly="/month" data-yearly="/month">/month</span>
-                        </div>
-                        <ul class="pricing-features">
-                            <li>✓ Unlimited lessons</li>
-                            <li>✓ Advanced pronunciation AI</li>
-                            <li>✓ 5000+ vocabulary words</li>
-                            <li>✓ AI conversation partner</li>
-                            <li>✓ Offline mode</li>
-                            <li>✓ Priority support</li>
-                        </ul>
-                        <button class="btn btn-primary pricing-btn">Start Pro Trial</button>
-                    </div>
-                    
-                    <div class="pricing-card">
-                        <div class="pricing-badge">Best Value</div>
-                        <h3>Family</h3>
-                        <div class="pricing-price">
-                            <span class="currency">$</span>
-                            <span class="amount" data-monthly="20" data-yearly="14">20</span>
-                            <span class="period" data-monthly="/month" data-yearly="/month">/month</span>
-                        </div>
-                        <ul class="pricing-features">
-                            <li>✓ Up to 5 family members</li>
-                            <li>✓ All Pro features</li>
-                            <li>✓ Family progress tracking</li>
-                            <li>✓ Group practice sessions</li>
-                            <li>✓ 1-on-1 tutoring (2x/month)</li>
-                            <li>✓ Premium support</li>
-                        </ul>
-                        <button class="btn btn-outline pricing-btn">Get Family Plan</button>
-                    </div>
-                </div>
-            </div>
+            <div class="container"><div class="section-header"><span class="section-badge">Pricing</span><h2 class="section-title">Choose Your Learning Plan</h2><div class="pricing-toggle"><span class="toggle-label monthly active">Monthly</span><label class="toggle-switch"><input type="checkbox" id="billing-toggle"><span class="toggle-slider"></span></label><span class="toggle-label yearly">Yearly <span class="save-badge" style="background: var(--accent); color: white; padding: 0.125rem 0.5rem; border-radius: 1rem; font-size: 0.75rem;">Save 30%</span></span></div></div>
+            <div class="pricing-grid">
+                <div class="pricing-card"><div class="pricing-badge">Free</div><h3>Basic</h3><div class="pricing-price"><span class="currency">$</span><span class="amount" data-monthly="0" data-yearly="0">0</span><span class="period">/forever</span></div><ul class="pricing-features"><li>✓ 3 lessons per day</li><li>✓ Basic pronunciation</li><li>✓ 500+ vocabulary</li><li>✗ AI conversation partner</li></ul><button class="btn btn-outline pricing-btn">Get Started</button></div>
+                <div class="pricing-card popular"><div class="pricing-badge">Most Popular</div><h3>Pro</h3><div class="pricing-price"><span class="currency">$</span><span class="amount" data-monthly="12" data-yearly="8.40">12</span><span class="period" data-monthly="/month" data-yearly="/month">/month</span></div><ul class="pricing-features"><li>✓ Unlimited lessons</li><li>✓ Advanced pronunciation AI</li><li>✓ AI conversation partner</li><li>✓ Offline mode</li></ul><button class="btn btn-primary pricing-btn">Start Pro Trial</button></div>
+                <div class="pricing-card"><div class="pricing-badge">Best Value</div><h3>Family</h3><div class="pricing-price"><span class="currency">$</span><span class="amount" data-monthly="20" data-yearly="14">20</span><span class="period" data-monthly="/month" data-yearly="/month">/month</span></div><ul class="pricing-features"><li>✓ Up to 5 members</li><li>✓ All Pro features</li><li>✓ Group practice</li><li>✓ 1-on-1 tutoring</li></ul><button class="btn btn-outline pricing-btn">Get Family Plan</button></div>
+            </div></div>
         </section>
 
-        <!-- Testimonials -->
-        <section class="testimonials-section">
-            <div class="container">
-                <div class="section-header">
-                    <span class="section-badge">Testimonials</span>
-                    <h2 class="section-title">What Our Learners Say</h2>
-                </div>
-                <div class="testimonials-slider">
-                    <div class="testimonial-card">
-                        <div class="testimonial-avatar">👩</div>
-                        <p class="testimonial-text">"SpeakFlow transformed my English speaking skills! The AI feedback is incredibly accurate."</p>
-                        <h4>Sarah Johnson</h4>
-                        <span>⭐ 5.0 | Fluent in 6 months</span>
-                    </div>
-                    <div class="testimonial-card">
-                        <div class="testimonial-avatar">👨</div>
-                        <p class="testimonial-text">"Finally, an app that actually helps with pronunciation. The gamification keeps me motivated!"</p>
-                        <h4>David Chen</h4>
-                        <span>⭐ 5.0 | 150-day streak</span>
-                    </div>
-                    <div class="testimonial-card">
-                        <div class="testimonial-avatar">👩</div>
-                        <p class="testimonial-text">"The AI conversation partner is amazing! It feels like talking to a real person."</p>
-                        <h4>Maria Garcia</h4>
-                        <span>⭐ 4.9 | Advanced level</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <section id="about" class="testimonials-section"><div class="container"><div class="section-header"><span class="section-badge">Testimonials</span><h2 class="section-title">What Our Learners Say</h2></div><div class="testimonials-slider"><div class="testimonial-card"><div class="testimonial-avatar">👩</div><p>"SpeakFlow transformed my English speaking skills!"</p><h4>Sarah Johnson</h4><span>⭐ 5.0</span></div><div class="testimonial-card"><div class="testimonial-avatar">👨</div><p>"Finally, an app that actually helps with pronunciation."</p><h4>David Chen</h4><span>⭐ 5.0</span></div><div class="testimonial-card"><div class="testimonial-avatar">👩</div><p>"The AI conversation partner is amazing!"</p><h4>Maria Garcia</h4><span>⭐ 4.9</span></div></div></div></section>
 
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="container">
-                <div class="cta-content">
-                    <h2>Ready to Start Your Language Journey?</h2>
-                    <p>Join 50,000+ learners already improving their English with SpeakFlow</p>
-                    <button id="cta-button" class="btn btn-large btn-primary pulse-animation">
-                        Start Speaking Free 🎤
-                    </button>
-                    <p class="cta-note">No credit card required • Free 7-day trial • Cancel anytime</p>
-                </div>
-            </div>
-        </section>
+        <section id="contact" class="cta-section"><div class="container"><div class="cta-content"><h2>Ready to Start Your Language Journey?</h2><p>Join 50,000+ learners already improving with SpeakFlow</p><button id="cta-button" class="btn btn-large btn-primary">Start Speaking Free 🎤</button><p class="cta-note" style="margin-top: 1rem; opacity: 0.9;">No credit card required • Free 7-day trial</p></div></div></section>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <div class="footer-logo">
-                        <img src="/public/images/logo.svg" alt="SpeakFlow Logo">
-                        <span>SpeakFlow</span>
-                    </div>
-                    <p>AI-powered language learning platform helping millions speak with confidence.</p>
-                    <div class="social-links">
-                        <a href="#" aria-label="Twitter">🐦</a>
-                        <a href="#" aria-label="Facebook">📘</a>
-                        <a href="#" aria-label="Instagram">📷</a>
-                        <a href="#" aria-label="LinkedIn">🔗</a>
-                    </div>
-                </div>
-                <div class="footer-col">
-                    <h4>Product</h4>
-                    <a href="#features">Features</a>
-                    <a href="#pricing">Pricing</a>
-                    <a href="#">Demo</a>
-                    <a href="#">Roadmap</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Company</h4>
-                    <a href="#about">About Us</a>
-                    <a href="#">Blog</a>
-                    <a href="#">Careers</a>
-                    <a href="#contact">Contact</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Resources</h4>
-                    <a href="/docs/API.md">API Docs</a>
-                    <a href="#">Help Center</a>
-                    <a href="#">Community</a>
-                    <a href="#">Privacy Policy</a>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 SpeakFlow. All rights reserved.</p>
-                <div class="language-selector">
-                    <select id="language-select">
-                        <option value="en">English</option>
-                        <option value="es">Español</option>
-                        <option value="fr">Français</option>
-                        <option value="ja">日本語</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </footer>
+    <footer class="footer"><div class="container"><div class="footer-grid"><div class="footer-col"><div class="footer-logo"><span style="font-size: 1.5rem; font-weight: bold;">🎤 SpeakFlow</span></div><p>AI-powered language learning platform.</p></div><div class="footer-col"><h4>Product</h4><a class="footer-nav-link" data-section="features">Features</a><a class="footer-nav-link" data-section="pricing">Pricing</a></div><div class="footer-col"><h4>Company</h4><a class="footer-nav-link" data-section="about">About</a><a class="footer-nav-link" data-section="contact">Contact</a></div><div class="footer-col"><h4>Resources</h4><a href="#">Help Center</a><a href="#">Privacy Policy</a></div></div><div class="footer-bottom"><p>&copy; 2024 SpeakFlow. All rights reserved.</p></div></div></footer>
 
-    <!-- Modals -->
-    <!-- Login Modal -->
-    <div id="login-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close">&times;</span>
-            <h2>Welcome Back!</h2>
-            <form id="login-form">
-                <input type="email" placeholder="Email" required>
-                <input type="password" placeholder="Password" required>
-                <button type="submit" class="btn btn-primary">Login</button>
-                <a href="#">Forgot password?</a>
-                <p>Don't have an account? <a href="#" id="switch-to-signup">Sign up</a></p>
-            </form>
-        </div>
-    </div>
-
-    <!-- Signup Modal -->
-    <div id="signup-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close">&times;</span>
-            <h2>Create Account</h2>
-            <form id="signup-form">
-                <input type="text" placeholder="Full Name" required>
-                <input type="email" placeholder="Email" required>
-                <input type="password" placeholder="Password" required>
-                <button type="submit" class="btn btn-primary">Sign Up Free</button>
-                <p>Already have an account? <a href="#" id="switch-to-login">Login</a></p>
-            </form>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
+    <div id="login-modal" class="modal"><div class="modal-content"><span class="modal-close">&times;</span><h2>Welcome Back!</h2><form id="login-form"><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button><p style="margin-top: 1rem;">Don't have an account? <a href="#" id="switch-to-signup">Sign up</a></p></form></div></div>
+    <div id="signup-modal" class="modal"><div class="modal-content"><span class="modal-close">&times;</span><h2>Create Account</h2><form id="signup-form"><input type="text" placeholder="Full Name" required><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign Up Free</button><p style="margin-top: 1rem;">Already have an account? <a href="#" id="switch-to-login">Login</a></p></form></div></div>
     <div id="toast" class="toast"></div>
 
-    <!-- Scripts -->
-    <script src="/js/utils.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/pwa.js"></script>
-    <script src="/js/offline.js"></script>
-    <script src="/js/gamification.js"></script>
-    <script src="/js/payment.js"></script>
-    <script src="/js/voice.js"></script>
-    <script src="/js/ai-model.js"></script>
-    <script src="/js/app.js"></script>
-
-    <!-- Initialize App -->
     <script>
-        // Hide loading screen when page loads
+        // ============ NAVIGATION FUNCTION ============
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                const navbarHeight = 80;
+                const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                const offsetPosition = elementPosition - navbarHeight;
+                
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+                
+                // Update active class on nav links
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if(link.getAttribute('data-section') === sectionId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        }
+
+        // Loading screen
         window.addEventListener('load', () => {
             setTimeout(() => {
-                document.getElementById('loading-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loading-screen').style.display = 'none';
-                }, 500);
-            }, 1000);
+                const loader = document.getElementById('loading-screen');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, 800);
         });
 
-        // Simple theme toggle
+        // Theme toggle
         const themeToggle = document.getElementById('theme-toggle');
         let isDark = false;
         themeToggle.addEventListener('click', () => {
-            const themeLink = document.getElementById('theme-stylesheet');
-            if (isDark) {
-                themeLink.href = '/css/themes/light.css';
-                themeToggle.textContent = '🌙';
-            } else {
-                themeLink.href = '/css/themes/dark.css';
-                themeToggle.textContent = '☀️';
-            }
-            isDark = !isDark;
+            document.body.classList.toggle('dark');
+            isDark = document.body.classList.contains('dark');
+            themeToggle.textContent = isDark ? '☀️' : '🌙';
         });
 
         // Pricing toggle
         const billingToggle = document.getElementById('billing-toggle');
-        if (billingToggle) {
+        if(billingToggle) {
             billingToggle.addEventListener('change', (e) => {
                 const isYearly = e.target.checked;
-                const amounts = document.querySelectorAll('.pricing-price .amount');
-                const periods = document.querySelectorAll('.pricing-price .period');
-                
-                amounts.forEach(amount => {
-                    const monthlyValue = amount.getAttribute('data-monthly');
-                    const yearlyValue = amount.getAttribute('data-yearly');
-                    if (monthlyValue && yearlyValue) {
-                        amount.textContent = isYearly ? yearlyValue : monthlyValue;
-                    }
-                });
-                
-                periods.forEach(period => {
-                    const monthlyText = period.getAttribute('data-monthly');
-                    const yearlyText = period.getAttribute('data-yearly');
-                    if (monthlyText && yearlyText) {
-                        period.textContent = isYearly ? yearlyText : monthlyText;
-                    }
+                document.querySelectorAll('.pricing-price .amount').forEach(amount => {
+                    const monthly = amount.getAttribute('data-monthly');
+                    const yearly = amount.getAttribute('data-yearly');
+                    if(monthly && yearly) amount.textContent = isYearly ? yearly : monthly;
                 });
             });
         }
+
+        // ============ NAVIGATION EVENT LISTENERS ============
+        // Navbar links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = link.getAttribute('data-section');
+                if(sectionId) scrollToSection(sectionId);
+            });
+        });
+
+        // Footer navigation links
+        document.querySelectorAll('.footer-nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = link.getAttribute('data-section');
+                if(sectionId) scrollToSection(sectionId);
+            });
+        });
+
+        // Logo click
+        document.getElementById('logo-home')?.addEventListener('click', () => {
+            scrollToSection('home');
+        });
+
+        // Modal logic
+        const loginModal = document.getElementById('login-modal');
+        const signupModal = document.getElementById('signup-modal');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const closeBtns = document.querySelectorAll('.modal-close');
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        loginBtn.onclick = () => loginModal.style.display = 'flex';
+        signupBtn.onclick = () => signupModal.style.display = 'flex';
+        closeBtns.forEach(btn => btn.onclick = () => { loginModal.style.display = 'none'; signupModal.style.display = 'none'; });
+        window.onclick = (e) => { if(e.target === loginModal) loginModal.style.display = 'none'; if(e.target === signupModal) signupModal.style.display = 'none'; };
+
+        document.getElementById('switch-to-signup')?.addEventListener('click', (e) => { e.preventDefault(); loginModal.style.display = 'none'; signupModal.style.display = 'flex'; });
+        document.getElementById('switch-to-login')?.addEventListener('click', (e) => { e.preventDefault(); signupModal.style.display = 'none'; loginModal.style.display = 'flex'; });
+
+        document.getElementById('login-form')?.addEventListener('submit', (e) => { e.preventDefault(); showToast('Demo: Login successful!'); loginModal.style.display = 'none'; });
+        document.getElementById('signup-form')?.addEventListener('submit', (e) => { e.preventDefault(); showToast('Demo: Account created!'); signupModal.style.display = 'none'; });
+
+        // CTA buttons
+        const startBtns = document.querySelectorAll('#get-started, #cta-button');
+        startBtns.forEach(btn => btn.addEventListener('click', () => showToast('🎉 Start your free trial! Open the app to begin.')));
+        document.getElementById('watch-demo')?.addEventListener('click', () => showToast('▶️ Demo video would play here (AI speech recognition demo)'));
+
+        // Mobile menu toggle
+        const mobileToggle = document.getElementById('mobile-menu-toggle');
+        const navMenu = document.getElementById('nav-menu');
+        mobileToggle?.addEventListener('click', () => {
+            if(navMenu.style.display === 'flex' && window.innerWidth <= 768) {
+                navMenu.style.display = 'none';
+            } else if(window.innerWidth <= 768) {
+                navMenu.style.display = 'flex';
+                navMenu.style.flexDirection = 'column';
+                navMenu.style.position = 'absolute';
+                navMenu.style.top = '70px';
+                navMenu.style.left = '0';
+                navMenu.style.width = '100%';
+                navMenu.style.backgroundColor = 'var(--bg-primary)';
+                navMenu.style.padding = '1rem';
+                navMenu.style.gap = '1rem';
+                navMenu.style.borderBottom = '1px solid var(--border-color)';
+            }
+        });
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if(window.innerWidth <= 768) {
+                    navMenu.style.display = 'none';
+                }
+            });
+        });
+
+        // Update active link on scroll
+        window.addEventListener('scroll', () => {
+            const sections = ['home', 'features', 'pricing', 'about', 'contact'];
+            let current = '';
+            const scrollPosition = window.scrollY + 100;
+            
+            sections.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if(section) {
+                    const sectionTop = section.offsetTop;
+                    const sectionBottom = sectionTop + section.offsetHeight;
+                    if(scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                        current = sectionId;
+                    }
+                }
+            });
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if(link.getAttribute('data-section') === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
     </script>
 </body>
 </html>
