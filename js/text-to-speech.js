@@ -69,4 +69,14 @@ function speakWithAccent(text, accent, gender, callback) {
 }
 
 function testAccent(accent, gender) {
-    const sampleText = `Hello! This is ${CONFIG.ACCENTS[accent].name
+    const sampleText = `Hello! This is ${CONFIG.ACCENTS[accent].name} ${CONFIG.GENDERS[gender].name} voice. How does it sound to you?`;
+    speakWithAccent(sampleText, accent, gender);
+}
+
+function speakSimple(text, callback) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.onend = () => { if (callback) callback(); };
+    window.speechSynthesis.speak(utterance);
+}
