@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SpeakFlow - AI Voice Conversation Partner</title>
+    <title>SpeakFlow - AI Voice Conversation Partner with Memory</title>
     <style>
         * {
             margin: 0;
@@ -118,11 +118,6 @@
 
         .btn-danger:hover {
             background: #dc2626;
-        }
-
-        .btn-success {
-            background: #10b981;
-            color: white;
         }
 
         .mobile-toggle {
@@ -335,12 +330,6 @@
             color: white;
         }
 
-        .chat-message {
-            padding: 0.5rem;
-            margin: 0.5rem 0;
-            border-radius: 8px;
-        }
-
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -353,7 +342,6 @@
             z-index: 3000;
         }
 
-        /* Voice Conversation Styles */
         .voice-bubble {
             padding: 0.75rem 1rem;
             border-radius: 18px;
@@ -409,16 +397,6 @@
             0% { background-color: #ef4444; transform: scale(1); }
             50% { background-color: #dc2626; transform: scale(1.05); }
             100% { background-color: #ef4444; transform: scale(1); }
-        }
-
-        .voice-status-listening {
-            background: #fee2e2 !important;
-            color: #dc2626 !important;
-        }
-
-        .voice-status-thinking {
-            background: #fef3c7 !important;
-            color: #d97706 !important;
         }
 
         @media (max-width: 768px) {
@@ -509,7 +487,7 @@
                 <div class="feature-card" id="featureAIChat">
                     <div class="feature-icon">🤖</div>
                     <h3>AI Voice Conversation</h3>
-                    <p>🎤 Voice-to-voice AI chatbot. Bicara dan AI langsung menjawab dengan suara!</p>
+                    <p>🧠 Dengan MEMORY percakapan! AI mengingat obrolan sebelumnya.</p>
                     <div class="xp-display">+25 XP</div>
                 </div>
                 <div class="feature-card" id="featureLearningPath">
@@ -554,7 +532,7 @@
         </div>
     </section>
 
-    <!-- MODAL PRACTICE SPEAKING (Pronunciation) -->
+    <!-- MODAL PRACTICE SPEAKING -->
     <div id="practiceModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="practiceModal">&times;</span>
@@ -587,15 +565,15 @@
         </div>
     </div>
 
-    <!-- MODAL AI VOICE CONVERSATION (Langsung Voice-to-Voice) -->
+    <!-- MODAL AI VOICE CONVERSATION WITH MEMORY -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="aiChatModal">&times;</span>
-            <h2>🤖 AI Voice Conversation Partner</h2>
-            <p style="color: #666; margin-bottom: 0.5rem;">🎤 <strong>Mode Voice-to-Voice</strong> - Bicaralah, AI akan langsung menjawab dengan suara!</p>
+            <h2>🤖 AI Voice Conversation Partner <span style="font-size: 0.75rem; background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 2rem;">🧠 With Memory</span></h2>
+            <p style="color: #666; margin-bottom: 0.5rem;">🎤 AI mengingat percakapan Anda! Bicaralah dengan natural seperti ngobrol dengan teman.</p>
             
             <div id="voiceStatus" style="background: #f0f4f8; padding: 0.75rem; border-radius: 8px; text-align: center; margin-bottom: 1rem; transition: all 0.3s;">
-                ⚪ Klik tombol di bawah untuk mulai percakapan suara
+                ⚪ Klik tombol merah untuk mulai percakapan suara
             </div>
             
             <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem; flex-wrap: wrap;">
@@ -606,13 +584,13 @@
                     ⏹️ Berhenti
                 </button>
                 <button id="clearChatBtn" class="btn btn-outline">
-                    🗑️ Clear Chat
+                    🗑️ Clear Chat & Memory
                 </button>
             </div>
             
             <div id="voiceConversation" style="height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
                 <div class="ai-bubble voice-bubble">
-                    🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
+                    🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
                 </div>
             </div>
             
@@ -755,8 +733,8 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;">
                 <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI voice conversation is incredible! Like talking to a real person."</p><h4>- David</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the corrections and alternatives feature!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI remembers our conversation! It feels so natural!"</p><h4>- David</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Finally, an AI that understands context!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
             </div>
         </div>
     </section>
@@ -784,6 +762,12 @@
         let lastActive = localStorage.getItem('speakflow_last_active') || new Date().toDateString();
         let lastPracticeAccuracy = 0;
         let currentTargetSentence = "The weather is beautiful today";
+
+        // ============ CONVERSATION MEMORY ============
+        let conversationMemory = [];
+        let currentTopic = null;
+        let lastUserQuestion = null;
+        let userInfo = { name: null, interest: null };
 
         function checkStreak() {
             const today = new Date().toDateString();
@@ -882,175 +866,210 @@
             return false;
         }
 
-        // ============ AI VOICE CONVERSATION (VOICE-TO-VOICE) ============
-        let voiceRecognition = null;
-        let isRecording = false;
-        let isThinking = false;
-        let currentSpeechSynthesis = null;
-
-        const conversationDatabase = {
-            greetings: {
-                patterns: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'halo'],
-                responses: [
-                    { 
-                        text: "Hello! Nice to meet you. How are you today?",
-                        alternatives: [
-                            "Hi there! Great to see you!",
-                            "Hey! How's your day going?",
-                            "Good to meet you! What would you like to talk about?"
-                        ]
-                    }
-                ]
-            },
-            howAreYou: {
-                patterns: ['how are you', "how're you", "how are you doing", "how's it going", "how do you do"],
-                responses: [
-                    {
-                        text: "I'm doing great, thank you for asking! How about you?",
-                        alternatives: [
-                            "I'm wonderful! Thanks for asking!",
-                            "Pretty good! What about yourself?",
-                            "I'm fantastic! How are things with you?"
-                        ]
-                    }
-                ]
-            },
-            weather: {
-                patterns: ['weather', 'sunny', 'rain', 'cloudy', 'hot', 'cold', 'temperature', 'cuaca'],
-                responses: [
-                    {
-                        text: "The weather today is beautiful, isn't it? Perfect for outdoor activities!",
-                        alternatives: [
-                            "I love talking about weather! What's your favorite season?",
-                            "The weather affects our mood so much. Do you prefer sunny or rainy days?",
-                            "Speaking of weather, have you traveled to places with different climates?"
-                        ]
-                    }
-                ]
-            },
-            food: {
-                patterns: ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'restaurant', 'cook', 'makan'],
-                responses: [
-                    {
-                        text: "Food is always a great topic! What's your favorite dish?",
-                        alternatives: [
-                            "I love trying new foods! Do you enjoy cooking?",
-                            "What kind of cuisine do you like the most?",
-                            "Have you tried any interesting restaurants lately?"
-                        ]
-                    }
-                ]
-            },
-            hobby: {
-                patterns: ['hobby', 'like to', 'enjoy', 'love to', 'free time', 'weekend', 'sport', 'music', 'movie', 'read', 'hobi'],
-                responses: [
-                    {
-                        text: "That sounds like a wonderful hobby! How long have you been doing it?",
-                        alternatives: [
-                            "That's interesting! What do you enjoy most about it?",
-                            "Nice! Do you have any other hobbies you'd like to share?",
-                            "That's great! Many people find hobbies very relaxing."
-                        ]
-                    }
-                ]
-            },
-            work: {
-                patterns: ['work', 'job', 'company', 'office', 'career', 'profession', 'student', 'study', 'kerja'],
-                responses: [
-                    {
-                        text: "That's fascinating! What do you like most about your work or study?",
-                        alternatives: [
-                            "Tell me more about your daily routine at work or school!",
-                            "That sounds challenging! How do you manage your time?",
-                            "Interesting! What inspired you to choose that path?"
-                        ]
-                    }
-                ]
-            },
-            travel: {
-                patterns: ['travel', 'vacation', 'holiday', 'trip', 'visit', 'beach', 'mountain', 'city', 'liburan'],
-                responses: [
-                    {
-                        text: "Traveling is amazing! Where's your favorite place you've visited?",
-                        alternatives: [
-                            "I'd love to hear about your travel experiences! Any recommendations?",
-                            "Do you prefer beach destinations or mountain getaways?",
-                            "What's your dream destination for your next vacation?"
-                        ]
-                    }
-                ]
-            },
-            thank: {
-                patterns: ['thank', 'thanks', 'terima kasih'],
-                responses: [
-                    {
-                        text: "You're very welcome! I'm happy to help you practice English.",
-                        alternatives: [
-                            "My pleasure! Keep up the great work!",
-                            "Anytime! Let's continue practicing!",
-                            "You're welcome! Is there anything else you'd like to talk about?"
-                        ]
-                    }
-                ]
-            },
-            bye: {
-                patterns: ['bye', 'goodbye', 'see you', 'later', 'exit', 'stop', 'selesai'],
-                responses: [
-                    {
-                        text: "Goodbye! It was great talking with you. Keep practicing and see you next time!",
-                        alternatives: [
-                            "Take care! Keep learning English every day!",
-                            "Bye for now! Don't forget to practice daily!",
-                            "See you later! You're doing great!"
-                        ]
-                    }
-                ]
-            },
-            default: {
-                responses: [
-                    {
-                        text: "That's interesting! Could you tell me more about that?",
-                        alternatives: [
-                            "I'd love to hear more! Can you elaborate?",
-                            "That's a great point! What do you think about it?",
-                            "Interesting perspective! Tell me more."
-                        ]
-                    }
-                ]
-            }
-        };
-
-        function detectTopic(userText) {
+        // ============ AI WITH MEMORY ============
+        
+        // Fungsi untuk mendeteksi pertanyaan lanjutan
+        function isFollowUpQuestion(userText) {
+            const followUpKeywords = ['and', 'then', 'after that', 'also', 'what about', 'how about', 'really', 'why', 'how', 'when', 'where', 'who', 'tell me more', 'explain', 'elaborate'];
             const lowerText = userText.toLowerCase();
-            for (const [topic, data] of Object.entries(conversationDatabase)) {
-                if (topic === 'default') continue;
-                for (const pattern of data.patterns) {
-                    if (lowerText.includes(pattern)) {
-                        return topic;
+            return followUpKeywords.some(keyword => lowerText.includes(keyword)) || lowerText.length < 15;
+        }
+
+        // Fungsi untuk mengekstrak informasi dari percakapan
+        function extractInfo(userText) {
+            const lowerText = userText.toLowerCase();
+            
+            // Deteksi nama
+            const namePatterns = [/my name is (\w+)/i, /i am (\w+)/i, /call me (\w+)/i];
+            for (const pattern of namePatterns) {
+                const match = userText.match(pattern);
+                if (match && match[1]) {
+                    userInfo.name = match[1];
+                }
+            }
+            
+            // Deteksi minat/hobi
+            const interestKeywords = ['like', 'love', 'enjoy', 'interested in', 'hobby'];
+            for (const keyword of interestKeywords) {
+                if (lowerText.includes(keyword)) {
+                    const words = userText.split(' ');
+                    for (let i = 0; i < words.length; i++) {
+                        if (words[i].toLowerCase() === keyword && words[i+1]) {
+                            userInfo.interest = words[i+1];
+                            break;
+                        }
                     }
                 }
             }
-            return 'default';
         }
 
+        // Fungsi utama generate response dengan memory
+        function generateResponseWithMemory(userText) {
+            const lowerText = userText.toLowerCase();
+            
+            // Simpan ke memory
+            conversationMemory.push({ role: 'user', text: userText, timestamp: new Date() });
+            if (conversationMemory.length > 10) conversationMemory.shift();
+            
+            extractInfo(userText);
+            
+            // Cek apakah ini follow-up question
+            const isFollowUp = isFollowUpQuestion(userText);
+            
+            // Cek goodbye
+            if (lowerText.includes('bye') || lowerText.includes('goodbye') || lowerText.includes('see you')) {
+                const response = "Goodbye! It was great talking with you. Keep practicing English every day! Come back anytime!";
+                conversationMemory.push({ role: 'ai', text: response, timestamp: new Date() });
+                return { response: response, alternatives: ["Take care!", "See you next time!", "Bye! Keep learning!"] };
+            }
+            
+            // Cek perkenalan nama
+            if (userInfo.name && (lowerText.includes('my name') || lowerText.includes('i am'))) {
+                const response = `Nice to meet you, ${userInfo.name}! That's a wonderful name. What brings you to learn English today?`;
+                conversationMemory.push({ role: 'ai', text: response, timestamp: new Date() });
+                return { response: response, alternatives: [`Hello ${userInfo.name}!`, `Great to meet you ${userInfo.name}!`, `Hi ${userInfo.name}! How can I help you?`] };
+            }
+            
+            // Cek berdasarkan memory terakhir (konteks)
+            if (conversationMemory.length >= 2 && isFollowUp) {
+                const lastUserMsg = conversationMemory.filter(m => m.role === 'user').slice(-2)[0];
+                if (lastUserMsg) {
+                    const lastTopic = detectTopicFromText(lastUserMsg.text);
+                    if (lastTopic !== 'default') {
+                        const contextualResponse = getContextualResponse(lastTopic, userText);
+                        if (contextualResponse) {
+                            conversationMemory.push({ role: 'ai', text: contextualResponse, timestamp: new Date() });
+                            return { response: contextualResponse, alternatives: getAlternativeResponses(lastTopic) };
+                        }
+                    }
+                }
+            }
+            
+            // Deteksi topik baru
+            const topic = detectTopicFromText(userText);
+            const responseData = getResponseForTopic(topic, userText);
+            
+            conversationMemory.push({ role: 'ai', text: responseData.response, timestamp: new Date() });
+            return responseData;
+        }
+        
+        function detectTopicFromText(text) {
+            const lowerText = text.toLowerCase();
+            
+            if (lowerText.match(/hello|hi|hey|good morning|good afternoon|good evening|halo/)) return 'greetings';
+            if (lowerText.match(/how are you|how're you|how do you do|how's it going/)) return 'howAreYou';
+            if (lowerText.match(/weather|sunny|rain|cloudy|hot|cold|temperature|cuaca/)) return 'weather';
+            if (lowerText.match(/food|eat|meal|breakfast|lunch|dinner|restaurant|cook|makan/)) return 'food';
+            if (lowerText.match(/hobby|like to|enjoy|love to|free time|weekend|sport|music|movie|read|hobi/)) return 'hobby';
+            if (lowerText.match(/work|job|company|office|career|profession|student|study|kerja/)) return 'work';
+            if (lowerText.match(/travel|vacation|holiday|trip|visit|beach|mountain|city|liburan/)) return 'travel';
+            if (lowerText.match(/thank|thanks|terima kasih/)) return 'thank';
+            
+            return 'default';
+        }
+        
+        function getContextualResponse(topic, followUpText) {
+            const responses = {
+                weather: [
+                    "Yes, the weather really affects our mood, doesn't it? Do you prefer sunny or rainy days?",
+                    "That's a good point about the weather! What's your favorite season?",
+                    "Speaking of weather, have you ever experienced extreme weather where you live?"
+                ],
+                food: [
+                    "That sounds delicious! Do you like to cook at home or eat out?",
+                    "Food brings people together! What's a famous food from your country?",
+                    "I love learning about different cuisines! Tell me more about your favorite dishes."
+                ],
+                hobby: [
+                    "That's awesome! How often do you do that hobby?",
+                    "Having hobbies is so important! Do you have any other interests?",
+                    "That sounds fun! How did you first get into that hobby?"
+                ],
+                travel: [
+                    "Traveling is wonderful! Where would you like to go next?",
+                    "I love hearing about travel experiences! What was your favorite memory from that trip?",
+                    "Do you prefer traveling alone or with friends/family?"
+                ]
+            };
+            
+            if (responses[topic]) {
+                return responses[topic][Math.floor(Math.random() * responses[topic].length)];
+            }
+            return null;
+        }
+        
+        function getResponseForTopic(topic, userText) {
+            const responses = {
+                greetings: {
+                    text: "Hello! Great to see you! How are you doing today?",
+                    alternatives: ["Hi there! How can I help you?", "Hey! Ready to practice English?", "Hello! What would you like to talk about?"]
+                },
+                howAreYou: {
+                    text: "I'm doing fantastic, thanks for asking! How about you? How's your day going?",
+                    alternatives: ["I'm great! Tell me about your day.", "Wonderful! What's new with you?", "I'm doing well! How are things on your end?"]
+                },
+                weather: {
+                    text: "The weather has been lovely lately! Do you enjoy this kind of weather?",
+                    alternatives: ["I love talking about weather! What's your favorite season?", "Weather affects our mood so much. Do you prefer sunny or rainy days?"]
+                },
+                food: {
+                    text: "Food is one of my favorite topics! What kind of cuisine do you enjoy the most?",
+                    alternatives: ["I love trying new foods! Do you enjoy cooking?", "What's a famous dish from your hometown?"]
+                },
+                hobby: {
+                    text: "That's really interesting! Tell me more about your hobbies. How did you get started?",
+                    alternatives: ["Hobbies make life fun! What do you enjoy most about it?", "That sounds great! Do you have any other hobbies?"]
+                },
+                work: {
+                    text: "That's fascinating! What do you find most challenging or rewarding about your work/studies?",
+                    alternatives: ["Tell me more about your daily routine!", "What inspired you to choose that path?"]
+                },
+                travel: {
+                    text: "Traveling opens our minds! Where's the most interesting place you've ever visited?",
+                    alternatives: ["I'd love to hear about your travel experiences!", "What's your dream destination?"]
+                },
+                thank: {
+                    text: "You're very welcome! I'm happy to help you practice English. Is there anything else you'd like to discuss?",
+                    alternatives: ["My pleasure! Keep up the great work!", "Anytime! Let's continue our conversation!"]
+                },
+                default: {
+                    text: "That's interesting! Could you tell me more about that? I'd love to understand your perspective.",
+                    alternatives: ["Tell me more!", "That's a great point! What do you think?", "Interesting! Can you elaborate?"]
+                }
+            };
+            
+            const data = responses[topic] || responses.default;
+            return {
+                response: data.text,
+                alternatives: data.alternatives
+            };
+        }
+        
+        function getAlternativeResponses(topic) {
+            const responses = {
+                weather: ["What's your favorite season?", "Do you prefer hot or cold weather?", "Have you experienced different climates?"],
+                food: ["What's your favorite dish?", "Do you like cooking?", "What's a famous food from your country?"],
+                hobby: ["How did you start that hobby?", "Do you have other hobbies?", "What do you enjoy most about it?"],
+                travel: ["Where's your dream destination?", "Do you prefer beach or mountains?", "What's your best travel memory?"],
+                default: ["Tell me more!", "That's interesting!", "Why do you think that?"]
+            };
+            return responses[topic] || responses.default;
+        }
+        
         function getGrammarCorrection(userText) {
             const corrections = [];
             let correctedText = userText;
             
             const grammarRules = [
-                { error: /i is/g, correction: "I am", message: "Use 'I am' instead of 'I is'" },
-                { error: /you is/g, correction: "you are", message: "Use 'you are' instead of 'you is'" },
-                { error: /they is/g, correction: "they are", message: "Use 'they are' instead of 'they is'" },
-                { error: /she are/g, correction: "she is", message: "Use 'she is' instead of 'she are'" },
-                { error: /he are/g, correction: "he is", message: "Use 'he is' instead of 'he are'" },
-                { error: /go to home/g, correction: "go home", message: "Say 'go home' not 'go to home'" },
-                { error: /listen music/g, correction: "listen to music", message: "Add 'to': 'listen to music'" },
-                { error: /explain me/g, correction: "explain to me", message: "Say 'explain to me'" },
-                { error: /tell me why/g, correction: "tell me why", message: "Good grammar!" }
+                { error: /\bi is\b/gi, correction: "I am", message: "Use 'I am' instead of 'I is'" },
+                { error: /\byou is\b/gi, correction: "you are", message: "Use 'you are' instead of 'you is'" },
+                { error: /\bthey is\b/gi, correction: "they are", message: "Use 'they are' instead of 'they is'" },
+                { error: /\bgo to home\b/gi, correction: "go home", message: "Say 'go home' not 'go to home'" },
+                { error: /\blisten music\b/gi, correction: "listen to music", message: "Add 'to': 'listen to music'" }
             ];
             
             for (const rule of grammarRules) {
-                if (rule.error.test(correctedText.toLowerCase())) {
+                if (rule.error.test(correctedText)) {
                     correctedText = correctedText.replace(rule.error, rule.correction);
                     corrections.push(rule.message);
                 }
@@ -1063,125 +1082,11 @@
             };
         }
 
-        function generateAIResponse(userText) {
-            const topic = detectTopic(userText);
-            const topicData = conversationDatabase[topic] || conversationDatabase.default;
-            const response = topicData.responses[0];
-            const grammarCheck = getGrammarCorrection(userText);
-            
-            return {
-                response: response.text,
-                alternatives: response.alternatives,
-                grammarCorrection: grammarCheck
-            };
-        }
-
-        // Fungsi untuk berbicara (Text-to-Speech)
-        function speakText(text, callback) {
-            if (currentSpeechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            utterance.onend = function() {
-                if (callback) callback();
-            };
-            
-            utterance.onerror = function() {
-                if (callback) callback();
-            };
-            
-            currentSpeechSynthesis = utterance;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // Fungsi untuk menampilkan typing indicator
-        function showTypingIndicator() {
-            const conversationDiv = document.getElementById('voiceConversation');
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'typing-indicator';
-            typingDiv.id = 'typingIndicator';
-            typingDiv.innerHTML = '<span></span><span></span><span></span>';
-            conversationDiv.appendChild(typingDiv);
-            conversationDiv.scrollTop = conversationDiv.scrollHeight;
-        }
-
-        function hideTypingIndicator() {
-            const typingDiv = document.getElementById('typingIndicator');
-            if (typingDiv) typingDiv.remove();
-        }
-
-        function processUserVoice(userText) {
-            const conversationDiv = document.getElementById('voiceConversation');
-            
-            conversationDiv.innerHTML += `
-                <div class="user-bubble voice-bubble">
-                    🗣️ You: ${userText}
-                </div>
-            `;
-            conversationDiv.scrollTop = conversationDiv.scrollHeight;
-            
-            const aiData = generateAIResponse(userText);
-            
-            const resultDiv = document.getElementById('voiceResult');
-            const userSpeechSpan = document.getElementById('userSpeechText');
-            const correctionSpan = document.getElementById('correctionText');
-            const alternativeSpan = document.getElementById('alternativeText');
-            
-            if(resultDiv) resultDiv.style.display = 'block';
-            if(userSpeechSpan) userSpeechSpan.innerHTML = `📝 Yang Anda ucapkan: "${userText}"`;
-            
-            if(aiData.grammarCorrection.hasCorrection) {
-                if(correctionSpan) {
-                    correctionSpan.innerHTML = `✅ Koreksi: ${aiData.grammarCorrection.correctedText}<br>📖 ${aiData.grammarCorrection.messages.join(', ')}`;
-                }
-            } else {
-                if(correctionSpan) correctionSpan.innerHTML = `✅ Grammar sudah benar! Bagus!`;
-            }
-            
-            if(alternativeSpan) {
-                alternativeSpan.innerHTML = `💡 Alternatif jawaban untuk pertanyaan yang sama:<br>• ${aiData.alternatives.join('<br>• ')}`;
-            }
-            
-            showTypingIndicator();
-            isThinking = true;
-            
-            const statusDiv = document.getElementById('voiceStatus');
-            if(statusDiv) {
-                statusDiv.innerHTML = '💭 AI sedang berpikir dan menyiapkan jawaban suara...';
-                statusDiv.className = 'voice-status-thinking';
-                statusDiv.style.background = '#fef3c7';
-            }
-            
-            setTimeout(() => {
-                hideTypingIndicator();
-                
-                conversationDiv.innerHTML += `
-                    <div class="ai-bubble voice-bubble">
-                        🤖 AI: ${aiData.response}
-                    </div>
-                `;
-                conversationDiv.scrollTop = conversationDiv.scrollHeight;
-                
-                speakText(aiData.response, function() {
-                    isThinking = false;
-                    if(statusDiv) {
-                        statusDiv.innerHTML = '🎤 Selesai bicara. Klik tombol merah untuk bicara lagi!';
-                        statusDiv.className = '';
-                        statusDiv.style.background = '#f0f4f8';
-                    }
-                });
-                
-                setTimeout(() => {
-                    if(resultDiv) resultDiv.style.display = 'none';
-                }, 8000);
-            }, 800);
-        }
+        // ============ VOICE CONVERSATION ============
+        let voiceRecognition = null;
+        let isRecording = false;
+        let isThinking = false;
+        let currentSpeechSynthesis = null;
 
         function initVoiceChatRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1196,7 +1101,6 @@
                     const statusDiv = document.getElementById('voiceStatus');
                     if(statusDiv) {
                         statusDiv.innerHTML = '🔴 Sedang merekam... Bicaralah dengan jelas';
-                        statusDiv.className = 'voice-status-listening';
                         statusDiv.style.background = '#fee2e2';
                     }
                     const recordBtn = document.getElementById('voiceRecordBtn');
@@ -1213,7 +1117,6 @@
                     const statusDiv = document.getElementById('voiceStatus');
                     if(statusDiv && !isThinking) {
                         statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol merah untuk mulai bicara.';
-                        statusDiv.className = '';
                         statusDiv.style.background = '#f0f4f8';
                     }
                     const recordBtn = document.getElementById('voiceRecordBtn');
@@ -1257,6 +1160,110 @@
             return false;
         }
 
+        function speakText(text, callback) {
+            if (currentSpeechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            utterance.onend = function() {
+                if (callback) callback();
+            };
+            
+            utterance.onerror = function() {
+                if (callback) callback();
+            };
+            
+            currentSpeechSynthesis = utterance;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function showTypingIndicator() {
+            const conversationDiv = document.getElementById('voiceConversation');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            conversationDiv.appendChild(typingDiv);
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) typingDiv.remove();
+        }
+
+        function processUserVoice(userText) {
+            const conversationDiv = document.getElementById('voiceConversation');
+            
+            conversationDiv.innerHTML += `
+                <div class="user-bubble voice-bubble">
+                    🗣️ You: ${userText}
+                </div>
+            `;
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+            
+            const aiData = generateResponseWithMemory(userText);
+            const grammarCheck = getGrammarCorrection(userText);
+            
+            const resultDiv = document.getElementById('voiceResult');
+            const userSpeechSpan = document.getElementById('userSpeechText');
+            const correctionSpan = document.getElementById('correctionText');
+            const alternativeSpan = document.getElementById('alternativeText');
+            
+            if(resultDiv) resultDiv.style.display = 'block';
+            if(userSpeechSpan) userSpeechSpan.innerHTML = `📝 Yang Anda ucapkan: "${userText}"`;
+            
+            if(grammarCheck.hasCorrection) {
+                if(correctionSpan) {
+                    correctionSpan.innerHTML = `✅ Koreksi: ${grammarCheck.correctedText}<br>📖 ${grammarCheck.messages.join(', ')}`;
+                }
+            } else {
+                if(correctionSpan) correctionSpan.innerHTML = `✅ Grammar sudah benar! Bagus!`;
+            }
+            
+            if(alternativeSpan) {
+                alternativeSpan.innerHTML = `💡 Alternatif jawaban untuk pertanyaan yang sama:<br>• ${aiData.alternatives.join('<br>• ')}`;
+            }
+            
+            showTypingIndicator();
+            isThinking = true;
+            
+            const statusDiv = document.getElementById('voiceStatus');
+            if(statusDiv) {
+                statusDiv.innerHTML = '💭 AI sedang berpikir dan menyiapkan jawaban suara...';
+                statusDiv.style.background = '#fef3c7';
+            }
+            
+            setTimeout(() => {
+                hideTypingIndicator();
+                
+                conversationDiv.innerHTML += `
+                    <div class="ai-bubble voice-bubble">
+                        🤖 AI: ${aiData.response}
+                    </div>
+                `;
+                conversationDiv.scrollTop = conversationDiv.scrollHeight;
+                
+                speakText(aiData.response, function() {
+                    isThinking = false;
+                    if(statusDiv && !isRecording) {
+                        statusDiv.innerHTML = '🎤 Selesai bicara. Klik tombol merah untuk bicara lagi!';
+                        statusDiv.style.background = '#f0f4f8';
+                    }
+                });
+                
+                setTimeout(() => {
+                    if(resultDiv) resultDiv.style.display = 'none';
+                }, 8000);
+            }, 800);
+        }
+
         function startVoiceRecording() {
             if (isThinking) {
                 showToast('⏳ AI sedang berbicara, tunggu sebentar...');
@@ -1284,13 +1291,19 @@
             if(conversationDiv) {
                 conversationDiv.innerHTML = `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
+                        🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
                     </div>
                 `;
             }
+            // Clear memory
+            conversationMemory = [];
+            currentTopic = null;
+            lastUserQuestion = null;
+            userInfo = { name: null, interest: null };
+            
             const resultDiv = document.getElementById('voiceResult');
             if(resultDiv) resultDiv.style.display = 'none';
-            showToast('Chat cleared!');
+            showToast('Chat and memory cleared!');
         }
 
         function endVoiceChat() {
@@ -1301,11 +1314,17 @@
             closeModal('aiChatModal');
             showToast('+25 XP earned from voice conversation practice!');
             
+            // Reset memory
+            conversationMemory = [];
+            currentTopic = null;
+            lastUserQuestion = null;
+            userInfo = { name: null, interest: null };
+            
             const conversationDiv = document.getElementById('voiceConversation');
             if(conversationDiv) {
                 conversationDiv.innerHTML = `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: Hello! I'm your AI voice conversation partner. Click the red microphone button and start speaking. I will answer you with voice!
+                        🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
                     </div>
                 `;
             }
