@@ -232,6 +232,16 @@
             margin-bottom: 1rem;
         }
 
+        .xp-display {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
         /* Steps */
         .steps-container {
             display: flex;
@@ -261,7 +271,7 @@
             font-weight: bold;
         }
 
-        /* Practice Modal */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -297,9 +307,9 @@
             background: #667eea;
             color: white;
             border: none;
-            padding: 1rem;
-            border-radius: 50%;
-            font-size: 1.5rem;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1.2rem;
             cursor: pointer;
             margin: 1rem 0;
         }
@@ -333,13 +343,26 @@
             z-index: 3000;
         }
 
-        .xp-display {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        .sentence-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            margin: 1rem 0;
+            color: white;
+        }
+
+        .accuracy-badge {
+            display: inline-block;
             padding: 0.25rem 0.75rem;
             border-radius: 2rem;
-            font-size: 0.75rem;
+            font-size: 0.875rem;
             font-weight: bold;
         }
+
+        .accuracy-high { background: #10b981; color: white; }
+        .accuracy-medium { background: #f59e0b; color: white; }
+        .accuracy-low { background: #ef4444; color: white; }
 
         @media (max-width: 768px) {
             .nav-links {
@@ -430,22 +453,53 @@
         </div>
     </section>
 
-    <!-- Modal untuk Start Speaking -->
+    <section id="how-it-works" style="background: #f0f4f8;">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Simple Process</span>
+                <h2 class="section-title">Start Speaking in 3 Easy Steps</h2>
+            </div>
+            <div class="steps-container">
+                <div class="step"><div class="step-number">1</div><div class="step-icon">📝</div><h3>Take Assessment</h3><p>Quick AI-powered level test</p></div>
+                <div class="step"><div class="step-number">2</div><div class="step-icon">🎤</div><h3>Practice Daily</h3><p>15-minute speaking sessions</p></div>
+                <div class="step"><div class="step-number">3</div><div class="step-icon">📈</div><h3>Track Progress</h3><p>Watch your fluency improve</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODAL PRACTICE SPEAKING (LENGKAP DENGAN VOICE RECOGNITION) -->
     <div id="practiceModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('practiceModal')">&times;</span>
             <h2>🎤 Practice Speaking</h2>
-            <p>Say the sentence below:</p>
-            <div style="background: #e2e8f0; padding: 1rem; border-radius: 8px; text-align: center; margin: 1rem 0;">
-                <strong>"The weather is beautiful today"</strong>
+            
+            <label>📝 Choose a sentence to practice:</label>
+            <select id="sentenceSelect" onchange="changeSentence()">
+                <option value="The weather is beautiful today">🌤️ The weather is beautiful today (Easy)</option>
+                <option value="I would like to order a coffee please">☕ I would like to order a coffee please (Medium)</option>
+                <option value="Could you tell me where the nearest station is">🗺️ Could you tell me where the nearest station is (Hard)</option>
+                <option value="What are your plans for the weekend">🎉 What are your plans for the weekend (Medium)</option>
+                <option value="I really enjoy learning English with this app">📱 I really enjoy learning English with this app (Hard)</option>
+            </select>
+            
+            <div class="sentence-card">
+                <strong id="targetSentence" style="font-size: 1.25rem;">"The weather is beautiful today"</strong>
             </div>
-            <button class="mic-button" id="micBtn">🎙️ Click to Speak</button>
-            <div id="recognitionResult" style="margin-top: 1rem; padding: 1rem; background: #f0f4f8; border-radius: 8px;"></div>
-            <button class="btn btn-primary" onclick="addXP(10); showToast('+10 XP earned!'); closeModal('practiceModal')">Complete & Earn XP</button>
+            
+            <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+                <button id="listenBtn" class="btn btn-outline" style="background: #f0f4f8;">🔊 Listen First</button>
+                <button id="micBtn" class="btn btn-primary" style="background: #667eea;">🎙️ Start Speaking</button>
+            </div>
+            
+            <div id="recognitionResult" style="margin-top: 1rem; padding: 1rem; background: #f0f4f8; border-radius: 8px; min-height: 100px;">
+                💡 Click "Start Speaking" and say the sentence above
+            </div>
+            
+            <button class="btn btn-primary" style="margin-top: 1rem; width: 100%;" onclick="completePractice()">✅ Complete & Earn XP</button>
         </div>
     </div>
 
-    <!-- Modal AI Chat -->
+    <!-- MODAL AI CHAT -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('aiChatModal')">&times;</span>
@@ -457,95 +511,142 @@
                 <input type="text" id="chatInput" placeholder="Type your message..." style="flex: 1;">
                 <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
             </div>
-            <button class="btn btn-outline" style="margin-top: 1rem;" onclick="addXP(15); closeModal('aiChatModal')">End Session (+15 XP)</button>
+            <button class="btn btn-outline" style="margin-top: 1rem; width: 100%;" onclick="addXP(15); closeModal('aiChatModal'); showToast('+15 XP earned!')">End Session (+15 XP)</button>
         </div>
     </div>
 
-    <!-- Modal Learning Path -->
+    <!-- MODAL LEARNING PATH -->
     <div id="learningPathModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('learningPathModal')">&times;</span>
             <h2>📊 Find Your Level</h2>
             <p>Answer these questions to get personalized lessons:</p>
-            <div id="quizContainer">
-                <p><strong>1. How would you rate your English speaking?</strong></p>
-                <select id="q1"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
-                <p><strong>2. What's your main goal?</strong></p>
-                <select id="q2"><option>Daily conversation</option><option>Business English</option><option>Exam preparation</option></select>
-                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="submitQuiz()">Get My Path</button>
-            </div>
+            <select id="q1" style="width:100%; padding:0.75rem; margin:0.5rem 0;">
+                <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+            </select>
+            <select id="q2" style="width:100%; padding:0.75rem; margin:0.5rem 0;">
+                <option>Daily conversation</option><option>Business English</option><option>Exam preparation</option>
+            </select>
+            <button class="btn btn-primary" style="width:100%; margin-top:1rem;" onclick="submitQuiz()">Get My Path</button>
             <div id="quizResult" style="margin-top: 1rem;"></div>
         </div>
     </div>
 
-    <!-- Modal Gamification -->
+    <!-- MODAL GAMIFICATION -->
     <div id="gamificationModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('gamificationModal')">&times;</span>
             <h2>🎮 Your Progress</h2>
-            <div id="gamificationStats">
-                <p>🏆 <strong id="displayXP">0</strong> Total XP</p>
-                <p>🔥 <strong id="displayStreak">0</strong> Day Streak</p>
-                <p>⭐ Level: <strong id="displayLevel">1</strong></p>
-                <div style="background: #e2e8f0; border-radius: 8px; height: 10px; margin: 1rem 0;">
-                    <div id="levelProgress" style="background: #667eea; width: 0%; height: 10px; border-radius: 8px;"></div>
-                </div>
-                <h4>Achievements:</h4>
-                <ul id="achievementsList">
-                    <li>🏅 First Lesson - Not yet</li>
-                    <li>🎯 100 XP - Not yet</li>
-                    <li>🔥 7 Day Streak - Not yet</li>
-                </ul>
+            <p>🏆 <strong id="displayXP">0</strong> Total XP</p>
+            <p>🔥 <strong id="displayStreak">0</strong> Day Streak</p>
+            <p>⭐ Level: <strong id="displayLevel">1</strong></p>
+            <div style="background: #e2e8f0; border-radius: 8px; height: 10px; margin: 1rem 0;">
+                <div id="levelProgress" style="background: #667eea; width: 0%; height: 10px; border-radius: 8px;"></div>
             </div>
+            <h4>Achievements:</h4>
+            <ul id="achievementsList">
+                <li>🏅 First Lesson - ❌</li>
+                <li>🎯 100 XP - ❌</li>
+                <li>🔥 7 Day Streak - ❌</li>
+            </ul>
         </div>
     </div>
 
-    <!-- Modal Offline -->
+    <!-- MODAL OFFLINE -->
     <div id="offlineModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('offlineModal')">&times;</span>
             <h2>📱 Offline Mode</h2>
-            <p>Download lessons to practice without internet:</p>
-            <button class="btn btn-primary" onclick="downloadLesson()">📥 Download Basic Lessons (15 MB)</button>
-            <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="downloadLesson()">📥 Download Intermediate Lessons (22 MB)</button>
-            <div id="downloadStatus" style="margin-top: 1rem;"></div>
+            <button class="btn btn-primary" style="width:100%; margin:0.5rem 0;" onclick="downloadLesson('Basic')">📥 Download Basic Lessons</button>
+            <button class="btn btn-primary" style="width:100%; margin:0.5rem 0;" onclick="downloadLesson('Intermediate')">📥 Download Intermediate Lessons</button>
+            <div id="downloadStatus" style="margin-top: 1rem; text-align:center;"></div>
         </div>
     </div>
 
-    <!-- Modal Community -->
+    <!-- MODAL COMMUNITY -->
     <div id="communityModal" class="modal">
         <div class="modal-content">
             <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('communityModal')">&times;</span>
             <h2>👥 Live Practice Sessions</h2>
-            <div id="sessionsList">
-                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
-                    <strong>English Conversation Club</strong><br>🕐 Today, 7:00 PM • 12 participants<br>
-                    <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="joinSession('English Conversation Club')">Join Session</button>
-                </div>
-                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
-                    <strong>Business English Practice</strong><br>🕐 Tomorrow, 6:00 PM • 8 participants<br>
-                    <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="joinSession('Business English Practice')">Join Session</button>
-                </div>
-                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
-                    <strong>Pronunciation Workshop</strong><br>🕐 Wed, 5:00 PM • 15 participants<br>
-                    <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="joinSession('Pronunciation Workshop')">Join Session</button>
-                </div>
+            <div style="border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin:0.5rem 0;">
+                <strong>English Conversation Club</strong><br>🕐 Today, 7:00 PM • 12 participants<br>
+                <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="joinSession('English Conversation Club')">Join Session</button>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin:0.5rem 0;">
+                <strong>Business English Practice</strong><br>🕐 Tomorrow, 6:00 PM • 8 participants<br>
+                <button class="btn btn-primary" style="margin-top:0.5rem;" onclick="joinSession('Business English Practice')">Join Session</button>
             </div>
         </div>
     </div>
 
-    <!-- Login/Signup Modals -->
-    <div id="loginModal" class="modal"><div class="modal-content"><span style="float: right; cursor: pointer;" onclick="closeModal('loginModal')">&times;</span><h2>Welcome Back!</h2><form onsubmit="event.preventDefault(); showToast('Login successful!'); closeModal('loginModal');"><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width:100%">Login</button></form></div></div>
-    <div id="signupModal" class="modal"><div class="modal-content"><span style="float: right; cursor: pointer;" onclick="closeModal('signupModal')">&times;</span><h2>Create Account</h2><form onsubmit="event.preventDefault(); showToast('Account created! Start learning now!'); closeModal('signupModal');"><input type="text" placeholder="Full Name" required><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width:100%">Sign Up</button></form></div></div>
+    <!-- MODAL LOGIN/SIGNUP -->
+    <div id="loginModal" class="modal"><div class="modal-content"><span style="float:right; cursor:pointer;" onclick="closeModal('loginModal')">&times;</span><h2>Welcome Back!</h2><form onsubmit="event.preventDefault(); showToast('Login successful!'); closeModal('loginModal');"><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width:100%">Login</button></form></div></div>
+    <div id="signupModal" class="modal"><div class="modal-content"><span style="float:right; cursor:pointer;" onclick="closeModal('signupModal')">&times;</span><h2>Create Account</h2><form onsubmit="event.preventDefault(); showToast('Account created! Start learning now!'); closeModal('signupModal');"><input type="text" placeholder="Full Name" required><input type="email" placeholder="Email" required><input type="password" placeholder="Password" required><button type="submit" class="btn btn-primary" style="width:100%">Sign Up</button></form></div></div>
+
+    <!-- PRICING SECTION -->
+    <section id="pricing" style="background: white; padding: 5rem 2rem;">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Pricing</span>
+                <h2 class="section-title">Choose Your Learning Plan</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
+                <div style="background:white; padding:2rem; border-radius:1rem; text-align:center; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                    <h3>Free</h3>
+                    <div style="font-size:2rem; font-weight:bold;">$0</div>
+                    <ul style="list-style:none; margin:1rem 0;"><li>✓ 3 lessons/day</li><li>✓ Basic features</li></ul>
+                    <button class="btn btn-outline" onclick="showToast('Free plan activated!')">Get Started</button>
+                </div>
+                <div style="background:white; padding:2rem; border-radius:1rem; text-align:center; border:2px solid #667eea;">
+                    <div style="background:#667eea; color:white; display:inline-block; padding:0.25rem 1rem; border-radius:2rem; font-size:0.75rem; margin-top:-2.5rem; margin-bottom:1rem;">Most Popular</div>
+                    <h3>Pro</h3>
+                    <div style="font-size:2rem; font-weight:bold;">$12<span style="font-size:1rem;">/mo</span></div>
+                    <ul style="list-style:none; margin:1rem 0;"><li>✓ Unlimited lessons</li><li>✓ All AI features</li></ul>
+                    <button class="btn btn-primary" onclick="showToast('Start 7-day Pro trial!')">Try Free</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about" style="background: #f0f4f8; padding: 5rem 2rem;">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Testimonials</span>
+                <h2 class="section-title">What Our Users Say</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;">
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI conversation feature is game changing."</p><h4>- David</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the gamification - keeps me motivated!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT / CTA SECTION -->
+    <section id="contact" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4rem 2rem; text-align: center;">
+        <div class="container">
+            <h2 style="font-size:2rem;">Ready to Start Your Language Journey?</h2>
+            <p style="margin:1rem 0;">Join 50,000+ learners already improving with SpeakFlow</p>
+            <button class="btn btn-primary btn-large" style="background:white; color:#667eea;" onclick="openPronunciationModal()">Start Speaking Free 🎤</button>
+            <p style="margin-top:1rem; opacity:0.8;">No credit card required • Free 7-day trial</p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer style="background: #1a1a2e; color: white; padding: 2rem; text-align: center;">
+        <p>&copy; 2024 SpeakFlow. All rights reserved.</p>
+    </footer>
 
     <div id="toast" class="toast"></div>
 
     <script>
-        // Gamification Variables
+        // ============ GAMIFICATION VARIABLES ============
         let totalXP = localStorage.getItem('speakflow_xp') ? parseInt(localStorage.getItem('speakflow_xp')) : 0;
         let streak = localStorage.getItem('speakflow_streak') ? parseInt(localStorage.getItem('speakflow_streak')) : 0;
         let lastActive = localStorage.getItem('speakflow_last_active') || new Date().toDateString();
-        
+        let lastPracticeAccuracy = 0;
+
         // Check streak
         function checkStreak() {
             const today = new Date().toDateString();
@@ -562,7 +663,7 @@
                 updateDisplay();
             }
         }
-        
+
         function addXP(amount) {
             totalXP += amount;
             localStorage.setItem('speakflow_xp', totalXP);
@@ -570,7 +671,7 @@
             checkAchievements();
             showToast(`+${amount} XP earned! Total: ${totalXP} XP`);
         }
-        
+
         function updateDisplay() {
             document.getElementById('userXP').innerText = totalXP;
             document.getElementById('userStreak').innerText = streak;
@@ -581,142 +682,89 @@
             let progress = (totalXP % 100);
             if(document.getElementById('levelProgress')) document.getElementById('levelProgress').style.width = progress + '%';
         }
-        
+
         function checkAchievements() {
-            let achievements = [];
-            if(totalXP >= 10) achievements.push('🏅 First Lesson');
-            if(totalXP >= 100) achievements.push('🎯 100 XP');
-            if(streak >= 7) achievements.push('🔥 7 Day Streak');
-            const list = document.getElementById('achievementsList');
-            if(list) {
-                list.innerHTML = '';
-                ['🏅 First Lesson', '🎯 100 XP', '🔥 7 Day Streak'].forEach(ach => {
-                    let achieved = (ach === '🏅 First Lesson' && totalXP >= 10) || 
-                                   (ach === '🎯 100 XP' && totalXP >= 100) ||
-                                   (ach === '🔥 7 Day Streak' && streak >= 7);
-                    list.innerHTML += `<li>${ach} - ${achieved ? '✅' : '❌ Not yet'}</li>`;
-                });
+            const achievements = document.getElementById('achievementsList');
+            if(achievements) {
+                let html = '';
+                html += `<li>🏅 First Lesson - ${totalXP >= 10 ? '✅' : '❌'}</li>`;
+                html += `<li>🎯 100 XP - ${totalXP >= 100 ? '✅' : '❌'}</li>`;
+                html += `<li>🔥 7 Day Streak - ${streak >= 7 ? '✅' : '❌'}</li>`;
+                achievements.innerHTML = html;
             }
         }
-        
-        // Speech Recognition
+
+        // ============ SPEECH RECOGNITION ============
         let recognition = null;
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.lang = 'en-US';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
             recognition.onresult = function(event) {
                 const transcript = event.results[0][0].transcript;
-                document.getElementById('recognitionResult').innerHTML = `<strong>You said:</strong> "${transcript}"<br>✅ Pronunciation recorded! AI analyzing...`;
-                if(transcript.toLowerCase().includes('weather') || transcript.toLowerCase().includes('beautiful')) {
-                    document.getElementById('recognitionResult').innerHTML += `<br><span style="color: green;">🎉 Great pronunciation! 92% accuracy</span>`;
+                const targetText = document.getElementById('targetSentence').innerText.replace(/"/g, '');
+                
+                // Calculate accuracy
+                const targetWords = targetText.toLowerCase().split(' ');
+                const spokenWords = transcript.toLowerCase().split(' ');
+                let correct = 0;
+                targetWords.forEach((word, i) => {
+                    if (spokenWords[i] === word) correct++;
+                });
+                lastPracticeAccuracy = Math.round((correct / targetWords.length) * 100);
+                
+                let message = '';
+                let accuracyClass = '';
+                if (lastPracticeAccuracy >= 80) {
+                    message = '🎉 Excellent! Perfect pronunciation!';
+                    accuracyClass = 'accuracy-high';
+                } else if (lastPracticeAccuracy >= 60) {
+                    message = '👍 Good job! Very close!';
+                    accuracyClass = 'accuracy-medium';
+                } else if (lastPracticeAccuracy >= 40) {
+                    message = '📖 Good try! Listen to the example again.';
+                    accuracyClass = 'accuracy-low';
                 } else {
-                    document.getElementById('recognitionResult').innerHTML += `<br><span style="color: orange;">📖 Keep practicing! Try saying "The weather is beautiful today"</span>`;
+                    message = '🎧 Try listening to the example first, then speak slowly.';
+                    accuracyClass = 'accuracy-low';
                 }
+                
+                document.getElementById('recognitionResult').innerHTML = `
+                    <strong>You said:</strong> "${transcript}"<br><br>
+                    <span class="accuracy-badge ${accuracyClass}">🎯 Accuracy: ${lastPracticeAccuracy}%</span><br><br>
+                    <strong>💬 ${message}</strong>
+                `;
+            };
+            
+            recognition.onerror = function(event) {
+                document.getElementById('recognitionResult').innerHTML = '⚠️ Error: ' + event.error + '. Please try again.';
             };
         }
-        
-        document.getElementById('micBtn')?.addEventListener('click', () => {
-            if(recognition) {
-                recognition.start();
-                document.getElementById('recognitionResult').innerHTML = "🎤 Listening... Speak now!";
+
+        // ============ PRACTICE FUNCTIONS ============
+        function changeSentence() {
+            const select = document.getElementById('sentenceSelect');
+            const sentence = select.value;
+            document.getElementById('targetSentence').innerText = `"${sentence}"`;
+            document.getElementById('recognitionResult').innerHTML = '💡 Click "Start Speaking" and say the sentence above';
+            lastPracticeAccuracy = 0;
+        }
+
+        function completePractice() {
+            if (lastPracticeAccuracy >= 80) {
+                addXP(25);
+                showToast(`🎉 Perfect! +25 XP earned!`);
+            } else if (lastPracticeAccuracy >= 60) {
+                addXP(15);
+                showToast(`👍 Good effort! +15 XP earned!`);
+            } else if (lastPracticeAccuracy > 0) {
+                addXP(10);
+                showToast(`📖 Keep practicing! +10 XP earned!`);
             } else {
-                document.getElementById('recognitionResult').innerHTML = "⚠️ Your browser doesn't support voice recognition. Try Chrome!";
+                showToast(`💡 Try speaking first to earn XP! Click the microphone button.`);
+                return;
             }
-        });
-        
-        // AI Chat
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if(!msg) return;
-            const chatDiv = document.getElementById('chatMessages');
-            chatDiv.innerHTML += `<div class="user-message chat-message">You: ${msg}</div>`;
-            input.value = '';
-            setTimeout(() => {
-                let reply = "That's interesting! Tell me more about that.";
-                if(msg.toLowerCase().includes('hello') || msg.toLowerCase().includes('hi')) reply = "Hello! Nice to meet you. How can I help you practice English today?";
-                if(msg.toLowerCase().includes('how are you')) reply = "I'm great, thanks for asking! How are you doing?";
-                if(msg.toLowerCase().includes('weather')) reply = "The weather is beautiful today, isn't it? Great topic for conversation!";
-                chatDiv.innerHTML += `<div class="ai-message chat-message">AI: ${reply}</div>`;
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-            }, 500);
-        }
-        
-        function submitQuiz() {
-            const level = document.getElementById('q1').value;
-            const goal = document.getElementById('q2').value;
-            let result = `📚 Your personalized path is ready!<br>Level: ${level}<br>Goal: ${goal}<br>Recommended: 15 minutes daily practice.`;
-            document.getElementById('quizResult').innerHTML = result;
-            addXP(20);
-        }
-        
-        function downloadLesson() {
-            document.getElementById('downloadStatus').innerHTML = '📥 Downloading...';
-            setTimeout(() => {
-                document.getElementById('downloadStatus').innerHTML = '✅ Lesson downloaded! Available offline.';
-                addXP(5);
-            }, 2000);
-        }
-        
-        function joinSession(sessionName) {
-            showToast(`🎉 Joined ${sessionName}! You earned +25 XP`);
-            addXP(25);
-            closeModal('communityModal');
-        }
-        
-        // Modal functions
-        function openPronunciationModal() { document.getElementById('practiceModal').style.display = 'flex'; }
-        function openAIChatModal() { document.getElementById('aiChatModal').style.display = 'flex'; }
-        function openLearningPathModal() { document.getElementById('learningPathModal').style.display = 'flex'; }
-        function openGamificationModal() { updateDisplay(); checkAchievements(); document.getElementById('gamificationModal').style.display = 'flex'; }
-        function openOfflineModal() { document.getElementById('offlineModal').style.display = 'flex'; }
-        function openCommunityModal() { document.getElementById('communityModal').style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
-        }
-        
-        function scrollToSection(id) {
-            document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
-            if(window.innerWidth <= 768) document.getElementById('navLinks').classList.remove('show');
-        }
-        
-        // Event Listeners
-        document.getElementById('startSpeakingBtn').onclick = () => openPronunciationModal();
-        document.getElementById('watchDemoBtn').onclick = () => showToast('▶️ Demo: AI pronunciation analysis will appear here');
-        document.getElementById('navHome').onclick = () => scrollToSection('home');
-        document.getElementById('navFeatures').onclick = () => scrollToSection('features');
-        document.getElementById('navPricing').onclick = () => scrollToSection('pricing');
-        document.getElementById('navAbout').onclick = () => scrollToSection('about');
-        document.getElementById('navContact').onclick = () => scrollToSection('contact');
-        document.getElementById('logoHome').onclick = () => scrollToSection('home');
-        document.getElementById('btnLogin').onclick = () => document.getElementById('loginModal').style.display = 'flex';
-        document.getElementById('btnSignup').onclick = () => document.getElementById('signupModal').style.display = 'flex';
-        document.getElementById('mobileToggle').onclick = () => document.getElementById('navLinks').classList.toggle('show');
-        
-        // Pricing section dummy
-        document.getElementById('pricing')?.setAttribute('style', 'background: white;');
-        document.getElementById('about')?.setAttribute('style', 'background: #f0f4f8;');
-        document.getElementById('contact')?.setAttribute('style', 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4rem 2rem; text-align: center;');
-        
-        window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
-        
-        checkStreak();
-        updateDisplay();
-    </script>
-    
-    <!-- Pricing & About Sections -->
-    <section id="pricing" style="background: white; padding: 5rem 2rem;"><div class="container"><div class="section-header"><span class="section-badge">Pricing</span><h2 class="section-title">Simple Pricing</h2></div><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;"><div style="background:white; padding:2rem; border-radius:1rem; text-align:center; box-shadow:0 4px 6px rgba(0,0,0,0.05);"><h3>Free</h3><div style="font-size:2rem; font-weight:bold;">$0</div><ul style="list-style:none; margin:1rem 0;"><li>✓ 3 lessons/day</li><li>✓ Basic features</li></ul><button class="btn btn-outline" onclick="showToast('Free plan activated!')">Get Started</button></div><div style="background:white; padding:2rem; border-radius:1rem; text-align:center; border:2px solid #667eea;"><h3>Pro</h3><div style="font-size:2rem; font-weight:bold;">$12<span style="font-size:1rem;">/mo</span></div><ul style="list-style:none; margin:1rem 0;"><li>✓ Unlimited lessons</li><li>✓ All AI features</li></ul><button class="btn btn-primary" onclick="showToast('Start 7-day Pro trial!')">Try Free</button></div></div></div></section>
-    
-    <section id="about" style="background: #f0f4f8; padding: 5rem 2rem;"><div class="container"><div class="section-header"><span class="section-badge">Testimonials</span><h2 class="section-title">What Our Users Say</h2></div><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;"><div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4></div><div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI conversation feature is game changing."</p><h4>- David</h4></div><div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the gamification - keeps me motivated!"</p><h4>- Maria</h4></div></div></div></section>
-    
-    <section id="contact" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4rem 2rem; text-align: center;"><div class="container"><h2 style="font-size:2rem;">Ready to Start?</h2><button class="btn btn-primary btn-large" style="background:white; color:#667eea; margin-top:1rem;" onclick="openPronunciationModal()">Start Speaking Free 🎤</button></div></section>
-    
-    <footer style="background: #1a1a2e; color: white; padding: 2rem; text-align: center;"><p>&copy; 2026 SpeakFlow. All rights reserved.</p></footer>
-</body>
-</html>
+            closeModal('practiceModal
