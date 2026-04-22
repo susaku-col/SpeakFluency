@@ -767,4 +767,107 @@
                 showToast(`💡 Try speaking first to earn XP! Click the microphone button.`);
                 return;
             }
-            closeModal('practiceModal
+            closeModal('practiceModal');
+        }
+
+        // ============ AI CHAT FUNCTIONS ============
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if(!msg) return;
+            const chatDiv = document.getElementById('chatMessages');
+            chatDiv.innerHTML += `<div class="user-message chat-message">You: ${msg}</div>`;
+            input.value = '';
+            setTimeout(() => {
+                let reply = "That's interesting! Tell me more about that.";
+                if(msg.toLowerCase().includes('hello') || msg.toLowerCase().includes('hi')) reply = "Hello! Nice to meet you. How can I help you practice English today?";
+                if(msg.toLowerCase().includes('how are you')) reply = "I'm great, thanks for asking! How are you doing?";
+                if(msg.toLowerCase().includes('weather')) reply = "The weather is beautiful today, isn't it? Great topic for conversation!";
+                if(msg.toLowerCase().includes('thank')) reply = "You're welcome! Keep up the great work!";
+                chatDiv.innerHTML += `<div class="ai-message chat-message">AI: ${reply}</div>`;
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }, 500);
+        }
+
+        // ============ LEARNING PATH FUNCTIONS ============
+        function submitQuiz() {
+            const level = document.getElementById('q1').value;
+            const goal = document.getElementById('q2').value;
+            let result = `📚 Your personalized path is ready!<br>📍 Level: ${level}<br>🎯 Goal: ${goal}<br>📖 Recommended: 15 minutes daily practice.`;
+            document.getElementById('quizResult').innerHTML = result;
+            addXP(20);
+        }
+
+        // ============ OFFLINE FUNCTIONS ============
+        function downloadLesson(level) {
+            document.getElementById('downloadStatus').innerHTML = '📥 Downloading ' + level + ' lessons...';
+            setTimeout(() => {
+                document.getElementById('downloadStatus').innerHTML = '✅ ' + level + ' lessons downloaded! Available offline.';
+                addXP(5);
+            }, 2000);
+        }
+
+        // ============ COMMUNITY FUNCTIONS ============
+        function joinSession(sessionName) {
+            showToast(`🎉 Joined ${sessionName}! You earned +25 XP`);
+            addXP(25);
+            closeModal('communityModal');
+        }
+
+        // ============ MODAL FUNCTIONS ============
+        function openPronunciationModal() { document.getElementById('practiceModal').style.display = 'flex'; }
+        function openAIChatModal() { document.getElementById('aiChatModal').style.display = 'flex'; }
+        function openLearningPathModal() { document.getElementById('learningPathModal').style.display = 'flex'; }
+        function openGamificationModal() { updateDisplay(); checkAchievements(); document.getElementById('gamificationModal').style.display = 'flex'; }
+        function openOfflineModal() { document.getElementById('offlineModal').style.display = 'flex'; }
+        function openCommunityModal() { document.getElementById('communityModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if(window.innerWidth <= 768) document.getElementById('navLinks').classList.remove('show');
+        }
+
+        // ============ EVENT LISTENERS ============
+        document.getElementById('startSpeakingBtn').onclick = () => openPronunciationModal();
+        document.getElementById('watchDemoBtn').onclick = () => showToast('▶️ Demo: AI pronunciation analysis');
+        document.getElementById('navHome').onclick = () => scrollToSection('home');
+        document.getElementById('navFeatures').onclick = () => scrollToSection('features');
+        document.getElementById('navPricing').onclick = () => scrollToSection('pricing');
+        document.getElementById('navAbout').onclick = () => scrollToSection('about');
+        document.getElementById('navContact').onclick = () => scrollToSection('contact');
+        document.getElementById('logoHome').onclick = () => scrollToSection('home');
+        document.getElementById('btnLogin').onclick = () => document.getElementById('loginModal').style.display = 'flex';
+        document.getElementById('btnSignup').onclick = () => document.getElementById('signupModal').style.display = 'flex';
+        document.getElementById('mobileToggle').onclick = () => document.getElementById('navLinks').classList.toggle('show');
+        document.getElementById('listenBtn').onclick = () => {
+            const sentence = document.getElementById('targetSentence').innerText.replace(/"/g, '');
+            const utterance = new SpeechSynthesisUtterance(sentence);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+            showToast("🔊 Listening to correct pronunciation...");
+        };
+        document.getElementById('micBtn').onclick = () => {
+            if(recognition) {
+                recognition.start();
+                document.getElementById('recognitionResult').innerHTML = "🎤 Listening... Speak now!";
+            } else {
+                document.getElementById('recognitionResult').innerHTML = "⚠️ Voice recognition not supported. Try using Google Chrome!";
+            }
+        };
+
+        window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
+        
+        checkStreak();
+        updateDisplay();
+    </script>
+</body>
+</html>
