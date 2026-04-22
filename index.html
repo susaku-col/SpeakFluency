@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SpeakFlow - Belajar Bahasa dengan AI</title>
+    <title>SpeakFlow - AI Voice Conversation Partner</title>
     <style>
         * {
             margin: 0;
@@ -283,7 +283,7 @@
             background: white;
             padding: 2rem;
             border-radius: 1rem;
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
@@ -348,6 +348,38 @@
             border-radius: 8px;
             display: none;
             z-index: 3000;
+        }
+
+        /* Voice Recording Animation */
+        .recording-animation {
+            animation: pulseRed 1s infinite;
+        }
+
+        @keyframes pulseRed {
+            0% { background-color: #ef4444; transform: scale(1); }
+            50% { background-color: #dc2626; transform: scale(1.05); }
+            100% { background-color: #ef4444; transform: scale(1); }
+        }
+
+        .voice-bubble {
+            padding: 0.75rem;
+            border-radius: 18px;
+            margin: 0.5rem 0;
+            max-width: 85%;
+        }
+
+        .user-bubble {
+            background: #e2e8f0;
+            color: #1a1a2e;
+            margin-left: auto;
+            width: fit-content;
+        }
+
+        .ai-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            margin-right: auto;
+            width: fit-content;
         }
 
         @media (max-width: 768px) {
@@ -429,47 +461,36 @@
                 <h2 class="section-title">Powerful Features for Language Mastery</h2>
             </div>
             <div class="features-grid">
-                <!-- Real-time Pronunciation -->
                 <div class="feature-card" id="featurePronunciation">
                     <div class="feature-icon">🎯</div>
                     <h3>Real-time Pronunciation</h3>
                     <p>AI analyzes your speech and gives instant feedback.</p>
                     <div class="xp-display">+10-25 XP</div>
                 </div>
-                
-                <!-- AI Conversation Partner -->
                 <div class="feature-card" id="featureAIChat">
                     <div class="feature-icon">🤖</div>
-                    <h3>AI Conversation Partner</h3>
-                    <p>Practice real conversations with adaptive AI chatbot.</p>
-                    <div class="xp-display">+15 XP</div>
+                    <h3>AI Voice Conversation</h3>
+                    <p>Practice real voice conversations with AI. Get corrections & alternatives!</p>
+                    <div class="xp-display">+25 XP</div>
                 </div>
-                
-                <!-- Personalized Learning Path -->
                 <div class="feature-card" id="featureLearningPath">
                     <div class="feature-icon">📊</div>
                     <h3>Personalized Learning Path</h3>
                     <p>Custom lessons based on your progress.</p>
                     <div class="xp-display">+20 XP</div>
                 </div>
-                
-                <!-- Gamified Experience -->
                 <div class="feature-card" id="featureGamification">
                     <div class="feature-icon">🎮</div>
                     <h3>Gamified Experience</h3>
                     <p>Earn XP, unlock achievements, and maintain streaks.</p>
                     <div class="xp-display">View Progress</div>
                 </div>
-                
-                <!-- Offline Mode -->
                 <div class="feature-card" id="featureOffline">
                     <div class="feature-icon">📱</div>
                     <h3>Offline Mode</h3>
                     <p>Download lessons and practice anywhere.</p>
                     <div class="xp-display">Available</div>
                 </div>
-                
-                <!-- Community Practice -->
                 <div class="feature-card" id="featureCommunity">
                     <div class="feature-icon">👥</div>
                     <h3>Community Practice</h3>
@@ -527,20 +548,39 @@
         </div>
     </div>
 
-    <!-- MODAL AI CHAT -->
+    <!-- MODAL AI VOICE CONVERSATION (LENGKAP DENGAN VOICE) -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="aiChatModal">&times;</span>
-            <h2>🤖 AI Conversation Partner</h2>
-            <p>Practice real conversations with AI</p>
-            <div id="chatMessages" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
-                <div class="ai-message chat-message">AI: Hello! I'm your AI conversation partner. What would you like to talk about today?</div>
+            <h2>🤖 AI Voice Conversation Partner</h2>
+            <p style="color: #666; margin-bottom: 1rem;">🎤 Bicaralah dengan AI - dapatkan koreksi dan alternatif jawaban</p>
+            
+            <div id="voiceStatus" style="background: #f0f4f8; padding: 0.5rem; border-radius: 8px; text-align: center; margin-bottom: 1rem;">
+                ⚪ Microphone siap. Klik tombol di bawah untuk mulai bicara.
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="chatInput" placeholder="Type your message..." style="flex: 1;">
-                <button class="btn btn-primary" id="sendChatBtn">Send</button>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem;">
+                <button id="voiceRecordBtn" class="btn btn-primary" style="background: #ef4444; padding: 1rem 2rem; font-size: 1.2rem;">
+                    🎙️ Mulai Bicara
+                </button>
+                <button id="stopRecordBtn" class="btn btn-outline" style="display: none;">
+                    ⏹️ Berhenti
+                </button>
             </div>
-            <button class="btn btn-outline" id="endChatBtn" style="margin-top: 1rem; width: 100%;">End Session (+15 XP)</button>
+            
+            <div id="voiceConversation" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
+                <div class="ai-bubble voice-bubble">
+                    🤖 AI: Hello! I'm your AI voice conversation partner. Let's practice English together. Please click the microphone and say something!
+                </div>
+            </div>
+            
+            <div id="voiceResult" style="margin-top: 1rem; padding: 1rem; background: #e0e7ff; border-radius: 8px; display: none;">
+                <div id="userSpeechText" style="font-weight: bold;"></div>
+                <div id="correctionText" style="color: #059669; margin-top: 0.5rem;"></div>
+                <div id="alternativeText" style="color: #7c3aed; margin-top: 0.5rem; font-size: 0.875rem;"></div>
+            </div>
+            
+            <button id="endVoiceChatBtn" class="btn btn-outline" style="margin-top: 1rem; width: 100%;">End Session (+25 XP)</button>
         </div>
     </div>
 
@@ -671,8 +711,8 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;">
                 <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI conversation feature is game changing."</p><h4>- David</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the gamification - keeps me motivated!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI voice conversation is incredible!"</p><h4>- David</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"I love the corrections and alternatives feature!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
             </div>
         </div>
     </section>
@@ -701,7 +741,6 @@
         let lastPracticeAccuracy = 0;
         let currentTargetSentence = "The weather is beautiful today";
 
-        // Check streak
         function checkStreak() {
             const today = new Date().toDateString();
             if (lastActive !== today) {
@@ -748,20 +787,19 @@
             }
         }
 
-        // ============ SPEECH RECOGNITION ============
-        let recognition = null;
+        // ============ SPEECH RECOGNITION for Pronunciation ============
+        let pronunciationRecognition = null;
         
-        function initRecognition() {
+        function initPronunciationRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.lang = 'en-US';
-                recognition.continuous = false;
-                recognition.interimResults = false;
+                pronunciationRecognition = new SpeechRecognition();
+                pronunciationRecognition.lang = 'en-US';
+                pronunciationRecognition.continuous = false;
+                pronunciationRecognition.interimResults = false;
                 
-                recognition.onresult = function(event) {
+                pronunciationRecognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
-                    
                     const targetWords = currentTargetSentence.toLowerCase().split(' ');
                     const spokenWords = transcript.toLowerCase().split(' ');
                     let correct = 0;
@@ -788,36 +826,314 @@
                     `;
                 };
                 
-                recognition.onerror = function(event) {
+                pronunciationRecognition.onerror = function(event) {
                     if (event.error === 'no-speech') {
-                        document.getElementById('recognitionResult').innerHTML = '⚠️ No speech detected. Please click the microphone button and speak clearly into your microphone.';
+                        document.getElementById('recognitionResult').innerHTML = '⚠️ No speech detected. Please click the microphone button and speak clearly.';
                     } else {
                         document.getElementById('recognitionResult').innerHTML = '⚠️ Error: ' + event.error + '. Please try again.';
                     }
                 };
-                
                 return true;
-            } else {
-                if(document.getElementById('recognitionResult')) {
-                    document.getElementById('recognitionResult').innerHTML = '⚠️ Voice recognition not supported. Please use Google Chrome.';
-                }
-                return false;
             }
+            return false;
+        }
+
+        // ============ AI VOICE CONVERSATION ============
+        let voiceRecognition = null;
+        let isRecording = false;
+
+        const conversationDatabase = {
+            greetings: {
+                patterns: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening'],
+                responses: [
+                    { 
+                        text: "Hello! Nice to meet you. How are you today?",
+                        alternatives: [
+                            "Hi there! Great to see you!",
+                            "Hey! How's your day going?",
+                            "Good to meet you! What would you like to talk about?"
+                        ]
+                    }
+                ]
+            },
+            howAreYou: {
+                patterns: ['how are you', "how're you", "how are you doing", "how's it going"],
+                responses: [
+                    {
+                        text: "I'm doing great, thank you for asking! How about you?",
+                        alternatives: [
+                            "I'm wonderful! Thanks for asking!",
+                            "Pretty good! What about yourself?",
+                            "I'm fantastic! How are things with you?"
+                        ]
+                    }
+                ]
+            },
+            weather: {
+                patterns: ['weather', 'sunny', 'rain', 'cloudy', 'hot', 'cold', 'temperature'],
+                responses: [
+                    {
+                        text: "The weather today is beautiful, isn't it? Perfect for outdoor activities!",
+                        alternatives: [
+                            "I love talking about weather! What's your favorite season?",
+                            "The weather affects our mood so much. Do you prefer sunny or rainy days?",
+                            "Speaking of weather, have you traveled to places with different climates?"
+                        ]
+                    }
+                ]
+            },
+            food: {
+                patterns: ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'restaurant', 'cook'],
+                responses: [
+                    {
+                        text: "Food is always a great topic! What's your favorite dish?",
+                        alternatives: [
+                            "I love trying new foods! Do you enjoy cooking?",
+                            "What kind of cuisine do you like the most?",
+                            "Have you tried any interesting restaurants lately?"
+                        ]
+                    }
+                ]
+            },
+            hobby: {
+                patterns: ['hobby', 'like to', 'enjoy', 'love to', 'free time', 'weekend', 'sport', 'music', 'movie', 'read'],
+                responses: [
+                    {
+                        text: "That sounds like a wonderful hobby! How long have you been doing it?",
+                        alternatives: [
+                            "That's interesting! What do you enjoy most about it?",
+                            "Nice! Do you have any other hobbies you'd like to share?",
+                            "That's great! Many people find hobbies very relaxing."
+                        ]
+                    }
+                ]
+            },
+            default: {
+                responses: [
+                    {
+                        text: "That's interesting! Could you tell me more about that?",
+                        alternatives: [
+                            "I'd love to hear more! Can you elaborate?",
+                            "That's a great point! What do you think about it?",
+                            "Interesting perspective! Tell me more."
+                        ]
+                    }
+                ]
+            }
+        };
+
+        function detectTopic(userText) {
+            const lowerText = userText.toLowerCase();
+            for (const [topic, data] of Object.entries(conversationDatabase)) {
+                if (topic === 'default') continue;
+                for (const pattern of data.patterns) {
+                    if (lowerText.includes(pattern)) {
+                        return topic;
+                    }
+                }
+            }
+            return 'default';
+        }
+
+        function getGrammarCorrection(userText) {
+            const corrections = [];
+            let correctedText = userText;
+            
+            const grammarRules = [
+                { error: /i is/g, correction: "I am", message: "Use 'I am' instead of 'I is'" },
+                { error: /you is/g, correction: "you are", message: "Use 'you are' instead of 'you is'" },
+                { error: /they is/g, correction: "they are", message: "Use 'they are' instead of 'they is'" },
+                { error: /go to home/g, correction: "go home", message: "Say 'go home' not 'go to home'" },
+                { error: /listen music/g, correction: "listen to music", message: "Add 'to': 'listen to music'" },
+                { error: /explain me/g, correction: "explain to me", message: "Say 'explain to me'" }
+            ];
+            
+            for (const rule of grammarRules) {
+                if (rule.error.test(lowerText)) {
+                    correctedText = userText.replace(rule.error, rule.correction);
+                    corrections.push(rule.message);
+                }
+            }
+            
+            return {
+                hasCorrection: corrections.length > 0,
+                correctedText: correctedText,
+                messages: corrections
+            };
+        }
+
+        function generateAIResponse(userText) {
+            const topic = detectTopic(userText);
+            const topicData = conversationDatabase[topic] || conversationDatabase.default;
+            const response = topicData.responses[0];
+            const grammarCheck = getGrammarCorrection(userText);
+            
+            return {
+                response: response.text,
+                alternatives: response.alternatives,
+                grammarCorrection: grammarCheck
+            };
+        }
+
+        function initVoiceChatRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                voiceRecognition = new SpeechRecognition();
+                voiceRecognition.lang = 'en-US';
+                voiceRecognition.continuous = false;
+                voiceRecognition.interimResults = false;
+                
+                voiceRecognition.onstart = function() {
+                    isRecording = true;
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '🔴 Sedang merekam... Bicaralah dengan jelas';
+                        statusDiv.style.background = '#fee2e2';
+                    }
+                    const recordBtn = document.getElementById('voiceRecordBtn');
+                    const stopBtn = document.getElementById('stopRecordBtn');
+                    if(recordBtn) {
+                        recordBtn.style.display = 'none';
+                        recordBtn.classList.add('recording-animation');
+                    }
+                    if(stopBtn) stopBtn.style.display = 'block';
+                };
+                
+                voiceRecognition.onend = function() {
+                    isRecording = false;
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol untuk mulai bicara.';
+                        statusDiv.style.background = '#f0f4f8';
+                    }
+                    const recordBtn = document.getElementById('voiceRecordBtn');
+                    const stopBtn = document.getElementById('stopRecordBtn');
+                    if(recordBtn) {
+                        recordBtn.style.display = 'block';
+                        recordBtn.classList.remove('recording-animation');
+                    }
+                    if(stopBtn) stopBtn.style.display = 'none';
+                };
+                
+                voiceRecognition.onresult = function(event) {
+                    const userText = event.results[0][0].transcript;
+                    processUserVoice(userText);
+                };
+                
+                voiceRecognition.onerror = function(event) {
+                    const statusDiv = document.getElementById('voiceStatus');
+                    if(statusDiv) {
+                        statusDiv.innerHTML = '⚠️ Error: ' + event.error + '. Silakan coba lagi.';
+                        statusDiv.style.background = '#fee2e2';
+                    }
+                    setTimeout(() => {
+                        if(statusDiv) {
+                            statusDiv.innerHTML = '⚪ Microphone siap. Klik tombol untuk mulai bicara.';
+                            statusDiv.style.background = '#f0f4f8';
+                        }
+                    }, 2000);
+                };
+                return true;
+            }
+            return false;
+        }
+
+        function processUserVoice(userText) {
+            const conversationDiv = document.getElementById('voiceConversation');
+            
+            conversationDiv.innerHTML += `
+                <div class="user-bubble voice-bubble">
+                    🗣️ You: ${userText}
+                </div>
+            `;
+            
+            const aiData = generateAIResponse(userText);
+            
+            const resultDiv = document.getElementById('voiceResult');
+            const userSpeechSpan = document.getElementById('userSpeechText');
+            const correctionSpan = document.getElementById('correctionText');
+            const alternativeSpan = document.getElementById('alternativeText');
+            
+            if(resultDiv) resultDiv.style.display = 'block';
+            if(userSpeechSpan) userSpeechSpan.innerHTML = `📝 Yang Anda ucapkan: "${userText}"`;
+            
+            if(aiData.grammarCorrection.hasCorrection) {
+                if(correctionSpan) {
+                    correctionSpan.innerHTML = `✅ Koreksi: ${aiData.grammarCorrection.correctedText}<br>📖 ${aiData.grammarCorrection.messages.join(', ')}`;
+                }
+            } else {
+                if(correctionSpan) correctionSpan.innerHTML = `✅ Grammar sudah benar! Bagus!`;
+            }
+            
+            if(alternativeSpan) {
+                alternativeSpan.innerHTML = `💡 Alternatif jawaban untuk pertanyaan yang sama:<br>• ${aiData.alternatives.join('<br>• ')}`;
+            }
+            
+            setTimeout(() => {
+                conversationDiv.innerHTML += `
+                    <div class="ai-bubble voice-bubble">
+                        🤖 AI: ${aiData.response}
+                    </div>
+                `;
+                conversationDiv.scrollTop = conversationDiv.scrollHeight;
+                
+                const utterance = new SpeechSynthesisUtterance(aiData.response);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+                
+                setTimeout(() => {
+                    if(resultDiv) resultDiv.style.display = 'none';
+                }, 8000);
+            }, 500);
+            
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+        }
+
+        function startVoiceRecording() {
+            if(voiceRecognition) {
+                try {
+                    voiceRecognition.start();
+                } catch(e) {
+                    showToast('Recognition already started');
+                }
+            } else {
+                showToast('⚠️ Voice recognition not supported. Please use Google Chrome!');
+            }
+        }
+
+        function stopVoiceRecording() {
+            if(voiceRecognition && isRecording) {
+                voiceRecognition.stop();
+            }
+        }
+
+        function endVoiceChat() {
+            addXP(25);
+            closeModal('aiChatModal');
+            showToast('+25 XP earned from voice conversation practice!');
+            
+            const conversationDiv = document.getElementById('voiceConversation');
+            if(conversationDiv) {
+                conversationDiv.innerHTML = `
+                    <div class="ai-bubble voice-bubble">
+                        🤖 AI: Hello! I'm your AI voice conversation partner. Let's practice English together. Please click the microphone and say something!
+                    </div>
+                `;
+            }
+            const resultDiv = document.getElementById('voiceResult');
+            if(resultDiv) resultDiv.style.display = 'none';
         }
 
         // ============ MODAL FUNCTIONS ============
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
-            if(modal) {
-                modal.style.display = 'flex';
-            }
+            if(modal) modal.style.display = 'flex';
         }
 
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
-            if(modal) {
-                modal.style.display = 'none';
-            }
+            if(modal) modal.style.display = 'none';
         }
 
         function showToast(msg) {
@@ -829,9 +1145,7 @@
 
         function scrollToSection(id) {
             const element = document.getElementById(id);
-            if(element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            if(element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
             if(window.innerWidth <= 768) {
                 const navLinks = document.getElementById('navLinks');
                 if(navLinks) navLinks.classList.remove('show');
@@ -839,31 +1153,12 @@
         }
 
         // ============ FEATURE HANDLERS ============
-        function openPronunciation() {
-            openModal('practiceModal');
-        }
-        
-        function openAIChat() {
-            openModal('aiChatModal');
-        }
-        
-        function openLearningPath() {
-            openModal('learningPathModal');
-        }
-        
-        function openGamification() {
-            updateDisplay();
-            checkAchievements();
-            openModal('gamificationModal');
-        }
-        
-        function openOffline() {
-            openModal('offlineModal');
-        }
-        
-        function openCommunity() {
-            openModal('communityModal');
-        }
+        function openPronunciation() { openModal('practiceModal'); }
+        function openAIChat() { openModal('aiChatModal'); }
+        function openLearningPath() { openModal('learningPathModal'); }
+        function openGamification() { updateDisplay(); checkAchievements(); openModal('gamificationModal'); }
+        function openOffline() { openModal('offlineModal'); }
+        function openCommunity() { openModal('communityModal'); }
 
         // ============ PRACTICE FUNCTIONS ============
         function changeSentence() {
@@ -871,13 +1166,9 @@
             if(select) {
                 currentTargetSentence = select.value;
                 const targetSpan = document.getElementById('targetSentence');
-                if(targetSpan) {
-                    targetSpan.innerText = `"${currentTargetSentence}"`;
-                }
+                if(targetSpan) targetSpan.innerText = `"${currentTargetSentence}"`;
                 const resultDiv = document.getElementById('recognitionResult');
-                if(resultDiv) {
-                    resultDiv.innerHTML = '💡 Click "Start Speaking" and say the sentence above';
-                }
+                if(resultDiv) resultDiv.innerHTML = '💡 Click "Start Speaking" and say the sentence above';
                 lastPracticeAccuracy = 0;
             }
         }
@@ -900,18 +1191,12 @@
             }
         }
 
-        function startListening() {
-            if(recognition) {
-                const resultDiv = document.getElementById('recognitionResult');
-                if(resultDiv) {
-                    resultDiv.innerHTML = "🎤 Listening... Speak now!";
-                }
-                recognition.start();
+        function startPronunciationListening() {
+            if(pronunciationRecognition) {
+                document.getElementById('recognitionResult').innerHTML = "🎤 Listening... Speak now!";
+                pronunciationRecognition.start();
             } else {
-                const resultDiv = document.getElementById('recognitionResult');
-                if(resultDiv) {
-                    resultDiv.innerHTML = "⚠️ Voice recognition not supported. Try using Google Chrome!";
-                }
+                document.getElementById('recognitionResult').innerHTML = "⚠️ Voice recognition not supported. Try using Google Chrome!";
             }
         }
 
@@ -923,47 +1208,14 @@
             showToast("🔊 Listening to correct pronunciation...");
         }
 
-        // ============ AI CHAT FUNCTIONS ============
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if(!msg) return;
-            const chatDiv = document.getElementById('chatMessages');
-            chatDiv.innerHTML += `<div class="user-message chat-message">You: ${msg}</div>`;
-            input.value = '';
-            setTimeout(() => {
-                let reply = "That's interesting! Tell me more about that.";
-                if(msg.toLowerCase().includes('hello') || msg.toLowerCase().includes('hi')) reply = "Hello! Nice to meet you. How can I help you practice English today?";
-                if(msg.toLowerCase().includes('how are you')) reply = "I'm great, thanks for asking! How are you doing?";
-                if(msg.toLowerCase().includes('weather')) reply = "The weather is beautiful today, isn't it? Great topic for conversation!";
-                if(msg.toLowerCase().includes('thank')) reply = "You're welcome! Keep up the great work!";
-                chatDiv.innerHTML += `<div class="ai-message chat-message">AI: ${reply}</div>`;
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-            }, 500);
-        }
-
-        function endChat() {
-            addXP(15);
-            closeModal('aiChatModal');
-            showToast('+15 XP earned from conversation practice!');
-        }
-
-        // ============ LEARNING PATH FUNCTIONS ============
         function submitQuiz() {
             const level = document.getElementById('q1').value;
             const goal = document.getElementById('q2').value;
-            let result = `📚 Your personalized path is ready!<br>📍 Level: ${level}<br>🎯 Goal: ${goal}<br>📖 Recommended: 15 minutes daily practice.`;
-            const resultDiv = document.getElementById('quizResult');
-            if(resultDiv) {
-                resultDiv.innerHTML = result;
-            }
+            document.getElementById('quizResult').innerHTML = `📚 Your personalized path is ready!<br>📍 Level: ${level}<br>🎯 Goal: ${goal}<br>📖 Recommended: 15 minutes daily practice.`;
             addXP(20);
-            setTimeout(() => {
-                closeModal('learningPathModal');
-            }, 2000);
+            setTimeout(() => closeModal('learningPathModal'), 2000);
         }
 
-        // ============ OFFLINE FUNCTIONS ============
         function downloadLesson(level) {
             const statusDiv = document.getElementById('downloadStatus');
             if(statusDiv) {
@@ -971,14 +1223,11 @@
                 setTimeout(() => {
                     statusDiv.innerHTML = '✅ ' + level + ' lessons downloaded! Available offline.';
                     addXP(5);
-                    setTimeout(() => {
-                        statusDiv.innerHTML = '';
-                    }, 2000);
+                    setTimeout(() => statusDiv.innerHTML = '', 2000);
                 }, 2000);
             }
         }
 
-        // ============ COMMUNITY FUNCTIONS ============
         function joinSession(sessionName) {
             showToast(`🎉 Joined ${sessionName}! You earned +25 XP`);
             addXP(25);
@@ -987,152 +1236,59 @@
 
         // ============ EVENT LISTENERS ============
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize speech recognition
-            initRecognition();
+            initPronunciationRecognition();
+            initVoiceChatRecognition();
             
-            // FEATURE CARDS - assign click handlers
-            const featurePronunciation = document.getElementById('featurePronunciation');
-            if(featurePronunciation) featurePronunciation.onclick = openPronunciation;
+            document.getElementById('featurePronunciation').onclick = openPronunciation;
+            document.getElementById('featureAIChat').onclick = openAIChat;
+            document.getElementById('featureLearningPath').onclick = openLearningPath;
+            document.getElementById('featureGamification').onclick = openGamification;
+            document.getElementById('featureOffline').onclick = openOffline;
+            document.getElementById('featureCommunity').onclick = openCommunity;
             
-            const featureAIChat = document.getElementById('featureAIChat');
-            if(featureAIChat) featureAIChat.onclick = openAIChat;
+            document.getElementById('startSpeakingBtn').onclick = openPronunciation;
+            document.getElementById('ctaStartBtn').onclick = openPronunciation;
+            document.getElementById('watchDemoBtn').onclick = () => showToast('▶️ Demo: AI pronunciation analysis');
             
-            const featureLearningPath = document.getElementById('featureLearningPath');
-            if(featureLearningPath) featureLearningPath.onclick = openLearningPath;
+            document.getElementById('navHome').onclick = () => scrollToSection('home');
+            document.getElementById('navFeatures').onclick = () => scrollToSection('features');
+            document.getElementById('navPricing').onclick = () => scrollToSection('pricing');
+            document.getElementById('navAbout').onclick = () => scrollToSection('about');
+            document.getElementById('navContact').onclick = () => scrollToSection('contact');
+            document.getElementById('logoHome').onclick = () => scrollToSection('home');
+            document.getElementById('btnLogin').onclick = () => openModal('loginModal');
+            document.getElementById('btnSignup').onclick = () => openModal('signupModal');
+            document.getElementById('mobileToggle').onclick = () => document.getElementById('navLinks').classList.toggle('show');
             
-            const featureGamification = document.getElementById('featureGamification');
-            if(featureGamification) featureGamification.onclick = openGamification;
+            document.getElementById('sentenceSelect').onchange = changeSentence;
+            document.getElementById('listenBtn').onclick = listenExample;
+            document.getElementById('micBtn').onclick = startPronunciationListening;
+            document.getElementById('completePracticeBtn').onclick = completePractice;
             
-            const featureOffline = document.getElementById('featureOffline');
-            if(featureOffline) featureOffline.onclick = openOffline;
+            document.getElementById('voiceRecordBtn').onclick = startVoiceRecording;
+            document.getElementById('stopRecordBtn').onclick = stopVoiceRecording;
+            document.getElementById('endVoiceChatBtn').onclick = endVoiceChat;
             
-            const featureCommunity = document.getElementById('featureCommunity');
-            if(featureCommunity) featureCommunity.onclick = openCommunity;
+            document.getElementById('submitQuizBtn').onclick = submitQuiz;
+            document.getElementById('downloadBasicBtn').onclick = () => downloadLesson('Basic');
+            document.getElementById('downloadInterBtn').onclick = () => downloadLesson('Intermediate');
             
-            // Navigation
-            const startBtn = document.getElementById('startSpeakingBtn');
-            if(startBtn) startBtn.onclick = openPronunciation;
-            
-            const watchDemo = document.getElementById('watchDemoBtn');
-            if(watchDemo) watchDemo.onclick = () => showToast('▶️ Demo: AI pronunciation analysis');
-            
-            const ctaBtn = document.getElementById('ctaStartBtn');
-            if(ctaBtn) ctaBtn.onclick = openPronunciation;
-            
-            const navHome = document.getElementById('navHome');
-            if(navHome) navHome.onclick = () => scrollToSection('home');
-            
-            const navFeatures = document.getElementById('navFeatures');
-            if(navFeatures) navFeatures.onclick = () => scrollToSection('features');
-            
-            const navPricing = document.getElementById('navPricing');
-            if(navPricing) navPricing.onclick = () => scrollToSection('pricing');
-            
-            const navAbout = document.getElementById('navAbout');
-            if(navAbout) navAbout.onclick = () => scrollToSection('about');
-            
-            const navContact = document.getElementById('navContact');
-            if(navContact) navContact.onclick = () => scrollToSection('contact');
-            
-            const logoHome = document.getElementById('logoHome');
-            if(logoHome) logoHome.onclick = () => scrollToSection('home');
-            
-            const btnLogin = document.getElementById('btnLogin');
-            if(btnLogin) btnLogin.onclick = () => openModal('loginModal');
-            
-            const btnSignup = document.getElementById('btnSignup');
-            if(btnSignup) btnSignup.onclick = () => openModal('signupModal');
-            
-            const mobileToggle = document.getElementById('mobileToggle');
-            const navLinks = document.getElementById('navLinks');
-            if(mobileToggle) {
-                mobileToggle.onclick = () => navLinks.classList.toggle('show');
-            }
-            
-            // Practice modal buttons
-            const sentenceSelect = document.getElementById('sentenceSelect');
-            if(sentenceSelect) sentenceSelect.onchange = changeSentence;
-            
-            const listenBtn = document.getElementById('listenBtn');
-            if(listenBtn) listenBtn.onclick = listenExample;
-            
-            const micBtn = document.getElementById('micBtn');
-            if(micBtn) micBtn.onclick = startListening;
-            
-            const completeBtn = document.getElementById('completePracticeBtn');
-            if(completeBtn) completeBtn.onclick = completePractice;
-            
-            // AI Chat buttons
-            const sendChatBtn = document.getElementById('sendChatBtn');
-            if(sendChatBtn) sendChatBtn.onclick = sendChatMessage;
-            
-            const endChatBtn = document.getElementById('endChatBtn');
-            if(endChatBtn) endChatBtn.onclick = endChat;
-            
-            const chatInput = document.getElementById('chatInput');
-            if(chatInput) {
-                chatInput.addEventListener('keypress', function(e) {
-                    if(e.key === 'Enter') sendChatMessage();
-                });
-            }
-            
-            // Learning Path
-            const submitQuizBtn = document.getElementById('submitQuizBtn');
-            if(submitQuizBtn) submitQuizBtn.onclick = submitQuiz;
-            
-            // Offline
-            const downloadBasic = document.getElementById('downloadBasicBtn');
-            if(downloadBasic) downloadBasic.onclick = () => downloadLesson('Basic');
-            
-            const downloadInter = document.getElementById('downloadInterBtn');
-            if(downloadInter) downloadInter.onclick = () => downloadLesson('Intermediate');
-            
-            // Community join buttons
             document.querySelectorAll('.joinSessionBtn').forEach(btn => {
                 btn.onclick = () => joinSession(btn.getAttribute('data-session'));
             });
             
-            // Pricing
-            const pricingFree = document.querySelector('.pricingFreeBtn');
-            if(pricingFree) pricingFree.onclick = () => showToast('Free plan activated!');
+            document.querySelector('.pricingFreeBtn').onclick = () => showToast('Free plan activated!');
+            document.querySelector('.pricingProBtn').onclick = () => showToast('Start 7-day Pro trial!');
             
-            const pricingPro = document.querySelector('.pricingProBtn');
-            if(pricingPro) pricingPro.onclick = () => showToast('Start 7-day Pro trial!');
+            document.getElementById('loginForm').onsubmit = (e) => { e.preventDefault(); showToast('Login successful!'); closeModal('loginModal'); };
+            document.getElementById('signupForm').onsubmit = (e) => { e.preventDefault(); showToast('Account created!'); closeModal('signupModal'); };
             
-            // Login/Signup forms
-            const loginForm = document.getElementById('loginForm');
-            if(loginForm) {
-                loginForm.onsubmit = (e) => {
-                    e.preventDefault();
-                    showToast('Login successful!');
-                    closeModal('loginModal');
-                };
-            }
-            
-            const signupForm = document.getElementById('signupForm');
-            if(signupForm) {
-                signupForm.onsubmit = (e) => {
-                    e.preventDefault();
-                    showToast('Account created! Start learning now!');
-                    closeModal('signupModal');
-                };
-            }
-            
-            // Close buttons
-            document.querySelectorAll('.close-modal').forEach(closeBtn => {
-                closeBtn.onclick = () => {
-                    const modalId = closeBtn.getAttribute('data-modal');
-                    if(modalId) closeModal(modalId);
-                };
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.onclick = () => closeModal(btn.getAttribute('data-modal'));
             });
         });
 
-        // Close modal when clicking outside
-        window.onclick = (e) => {
-            if(e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-            }
-        };
+        window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
         
         checkStreak();
         updateDisplay();
