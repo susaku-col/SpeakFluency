@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SpeakFlow - AI Voice Conversation Partner with Memory</title>
+    <title>SpeakFlow - AI Voice Conversation with 6 Accents</title>
     <style>
         * {
             margin: 0;
@@ -118,6 +118,11 @@
 
         .btn-danger:hover {
             background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
         }
 
         .mobile-toggle {
@@ -292,7 +297,7 @@
             background: white;
             padding: 2rem;
             border-radius: 1rem;
-            max-width: 650px;
+            max-width: 700px;
             width: 90%;
             max-height: 85vh;
             overflow-y: auto;
@@ -399,6 +404,41 @@
             100% { background-color: #ef4444; transform: scale(1); }
         }
 
+        .accent-selector {
+            background: #f0f4f8;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .accent-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .accent-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .accent-btn:hover {
+            border-color: #667eea;
+            background: #e0e7ff;
+        }
+
+        .accent-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
         @media (max-width: 768px) {
             .nav-links {
                 display: none;
@@ -487,7 +527,7 @@
                 <div class="feature-card" id="featureAIChat">
                     <div class="feature-icon">🤖</div>
                     <h3>AI Voice Conversation</h3>
-                    <p>🧠 Dengan MEMORY percakapan! AI mengingat obrolan sebelumnya.</p>
+                    <p>🇬🇧🇺🇸🇦🇺🇮🇪🇿🇦 6 Aksen Inggris! Pilih suara favorit Anda.</p>
                     <div class="xp-display">+25 XP</div>
                 </div>
                 <div class="feature-card" id="featureLearningPath">
@@ -565,12 +605,28 @@
         </div>
     </div>
 
-    <!-- MODAL AI VOICE CONVERSATION WITH MEMORY -->
+    <!-- MODAL AI VOICE CONVERSATION WITH ACCENTS -->
     <div id="aiChatModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="aiChatModal">&times;</span>
-            <h2>🤖 AI Voice Conversation Partner <span style="font-size: 0.75rem; background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 2rem;">🧠 With Memory</span></h2>
-            <p style="color: #666; margin-bottom: 0.5rem;">🎤 AI mengingat percakapan Anda! Bicaralah dengan natural seperti ngobrol dengan teman.</p>
+            <h2>🤖 AI Voice Conversation Partner</h2>
+            <p style="color: #666; margin-bottom: 0.5rem;">🎤 Pilih aksen dan karakter suara AI favorit Anda!</p>
+            
+            <!-- Accent Selector -->
+            <div class="accent-selector">
+                <strong>🌍 Pilih Aksen / Karakter AI:</strong>
+                <div class="accent-buttons">
+                    <button class="accent-btn" data-accent="uk">🇬🇧 British (UK)</button>
+                    <button class="accent-btn" data-accent="us">🇺🇸 American (US)</button>
+                    <button class="accent-btn" data-accent="australia">🇦🇺 Australian</button>
+                    <button class="accent-btn" data-accent="ireland">🇮🇪 Irish</button>
+                    <button class="accent-btn" data-accent="southafrica">🇿🇦 South African</button>
+                    <button class="accent-btn" data-accent="character">🎭 Character (Warm & Expressive)</button>
+                </div>
+                <div id="selectedAccentInfo" style="margin-top: 0.5rem; font-size: 0.75rem; color: #667eea;">
+                    🇬🇧 Selected: British English
+                </div>
+            </div>
             
             <div id="voiceStatus" style="background: #f0f4f8; padding: 0.75rem; border-radius: 8px; text-align: center; margin-bottom: 1rem; transition: all 0.3s;">
                 ⚪ Klik tombol merah untuk mulai percakapan suara
@@ -584,13 +640,13 @@
                     ⏹️ Berhenti
                 </button>
                 <button id="clearChatBtn" class="btn btn-outline">
-                    🗑️ Clear Chat & Memory
+                    🗑️ Clear Chat
                 </button>
             </div>
             
-            <div id="voiceConversation" style="height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
+            <div id="voiceConversation" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: #f9fafb;">
                 <div class="ai-bubble voice-bubble">
-                    🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
+                    🤖 AI: Hello! I'm your AI voice conversation partner. Choose your favorite accent above, then click the red button and start speaking!
                 </div>
             </div>
             
@@ -710,14 +766,14 @@
                 <div style="background:white; padding:2rem; border-radius:1rem; text-align:center; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
                     <h3>Free</h3>
                     <div style="font-size:2rem; font-weight:bold;">$0</div>
-                    <ul style="list-style:none; margin:1rem 0;"><li>✓ 3 lessons/day</li><li>✓ Basic features</li></ul>
+                    <ul style="list-style:none; margin:1rem 0;"><li>✓ 3 lessons/day</li><li>✓ 3 accents available</li></ul>
                     <button class="btn btn-outline pricingFreeBtn">Get Started</button>
                 </div>
                 <div style="background:white; padding:2rem; border-radius:1rem; text-align:center; border:2px solid #667eea;">
                     <div style="background:#667eea; color:white; display:inline-block; padding:0.25rem 1rem; border-radius:2rem; font-size:0.75rem; margin-top:-2.5rem; margin-bottom:1rem;">Most Popular</div>
                     <h3>Pro</h3>
                     <div style="font-size:2rem; font-weight:bold;">$12<span style="font-size:1rem;">/mo</span></div>
-                    <ul style="list-style:none; margin:1rem 0;"><li>✓ Unlimited lessons</li><li>✓ All AI features</li></ul>
+                    <ul style="list-style:none; margin:1rem 0;"><li>✓ Unlimited lessons</li><li>✓ All 6 accents</li><li>✓ Character voices</li></ul>
                     <button class="btn btn-primary pricingProBtn">Try Free</button>
                 </div>
             </div>
@@ -732,9 +788,9 @@
                 <h2 class="section-title">What Our Users Say</h2>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 2rem;">
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Amazing app! My English improved so much!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The AI remembers our conversation! It feels so natural!"</p><h4>- David</h4><span>⭐ 5.0</span></div>
-                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Finally, an AI that understands context!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The British accent sounds so authentic!"</p><h4>- Sarah</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"Love the Australian accent option!"</p><h4>- David</h4><span>⭐ 5.0</span></div>
+                <div style="background:white; padding:1.5rem; border-radius:1rem;"><p>"The character voice is so warm and natural!"</p><h4>- Maria</h4><span>⭐ 4.9</span></div>
             </div>
         </div>
     </section>
@@ -750,7 +806,7 @@
     </section>
 
     <footer style="background: #1a1a2e; color: white; padding: 2rem; text-align: center;">
-        <p>&copy; 2024 SpeakFlow. All rights reserved.</p>
+        <p>&copy; 2026 SpeakFlow. All rights reserved.</p>
     </footer>
 
     <div id="toast" class="toast"></div>
@@ -763,10 +819,110 @@
         let lastPracticeAccuracy = 0;
         let currentTargetSentence = "The weather is beautiful today";
 
+        // ============ ACCENT CONFIGURATION ============
+        let currentAccent = 'uk';
+        let selectedVoice = null;
+        let availableVoices = [];
+
+        // Accent settings with pitch and rate for character
+        const accentConfig = {
+            uk: { name: 'British English', flag: '🇬🇧', pitch: 1, rate: 0.9, lang: 'en-GB', style: 'elegant' },
+            us: { name: 'American English', flag: '🇺🇸', pitch: 1, rate: 0.95, lang: 'en-US', style: 'neutral' },
+            australia: { name: 'Australian English', flag: '🇦🇺', pitch: 1.05, rate: 0.92, lang: 'en-AU', style: 'friendly' },
+            ireland: { name: 'Irish English', flag: '🇮🇪', pitch: 1.08, rate: 0.88, lang: 'en-IE', style: 'melodic' },
+            southafrica: { name: 'South African English', flag: '🇿🇦', pitch: 1.02, rate: 0.93, lang: 'en-ZA', style: 'warm' },
+            character: { name: 'Character Voice', flag: '🎭', pitch: 1.15, rate: 0.85, lang: 'en-US', style: 'expressive' }
+        };
+
+        // Load available voices
+        function loadVoices() {
+            return new Promise((resolve) => {
+                let voices = window.speechSynthesis.getVoices();
+                if (voices.length) {
+                    resolve(voices);
+                } else {
+                    window.speechSynthesis.onvoiceschanged = () => {
+                        resolve(window.speechSynthesis.getVoices());
+                    };
+                }
+            });
+        }
+
+        // Find best voice for selected accent
+        async function setVoiceForAccent(accent) {
+            const voices = await loadVoices();
+            const config = accentConfig[accent];
+            const preferredLang = config.lang;
+            
+            // Find voice that matches the accent
+            let foundVoice = voices.find(v => v.lang === preferredLang && v.localService);
+            if (!foundVoice) {
+                foundVoice = voices.find(v => v.lang === preferredLang);
+            }
+            if (!foundVoice) {
+                foundVoice = voices.find(v => v.lang.startsWith('en'));
+            }
+            
+            selectedVoice = foundVoice;
+            return selectedVoice;
+        }
+
+        // Speak with selected accent and character
+        function speakWithAccent(text, callback) {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            
+            const config = accentConfig[currentAccent];
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+            
+            utterance.lang = config.lang;
+            utterance.rate = config.rate;
+            utterance.pitch = config.pitch;
+            utterance.volume = 1;
+            
+            // Add character/style to make it sound more natural
+            if (currentAccent === 'character') {
+                utterance.rate = 0.85;
+                utterance.pitch = 1.15;
+            }
+            
+            utterance.onend = function() {
+                if (callback) callback();
+            };
+            
+            utterance.onerror = function() {
+                if (callback) callback();
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Test accent with sample text
+        function testAccent(accent) {
+            const sampleText = accent === 'character' 
+                ? "Hello there! I'm your friendly AI conversation partner. Let's practice English together!"
+                : `Hello! This is ${accentConfig[accent].name} accent. How does it sound?`;
+            
+            const config = accentConfig[accent];
+            const utterance = new SpeechSynthesisUtterance(sampleText);
+            
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+            utterance.lang = config.lang;
+            utterance.rate = config.rate;
+            utterance.pitch = config.pitch;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
         // ============ CONVERSATION MEMORY ============
         let conversationMemory = [];
-        let currentTopic = null;
-        let lastUserQuestion = null;
         let userInfo = { name: null, interest: null };
 
         function checkStreak() {
@@ -815,7 +971,7 @@
             }
         }
 
-        // ============ SPEECH RECOGNITION for Pronunciation ============
+        // ============ SPEECH RECOGNITION ============
         let pronunciationRecognition = null;
         
         function initPronunciationRecognition() {
@@ -866,96 +1022,9 @@
             return false;
         }
 
-        // ============ AI WITH MEMORY ============
-        
-        // Fungsi untuk mendeteksi pertanyaan lanjutan
-        function isFollowUpQuestion(userText) {
-            const followUpKeywords = ['and', 'then', 'after that', 'also', 'what about', 'how about', 'really', 'why', 'how', 'when', 'where', 'who', 'tell me more', 'explain', 'elaborate'];
-            const lowerText = userText.toLowerCase();
-            return followUpKeywords.some(keyword => lowerText.includes(keyword)) || lowerText.length < 15;
-        }
-
-        // Fungsi untuk mengekstrak informasi dari percakapan
-        function extractInfo(userText) {
-            const lowerText = userText.toLowerCase();
-            
-            // Deteksi nama
-            const namePatterns = [/my name is (\w+)/i, /i am (\w+)/i, /call me (\w+)/i];
-            for (const pattern of namePatterns) {
-                const match = userText.match(pattern);
-                if (match && match[1]) {
-                    userInfo.name = match[1];
-                }
-            }
-            
-            // Deteksi minat/hobi
-            const interestKeywords = ['like', 'love', 'enjoy', 'interested in', 'hobby'];
-            for (const keyword of interestKeywords) {
-                if (lowerText.includes(keyword)) {
-                    const words = userText.split(' ');
-                    for (let i = 0; i < words.length; i++) {
-                        if (words[i].toLowerCase() === keyword && words[i+1]) {
-                            userInfo.interest = words[i+1];
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Fungsi utama generate response dengan memory
-        function generateResponseWithMemory(userText) {
-            const lowerText = userText.toLowerCase();
-            
-            // Simpan ke memory
-            conversationMemory.push({ role: 'user', text: userText, timestamp: new Date() });
-            if (conversationMemory.length > 10) conversationMemory.shift();
-            
-            extractInfo(userText);
-            
-            // Cek apakah ini follow-up question
-            const isFollowUp = isFollowUpQuestion(userText);
-            
-            // Cek goodbye
-            if (lowerText.includes('bye') || lowerText.includes('goodbye') || lowerText.includes('see you')) {
-                const response = "Goodbye! It was great talking with you. Keep practicing English every day! Come back anytime!";
-                conversationMemory.push({ role: 'ai', text: response, timestamp: new Date() });
-                return { response: response, alternatives: ["Take care!", "See you next time!", "Bye! Keep learning!"] };
-            }
-            
-            // Cek perkenalan nama
-            if (userInfo.name && (lowerText.includes('my name') || lowerText.includes('i am'))) {
-                const response = `Nice to meet you, ${userInfo.name}! That's a wonderful name. What brings you to learn English today?`;
-                conversationMemory.push({ role: 'ai', text: response, timestamp: new Date() });
-                return { response: response, alternatives: [`Hello ${userInfo.name}!`, `Great to meet you ${userInfo.name}!`, `Hi ${userInfo.name}! How can I help you?`] };
-            }
-            
-            // Cek berdasarkan memory terakhir (konteks)
-            if (conversationMemory.length >= 2 && isFollowUp) {
-                const lastUserMsg = conversationMemory.filter(m => m.role === 'user').slice(-2)[0];
-                if (lastUserMsg) {
-                    const lastTopic = detectTopicFromText(lastUserMsg.text);
-                    if (lastTopic !== 'default') {
-                        const contextualResponse = getContextualResponse(lastTopic, userText);
-                        if (contextualResponse) {
-                            conversationMemory.push({ role: 'ai', text: contextualResponse, timestamp: new Date() });
-                            return { response: contextualResponse, alternatives: getAlternativeResponses(lastTopic) };
-                        }
-                    }
-                }
-            }
-            
-            // Deteksi topik baru
-            const topic = detectTopicFromText(userText);
-            const responseData = getResponseForTopic(topic, userText);
-            
-            conversationMemory.push({ role: 'ai', text: responseData.response, timestamp: new Date() });
-            return responseData;
-        }
-        
+        // ============ AI RESPONSE GENERATOR ============
         function detectTopicFromText(text) {
             const lowerText = text.toLowerCase();
-            
             if (lowerText.match(/hello|hi|hey|good morning|good afternoon|good evening|halo/)) return 'greetings';
             if (lowerText.match(/how are you|how're you|how do you do|how's it going/)) return 'howAreYou';
             if (lowerText.match(/weather|sunny|rain|cloudy|hot|cold|temperature|cuaca/)) return 'weather';
@@ -964,40 +1033,10 @@
             if (lowerText.match(/work|job|company|office|career|profession|student|study|kerja/)) return 'work';
             if (lowerText.match(/travel|vacation|holiday|trip|visit|beach|mountain|city|liburan/)) return 'travel';
             if (lowerText.match(/thank|thanks|terima kasih/)) return 'thank';
-            
+            if (lowerText.match(/bye|goodbye|see you|later|exit|stop|selesai/)) return 'bye';
             return 'default';
         }
-        
-        function getContextualResponse(topic, followUpText) {
-            const responses = {
-                weather: [
-                    "Yes, the weather really affects our mood, doesn't it? Do you prefer sunny or rainy days?",
-                    "That's a good point about the weather! What's your favorite season?",
-                    "Speaking of weather, have you ever experienced extreme weather where you live?"
-                ],
-                food: [
-                    "That sounds delicious! Do you like to cook at home or eat out?",
-                    "Food brings people together! What's a famous food from your country?",
-                    "I love learning about different cuisines! Tell me more about your favorite dishes."
-                ],
-                hobby: [
-                    "That's awesome! How often do you do that hobby?",
-                    "Having hobbies is so important! Do you have any other interests?",
-                    "That sounds fun! How did you first get into that hobby?"
-                ],
-                travel: [
-                    "Traveling is wonderful! Where would you like to go next?",
-                    "I love hearing about travel experiences! What was your favorite memory from that trip?",
-                    "Do you prefer traveling alone or with friends/family?"
-                ]
-            };
-            
-            if (responses[topic]) {
-                return responses[topic][Math.floor(Math.random() * responses[topic].length)];
-            }
-            return null;
-        }
-        
+
         function getResponseForTopic(topic, userText) {
             const responses = {
                 greetings: {
@@ -1021,7 +1060,7 @@
                     alternatives: ["Hobbies make life fun! What do you enjoy most about it?", "That sounds great! Do you have any other hobbies?"]
                 },
                 work: {
-                    text: "That's fascinating! What do you find most challenging or rewarding about your work/studies?",
+                    text: "That's fascinating! What do you find most challenging or rewarding about your work or studies?",
                     alternatives: ["Tell me more about your daily routine!", "What inspired you to choose that path?"]
                 },
                 travel: {
@@ -1031,6 +1070,10 @@
                 thank: {
                     text: "You're very welcome! I'm happy to help you practice English. Is there anything else you'd like to discuss?",
                     alternatives: ["My pleasure! Keep up the great work!", "Anytime! Let's continue our conversation!"]
+                },
+                bye: {
+                    text: "Goodbye! It was great talking with you. Keep practicing English every day! Come back anytime!",
+                    alternatives: ["Take care!", "See you next time!", "Bye! Keep learning!"]
                 },
                 default: {
                     text: "That's interesting! Could you tell me more about that? I'd love to understand your perspective.",
@@ -1044,18 +1087,7 @@
                 alternatives: data.alternatives
             };
         }
-        
-        function getAlternativeResponses(topic) {
-            const responses = {
-                weather: ["What's your favorite season?", "Do you prefer hot or cold weather?", "Have you experienced different climates?"],
-                food: ["What's your favorite dish?", "Do you like cooking?", "What's a famous food from your country?"],
-                hobby: ["How did you start that hobby?", "Do you have other hobbies?", "What do you enjoy most about it?"],
-                travel: ["Where's your dream destination?", "Do you prefer beach or mountains?", "What's your best travel memory?"],
-                default: ["Tell me more!", "That's interesting!", "Why do you think that?"]
-            };
-            return responses[topic] || responses.default;
-        }
-        
+
         function getGrammarCorrection(userText) {
             const corrections = [];
             let correctedText = userText;
@@ -1082,11 +1114,32 @@
             };
         }
 
+        function generateResponseWithMemory(userText) {
+            conversationMemory.push({ role: 'user', text: userText, timestamp: new Date() });
+            if (conversationMemory.length > 10) conversationMemory.shift();
+            
+            // Extract name if mentioned
+            const nameMatch = userText.match(/my name is (\w+)/i) || userText.match(/i am (\w+)/i);
+            if (nameMatch && nameMatch[1] && !userInfo.name) {
+                userInfo.name = nameMatch[1];
+            }
+            
+            const topic = detectTopicFromText(userText);
+            const responseData = getResponseForTopic(topic, userText);
+            
+            // Personalize response if name is known
+            if (userInfo.name && (topic === 'greetings' || topic === 'howAreYou')) {
+                responseData.response = `Nice to see you again, ${userInfo.name}! ` + responseData.response;
+            }
+            
+            conversationMemory.push({ role: 'ai', text: responseData.response, timestamp: new Date() });
+            return responseData;
+        }
+
         // ============ VOICE CONVERSATION ============
         let voiceRecognition = null;
         let isRecording = false;
         let isThinking = false;
-        let currentSpeechSynthesis = null;
 
         function initVoiceChatRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1160,29 +1213,6 @@
             return false;
         }
 
-        function speakText(text, callback) {
-            if (currentSpeechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            utterance.onend = function() {
-                if (callback) callback();
-            };
-            
-            utterance.onerror = function() {
-                if (callback) callback();
-            };
-            
-            currentSpeechSynthesis = utterance;
-            window.speechSynthesis.speak(utterance);
-        }
-
         function showTypingIndicator() {
             const conversationDiv = document.getElementById('voiceConversation');
             const typingDiv = document.createElement('div');
@@ -1245,12 +1275,12 @@
                 
                 conversationDiv.innerHTML += `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: ${aiData.response}
+                        🤖 AI (${accentConfig[currentAccent].flag} ${accentConfig[currentAccent].name}): ${aiData.response}
                     </div>
                 `;
                 conversationDiv.scrollTop = conversationDiv.scrollHeight;
                 
-                speakText(aiData.response, function() {
+                speakWithAccent(aiData.response, function() {
                     isThinking = false;
                     if(statusDiv && !isRecording) {
                         statusDiv.innerHTML = '🎤 Selesai bicara. Klik tombol merah untuk bicara lagi!';
@@ -1291,40 +1321,33 @@
             if(conversationDiv) {
                 conversationDiv.innerHTML = `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
+                        🤖 AI (${accentConfig[currentAccent].flag} ${accentConfig[currentAccent].name}): Hello! I'm your AI voice conversation partner. Choose your favorite accent above, then click the red button and start speaking!
                     </div>
                 `;
             }
-            // Clear memory
             conversationMemory = [];
-            currentTopic = null;
-            lastUserQuestion = null;
             userInfo = { name: null, interest: null };
-            
             const resultDiv = document.getElementById('voiceResult');
             if(resultDiv) resultDiv.style.display = 'none';
             showToast('Chat and memory cleared!');
         }
 
         function endVoiceChat() {
-            if (currentSpeechSynthesis) {
+            if (window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
             }
             addXP(25);
             closeModal('aiChatModal');
             showToast('+25 XP earned from voice conversation practice!');
             
-            // Reset memory
             conversationMemory = [];
-            currentTopic = null;
-            lastUserQuestion = null;
             userInfo = { name: null, interest: null };
             
             const conversationDiv = document.getElementById('voiceConversation');
             if(conversationDiv) {
                 conversationDiv.innerHTML = `
                     <div class="ai-bubble voice-bubble">
-                        🤖 AI: Hello! I'm your AI voice conversation partner. I can remember our conversation! Click the red button and start speaking naturally.
+                        🤖 AI (${accentConfig[currentAccent].flag} ${accentConfig[currentAccent].name}): Hello! I'm your AI voice conversation partner. Choose your favorite accent above, then click the red button and start speaking!
                     </div>
                 `;
             }
@@ -1341,7 +1364,7 @@
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
             if(modal) modal.style.display = 'none';
-            if (modalId === 'aiChatModal' && currentSpeechSynthesis) {
+            if (modalId === 'aiChatModal' && window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
             }
         }
@@ -1444,10 +1467,46 @@
             closeModal('communityModal');
         }
 
+        // ============ ACCENT SELECTOR ============
+        async function setupAccentSelector() {
+            await loadVoices();
+            await setVoiceForAccent('uk');
+            
+            document.querySelectorAll('.accent-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const accent = btn.getAttribute('data-accent');
+                    currentAccent = accent;
+                    
+                    // Update UI
+                    document.querySelectorAll('.accent-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    const infoDiv = document.getElementById('selectedAccentInfo');
+                    if(infoDiv) {
+                        infoDiv.innerHTML = `${accentConfig[accent].flag} Selected: ${accentConfig[accent].name} accent`;
+                    }
+                    
+                    await setVoiceForAccent(accent);
+                    testAccent(accent);
+                    showToast(`${accentConfig[accent].flag} ${accentConfig[accent].name} accent activated!`);
+                    
+                    // Update chat bubble to show current accent
+                    const conversationDiv = document.getElementById('voiceConversation');
+                    if(conversationDiv && conversationDiv.children.length > 0) {
+                        const firstBubble = conversationDiv.children[0];
+                        if(firstBubble && firstBubble.classList.contains('ai-bubble')) {
+                            firstBubble.innerHTML = `🤖 AI (${accentConfig[accent].flag} ${accentConfig[accent].name}): Hello! I'm your AI voice conversation partner. I now speak with ${accentConfig[accent].name} accent! Click the red button and start speaking!`;
+                        }
+                    }
+                });
+            });
+        }
+
         // ============ EVENT LISTENERS ============
         document.addEventListener('DOMContentLoaded', function() {
             initPronunciationRecognition();
             initVoiceChatRecognition();
+            setupAccentSelector();
             
             document.getElementById('featurePronunciation').onclick = openPronunciation;
             document.getElementById('featureAIChat').onclick = openAIChat;
