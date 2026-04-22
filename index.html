@@ -429,12 +429,53 @@
                 <h2 class="section-title">Powerful Features for Language Mastery</h2>
             </div>
             <div class="features-grid">
-                <div class="feature-card" onclick="openModal('practiceModal')"><div class="feature-icon">🎯</div><h3>Real-time Pronunciation</h3><p>AI analyzes your speech and gives instant feedback.</p><div class="xp-display">+10-25 XP</div></div>
-                <div class="feature-card" onclick="openModal('aiChatModal')"><div class="feature-icon">🤖</div><h3>AI Conversation Partner</h3><p>Practice real conversations with adaptive AI chatbot.</p><div class="xp-display">+15 XP</div></div>
-                <div class="feature-card" onclick="openModal('learningPathModal')"><div class="feature-icon">📊</div><h3>Personalized Learning Path</h3><p>Custom lessons based on your progress.</p><div class="xp-display">+20 XP</div></div>
-                <div class="feature-card" onclick="openModal('gamificationModal')"><div class="feature-icon">🎮</div><h3>Gamified Experience</h3><p>Earn XP, unlock achievements, and maintain streaks.</p><div class="xp-display">View Progress</div></div>
-                <div class="feature-card" onclick="openModal('offlineModal')"><div class="feature-icon">📱</div><h3>Offline Mode</h3><p>Download lessons and practice anywhere.</p><div class="xp-display">Available</div></div>
-                <div class="feature-card" onclick="openModal('communityModal')"><div class="feature-icon">👥</div><h3>Community Practice</h3><p>Join live speaking sessions with learners worldwide.</p><div class="xp-display">+25 XP/session</div></div>
+                <!-- Real-time Pronunciation -->
+                <div class="feature-card" id="featurePronunciation">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Real-time Pronunciation</h3>
+                    <p>AI analyzes your speech and gives instant feedback.</p>
+                    <div class="xp-display">+10-25 XP</div>
+                </div>
+                
+                <!-- AI Conversation Partner -->
+                <div class="feature-card" id="featureAIChat">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Conversation Partner</h3>
+                    <p>Practice real conversations with adaptive AI chatbot.</p>
+                    <div class="xp-display">+15 XP</div>
+                </div>
+                
+                <!-- Personalized Learning Path -->
+                <div class="feature-card" id="featureLearningPath">
+                    <div class="feature-icon">📊</div>
+                    <h3>Personalized Learning Path</h3>
+                    <p>Custom lessons based on your progress.</p>
+                    <div class="xp-display">+20 XP</div>
+                </div>
+                
+                <!-- Gamified Experience -->
+                <div class="feature-card" id="featureGamification">
+                    <div class="feature-icon">🎮</div>
+                    <h3>Gamified Experience</h3>
+                    <p>Earn XP, unlock achievements, and maintain streaks.</p>
+                    <div class="xp-display">View Progress</div>
+                </div>
+                
+                <!-- Offline Mode -->
+                <div class="feature-card" id="featureOffline">
+                    <div class="feature-icon">📱</div>
+                    <h3>Offline Mode</h3>
+                    <p>Download lessons and practice anywhere.</p>
+                    <div class="xp-display">Available</div>
+                </div>
+                
+                <!-- Community Practice -->
+                <div class="feature-card" id="featureCommunity">
+                    <div class="feature-icon">👥</div>
+                    <h3>Community Practice</h3>
+                    <p>Join live speaking sessions with learners worldwide.</p>
+                    <div class="xp-display">+25 XP/session</div>
+                </div>
             </div>
         </div>
     </section>
@@ -453,11 +494,12 @@
         </div>
     </section>
 
-    <!-- MODAL PRACTICE SPEAKING -->
+    <!-- MODAL PRACTICE SPEAKING (Pronunciation) -->
     <div id="practiceModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="practiceModal">&times;</span>
-            <h2>🎤 Practice Speaking</h2>
+            <h2>🎯 Real-time Pronunciation Practice</h2>
+            <p>Practice your pronunciation with AI feedback</p>
             
             <label>📝 Choose a sentence to practice:</label>
             <select id="sentenceSelect">
@@ -490,6 +532,7 @@
         <div class="modal-content">
             <span class="close-modal" data-modal="aiChatModal">&times;</span>
             <h2>🤖 AI Conversation Partner</h2>
+            <p>Practice real conversations with AI</p>
             <div id="chatMessages" style="height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
                 <div class="ai-message chat-message">AI: Hello! I'm your AI conversation partner. What would you like to talk about today?</div>
             </div>
@@ -505,7 +548,7 @@
     <div id="learningPathModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="learningPathModal">&times;</span>
-            <h2>📊 Find Your Level</h2>
+            <h2>📊 Personalized Learning Path</h2>
             <p>Answer these questions to get personalized lessons:</p>
             <select id="q1">
                 <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
@@ -522,7 +565,8 @@
     <div id="gamificationModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="gamificationModal">&times;</span>
-            <h2>🎮 Your Progress</h2>
+            <h2>🎮 Gamified Experience</h2>
+            <p>Track your progress and achievements</p>
             <p>🏆 <strong id="displayXP">0</strong> Total XP</p>
             <p>🔥 <strong id="displayStreak">0</strong> Day Streak</p>
             <p>⭐ Level: <strong id="displayLevel">1</strong></p>
@@ -543,6 +587,7 @@
         <div class="modal-content">
             <span class="close-modal" data-modal="offlineModal">&times;</span>
             <h2>📱 Offline Mode</h2>
+            <p>Download lessons to practice without internet</p>
             <button class="btn btn-primary" id="downloadBasicBtn" style="width:100%; margin:0.5rem 0;">📥 Download Basic Lessons</button>
             <button class="btn btn-primary" id="downloadInterBtn" style="width:100%; margin:0.5rem 0;">📥 Download Intermediate Lessons</button>
             <div id="downloadStatus" style="margin-top: 1rem; text-align:center;"></div>
@@ -553,7 +598,8 @@
     <div id="communityModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" data-modal="communityModal">&times;</span>
-            <h2>👥 Live Practice Sessions</h2>
+            <h2>👥 Community Practice</h2>
+            <p>Join live speaking sessions with learners worldwide</p>
             <div style="border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin:0.5rem 0;">
                 <strong>English Conversation Club</strong><br>🕐 Today, 7:00 PM • 12 participants<br>
                 <button class="btn btn-primary joinSessionBtn" data-session="English Conversation Club" style="margin-top:0.5rem;">Join Session</button>
@@ -792,6 +838,33 @@
             }
         }
 
+        // ============ FEATURE HANDLERS ============
+        function openPronunciation() {
+            openModal('practiceModal');
+        }
+        
+        function openAIChat() {
+            openModal('aiChatModal');
+        }
+        
+        function openLearningPath() {
+            openModal('learningPathModal');
+        }
+        
+        function openGamification() {
+            updateDisplay();
+            checkAchievements();
+            openModal('gamificationModal');
+        }
+        
+        function openOffline() {
+            openModal('offlineModal');
+        }
+        
+        function openCommunity() {
+            openModal('communityModal');
+        }
+
         // ============ PRACTICE FUNCTIONS ============
         function changeSentence() {
             const select = document.getElementById('sentenceSelect');
@@ -917,15 +990,34 @@
             // Initialize speech recognition
             initRecognition();
             
+            // FEATURE CARDS - assign click handlers
+            const featurePronunciation = document.getElementById('featurePronunciation');
+            if(featurePronunciation) featurePronunciation.onclick = openPronunciation;
+            
+            const featureAIChat = document.getElementById('featureAIChat');
+            if(featureAIChat) featureAIChat.onclick = openAIChat;
+            
+            const featureLearningPath = document.getElementById('featureLearningPath');
+            if(featureLearningPath) featureLearningPath.onclick = openLearningPath;
+            
+            const featureGamification = document.getElementById('featureGamification');
+            if(featureGamification) featureGamification.onclick = openGamification;
+            
+            const featureOffline = document.getElementById('featureOffline');
+            if(featureOffline) featureOffline.onclick = openOffline;
+            
+            const featureCommunity = document.getElementById('featureCommunity');
+            if(featureCommunity) featureCommunity.onclick = openCommunity;
+            
             // Navigation
             const startBtn = document.getElementById('startSpeakingBtn');
-            if(startBtn) startBtn.onclick = () => openModal('practiceModal');
+            if(startBtn) startBtn.onclick = openPronunciation;
             
             const watchDemo = document.getElementById('watchDemoBtn');
             if(watchDemo) watchDemo.onclick = () => showToast('▶️ Demo: AI pronunciation analysis');
             
             const ctaBtn = document.getElementById('ctaStartBtn');
-            if(ctaBtn) ctaBtn.onclick = () => openModal('practiceModal');
+            if(ctaBtn) ctaBtn.onclick = openPronunciation;
             
             const navHome = document.getElementById('navHome');
             if(navHome) navHome.onclick = () => scrollToSection('home');
