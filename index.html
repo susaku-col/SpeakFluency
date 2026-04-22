@@ -11,6 +11,10 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background: #f5f7fb;
@@ -68,6 +72,7 @@
             color: #4a5568;
             padding: 0.5rem 0;
             transition: color 0.2s;
+            font-family: inherit;
         }
 
         .nav-link:hover, .nav-link.active {
@@ -82,6 +87,7 @@
             transition: all 0.2s;
             border: none;
             font-size: 0.875rem;
+            font-family: inherit;
         }
 
         .btn-primary {
@@ -355,6 +361,9 @@
             text-decoration: none;
             margin: 0.5rem 0;
             cursor: pointer;
+            background: none;
+            border: none;
+            font-size: inherit;
         }
 
         .footer-bottom {
@@ -443,44 +452,46 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo" onclick="scrollToSection('home')">
+            <div class="logo" id="logoHome">
                 🎤 <span>SpeakFlow</span>
             </div>
-            <div class="mobile-toggle" onclick="toggleMobileMenu()">
+            <div class="mobile-toggle" id="mobileToggle">
                 <span></span><span></span><span></span>
             </div>
             <div class="nav-links" id="navLinks">
-                <button class="nav-link" onclick="scrollToSection('home')">Home</button>
-                <button class="nav-link" onclick="scrollToSection('features')">Features</button>
-                <button class="nav-link" onclick="scrollToSection('pricing')">Pricing</button>
-                <button class="nav-link" onclick="scrollToSection('testimonials')">About</button>
-                <button class="nav-link" onclick="scrollToSection('contact')">Contact</button>
-                <button class="btn btn-outline" onclick="openModal('login')">Login</button>
-                <button class="btn btn-primary" onclick="openModal('signup')">Sign Up Free</button>
+                <button class="nav-link" id="navHome">Home</button>
+                <button class="nav-link" id="navFeatures">Features</button>
+                <button class="nav-link" id="navPricing">Pricing</button>
+                <button class="nav-link" id="navAbout">About</button>
+                <button class="nav-link" id="navContact">Contact</button>
+                <button class="btn btn-outline" id="btnLogin">Login</button>
+                <button class="btn btn-primary" id="btnSignup">Sign Up Free</button>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-container">
-            <div>
-                <h1 class="hero-title">Master English Speaking with <span style="color: #ffd700;">AI-Powered</span> Voice Recognition</h1>
-                <p class="hero-subtitle">Speak with confidence using real-time pronunciation feedback, personalized lessons, and gamified learning experiences.</p>
+    <section id="home">
+        <div class="hero">
+            <div class="hero-container">
                 <div>
-                    <button class="btn btn-primary btn-large" onclick="showToast('🎉 Start your free trial!')">Start Speaking Now 🎤</button>
-                    <button class="btn btn-outline btn-large" style="background: rgba(255,255,255,0.2); color: white; margin-left: 1rem;" onclick="showToast('▶️ Demo video coming soon')">Watch Demo ▶</button>
+                    <h1 class="hero-title">Master English Speaking with <span style="color: #ffd700;">AI-Powered</span> Voice Recognition</h1>
+                    <p class="hero-subtitle">Speak with confidence using real-time pronunciation feedback, personalized lessons, and gamified learning experiences.</p>
+                    <div>
+                        <button class="btn btn-primary btn-large" id="startSpeakingBtn">Start Speaking Now 🎤</button>
+                        <button class="btn btn-outline btn-large" id="watchDemoBtn" style="background: rgba(255,255,255,0.2); color: white; margin-left: 1rem;">Watch Demo ▶</button>
+                    </div>
+                    <div class="hero-stats">
+                        <div><span class="stat-number">50K+</span><br>Active Learners</div>
+                        <div><span class="stat-number">98%</span><br>Satisfaction Rate</div>
+                        <div><span class="stat-number">30+</span><br>Languages</div>
+                    </div>
                 </div>
-                <div class="hero-stats">
-                    <div><span class="stat-number">50K+</span><br>Active Learners</div>
-                    <div><span class="stat-number">98%</span><br>Satisfaction Rate</div>
-                    <div><span class="stat-number">30+</span><br>Languages</div>
+                <div class="demo-card">
+                    <div style="font-size: 4rem;">🎤</div>
+                    <p style="margin-top: 1rem;">"Hello, how are you today?"</p>
+                    <span style="background: #ffd700; color: #1a1a2e; padding: 0.25rem 0.75rem; border-radius: 2rem; display: inline-block; margin-top: 1rem;">92% accuracy</span>
                 </div>
-            </div>
-            <div class="demo-card">
-                <div style="font-size: 4rem;">🎤</div>
-                <p style="margin-top: 1rem;">"Hello, how are you today?"</p>
-                <span style="background: #ffd700; color: #1a1a2e; padding: 0.25rem 0.75rem; border-radius: 2rem; display: inline-block; margin-top: 1rem;">92% accuracy</span>
             </div>
         </div>
     </section>
@@ -535,7 +546,7 @@
                         <li>✓ 500+ vocabulary words</li>
                         <li>✗ AI conversation partner</li>
                     </ul>
-                    <button class="btn btn-outline" onclick="showToast('Get Started with Basic plan')">Get Started</button>
+                    <button class="btn btn-outline pricing-btn">Get Started</button>
                 </div>
                 <div class="pricing-card popular">
                     <div class="popular-badge">Most Popular</div>
@@ -547,7 +558,7 @@
                         <li>✓ AI conversation partner</li>
                         <li>✓ Offline mode</li>
                     </ul>
-                    <button class="btn btn-primary" onclick="showToast('Start Pro Trial - 7 days free!')">Start Pro Trial</button>
+                    <button class="btn btn-primary pricing-btn">Start Pro Trial</button>
                 </div>
                 <div class="pricing-card">
                     <h3>Family</h3>
@@ -558,14 +569,14 @@
                         <li>✓ Family progress tracking</li>
                         <li>✓ Group practice sessions</li>
                     </ul>
-                    <button class="btn btn-outline" onclick="showToast('Get Family Plan')">Get Family Plan</button>
+                    <button class="btn btn-outline pricing-btn">Get Family Plan</button>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section id="testimonials" style="background: #f0f4f8;">
+    <!-- About / Testimonials -->
+    <section id="about" style="background: #f0f4f8;">
         <div class="container">
             <div class="section-header">
                 <span class="section-badge">Testimonials</span>
@@ -579,12 +590,12 @@
         </div>
     </section>
 
-    <!-- CTA Section -->
+    <!-- Contact / CTA Section -->
     <section id="contact" class="cta">
         <div class="container">
             <h2 style="font-size: 2rem;">Ready to Start Your Language Journey?</h2>
             <p style="margin: 1rem 0;">Join 50,000+ learners already improving their English with SpeakFlow</p>
-            <button class="btn btn-primary btn-large" onclick="showToast('🎉 Start your free trial!')">Start Speaking Free 🎤</button>
+            <button class="btn btn-primary btn-large" id="ctaStartBtn">Start Speaking Free 🎤</button>
             <p style="margin-top: 1rem; opacity: 0.8;">No credit card required • Free 7-day trial • Cancel anytime</p>
         </div>
     </section>
@@ -592,21 +603,21 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-grid">
-            <div>
+            <div class="footer-col">
                 <h3>🎤 SpeakFlow</h3>
                 <p style="margin-top: 0.5rem; color: #a0aec0;">AI-powered language learning platform helping millions speak with confidence.</p>
             </div>
-            <div>
+            <div class="footer-col">
                 <h4>Product</h4>
-                <a onclick="scrollToSection('features')">Features</a>
-                <a onclick="scrollToSection('pricing')">Pricing</a>
+                <a id="footerFeatures">Features</a>
+                <a id="footerPricing">Pricing</a>
             </div>
-            <div>
+            <div class="footer-col">
                 <h4>Company</h4>
-                <a onclick="scrollToSection('testimonials')">About Us</a>
-                <a onclick="scrollToSection('contact')">Contact</a>
+                <a id="footerAbout">About Us</a>
+                <a id="footerContact">Contact</a>
             </div>
-            <div>
+            <div class="footer-col">
                 <h4>Resources</h4>
                 <a href="#">Help Center</a>
                 <a href="#">Privacy Policy</a>
@@ -620,27 +631,27 @@
     <!-- Modals -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('login')">&times;</span>
+            <span style="float: right; cursor: pointer; font-size: 1.5rem;" id="closeLoginModal">&times;</span>
             <h2>Welcome Back!</h2>
-            <form onsubmit="event.preventDefault(); showToast('Demo: Login successful!'); closeModal('login');">
+            <form id="loginForm">
                 <input type="email" placeholder="Email" required>
                 <input type="password" placeholder="Password" required>
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
-                <p style="margin-top: 1rem; text-align: center;">Don't have an account? <a href="#" onclick="closeModal('login'); openModal('signup')">Sign up</a></p>
+                <p style="margin-top: 1rem; text-align: center;">Don't have an account? <a href="#" id="switchToSignup">Sign up</a></p>
             </form>
         </div>
     </div>
 
     <div id="signupModal" class="modal">
         <div class="modal-content">
-            <span style="float: right; cursor: pointer; font-size: 1.5rem;" onclick="closeModal('signup')">&times;</span>
+            <span style="float: right; cursor: pointer; font-size: 1.5rem;" id="closeSignupModal">&times;</span>
             <h2>Create Account</h2>
-            <form onsubmit="event.preventDefault(); showToast('Demo: Account created!'); closeModal('signup');">
+            <form id="signupForm">
                 <input type="text" placeholder="Full Name" required>
                 <input type="email" placeholder="Email" required>
                 <input type="password" placeholder="Password" required>
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign Up Free</button>
-                <p style="margin-top: 1rem; text-align: center;">Already have an account? <a href="#" onclick="closeModal('signup'); openModal('login')">Login</a></p>
+                <p style="margin-top: 1rem; text-align: center;">Already have an account? <a href="#" id="switchToLogin">Login</a></p>
             </form>
         </div>
     </div>
@@ -648,7 +659,7 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        // Scroll to section function
+        // ============ SCROLL FUNCTION ============
         function scrollToSection(sectionId) {
             const element = document.getElementById(sectionId);
             if (element) {
@@ -660,15 +671,16 @@
                     top: offsetPosition,
                     behavior: 'smooth'
                 });
+                
+                // Update active class on nav links
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                // Add active class to matching button
+                const activeButton = document.getElementById(`nav${sectionId.charAt(0).toUpperCase() + sectionId.slice(1)}`);
+                if (activeButton) activeButton.classList.add('active');
             }
-            
-            // Update active link
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-                if(link.getAttribute('onclick')?.includes(sectionId)) {
-                    link.classList.add('active');
-                }
-            });
             
             // Close mobile menu if open
             const navLinks = document.getElementById('navLinks');
@@ -677,24 +689,7 @@
             }
         }
 
-        // Mobile menu toggle
-        function toggleMobileMenu() {
-            const navLinks = document.getElementById('navLinks');
-            navLinks.classList.toggle('show');
-        }
-
-        // Modal functions
-        function openModal(type) {
-            const modal = document.getElementById(type === 'login' ? 'loginModal' : 'signupModal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function closeModal(type) {
-            const modal = document.getElementById(type === 'login' ? 'loginModal' : 'signupModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        // Toast notification
+        // ============ TOAST NOTIFICATION ============
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -704,34 +699,95 @@
             }, 3000);
         }
 
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
-            }
+        // ============ MODAL FUNCTIONS ============
+        function openLoginModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+        
+        function openSignupModal() {
+            document.getElementById('signupModal').style.display = 'flex';
+        }
+        
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+        
+        function closeSignupModal() {
+            document.getElementById('signupModal').style.display = 'none';
         }
 
-        // Update active link on scroll
-        window.addEventListener('scroll', () => {
-            const sections = ['home', 'features', 'pricing', 'testimonials', 'contact'];
-            let current = '';
-            const scrollPosition = window.scrollY + 100;
+        // ============ MOBILE MENU ============
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('show');
+        }
+
+        // ============ EVENT LISTENERS ============
+        document.addEventListener('DOMContentLoaded', function() {
             
-            sections.forEach(sectionId => {
-                const section = document.getElementById(sectionId);
-                if (section) {
-                    const sectionTop = section.offsetTop;
-                    const sectionBottom = sectionTop + section.offsetHeight;
-                    if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
-                        current = sectionId;
-                    }
-                }
+            // NAVBAR BUTTONS
+            document.getElementById('navHome').addEventListener('click', () => scrollToSection('home'));
+            document.getElementById('navFeatures').addEventListener('click', () => scrollToSection('features'));
+            document.getElementById('navPricing').addEventListener('click', () => scrollToSection('pricing'));
+            document.getElementById('navAbout').addEventListener('click', () => scrollToSection('about'));
+            document.getElementById('navContact').addEventListener('click', () => scrollToSection('contact'));
+            
+            // LOGO
+            document.getElementById('logoHome').addEventListener('click', () => scrollToSection('home'));
+            
+            // LOGIN & SIGNUP BUTTONS
+            document.getElementById('btnLogin').addEventListener('click', openLoginModal);
+            document.getElementById('btnSignup').addEventListener('click', openSignupModal);
+            
+            // FOOTER LINKS
+            document.getElementById('footerFeatures').addEventListener('click', () => scrollToSection('features'));
+            document.getElementById('footerPricing').addEventListener('click', () => scrollToSection('pricing'));
+            document.getElementById('footerAbout').addEventListener('click', () => scrollToSection('about'));
+            document.getElementById('footerContact').addEventListener('click', () => scrollToSection('contact'));
+            
+            // CTA BUTTONS
+            document.getElementById('startSpeakingBtn').addEventListener('click', () => showToast('🎉 Start your free trial! Open the app to begin.'));
+            document.getElementById('watchDemoBtn').addEventListener('click', () => showToast('▶️ Demo video would play here (AI speech recognition demo)'));
+            document.getElementById('ctaStartBtn').addEventListener('click', () => showToast('🎉 Start your free trial! Open the app to begin.'));
+            
+            // PRICING BUTTONS
+            document.querySelectorAll('.pricing-btn').forEach(btn => {
+                btn.addEventListener('click', () => showToast('✨ Feature coming soon! Upgrade to Pro to unlock.'));
             });
             
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('onclick')?.includes(current)) {
-                    link.classList.add('active');
+            // MODAL CLOSE
+            document.getElementById('closeLoginModal').addEventListener('click', closeLoginModal);
+            document.getElementById('closeSignupModal').addEventListener('click', closeSignupModal);
+            document.getElementById('switchToSignup').addEventListener('click', (e) => {
+                e.preventDefault();
+                closeLoginModal();
+                openSignupModal();
+            });
+            document.getElementById('switchToLogin').addEventListener('click', (e) => {
+                e.preventDefault();
+                closeSignupModal();
+                openLoginModal();
+            });
+            
+            // MODAL FORMS
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                showToast('Demo: Login successful!');
+                closeLoginModal();
+            });
+            document.getElementById('signupForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                showToast('Demo: Account created!');
+                closeSignupModal();
+            });
+            
+            // MOBILE TOGGLE
+            document.getElementById('mobileToggle').addEventListener('click', toggleMobileMenu);
+            
+            // CLOSE MODAL WHEN CLICKING OUTSIDE
+            window.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    e.target.style.display = 'none';
                 }
             });
         });
